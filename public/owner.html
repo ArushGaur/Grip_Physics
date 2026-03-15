@@ -26,8 +26,8 @@
         }
 
         .panel {
-            width: 850px;
-            max-width: 100%;
+            width: 100%;
+            max-width: 850px;
             padding: 40px;
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(12px);
@@ -156,6 +156,63 @@
             padding: 20px;
             background: rgba(255, 255, 255, 0.06);
             border-radius: 15px;
+        }
+
+        /* -------- RESPONSIVE DESIGN -------- */
+
+        @media (max-width: 900px) {
+
+            .dashboard {
+                flex-direction: column;
+            }
+
+            .options {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+        @media (max-width: 600px) {
+
+            body {
+                padding: 10px;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .panel {
+                padding: 25px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+
+            .card {
+                padding: 20px;
+                font-size: 14px;
+            }
+
+            input,
+            textarea {
+                font-size: 13px;
+                padding: 12px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 12px;
+            }
+
+            th,
+            td {
+                font-size: 12px;
+            }
+
+            #lectureChart {
+                max-height: 260px;
+            }
+
         }
     </style>
 
