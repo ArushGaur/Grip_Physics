@@ -72,8 +72,7 @@ let selectedIsCorrect = false;
 
 function selectAnswer(element, isCorrect) {
     // Don't allow re-selection after submit
-    if (document.getElementById('submitAnswerBtn').disabled === false && 
-        document.querySelector('.correct, .incorrect')) return;
+    if (document.querySelector('.correct, .incorrect')) return;
 
     const options = document.querySelectorAll('.option');
     options.forEach(opt => opt.classList.remove('selected'));
