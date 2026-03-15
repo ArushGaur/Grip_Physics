@@ -114,11 +114,32 @@ button:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0, 242, 
 }
 
 .option:hover { background: rgba(255, 255, 255, 0.2); border-color: var(--accent); }
+.option.selected { background: rgba(0, 242, 254, 0.18) !important; border-color: var(--accent); box-shadow: 0 0 12px rgba(0, 242, 254, 0.35); }
 .correct { background: var(--success) !important; box-shadow: 0 0 15px var(--success); }
 .incorrect { background: var(--error) !important; box-shadow: 0 0 15px var(--error); }
 
 #feedback { margin-top: 15px; font-weight: 600; font-size: 0.9rem; }
 .sync-text { font-size: 0.7rem; margin-top: 20px; opacity: 0.6; }
+
+.submit-answer-btn {
+    width: 100%; padding: 14px; margin-top: 18px;
+    border-radius: 10px; border: none;
+    background: linear-gradient(45deg, var(--accent), var(--accent-2));
+    color: white; font-weight: 600; cursor: not-allowed;
+    transition: 0.3s; text-transform: uppercase;
+    letter-spacing: 1px; font-size: 0.9rem;
+    opacity: 0.4;
+}
+
+.submit-answer-btn:not(:disabled) {
+    opacity: 1; cursor: pointer;
+}
+
+.submit-answer-btn:not(:disabled):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 20px rgba(0, 242, 254, 0.5);
+}
+
 .hidden { display: none !important; }
 
 @keyframes lineGrow { to { width: 100%; } }
