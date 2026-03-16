@@ -540,47 +540,51 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
         /* EXPORT CSV */
 
         function exportExcel() {
+            // 1. Create a "Phone to Name" lookup dictionary
+            const nameLookup = {};
+            studentData.login.forEach(s => {
+                nameLookup[s.mobile] = s.name;
+            });
 
             let csv = "Name,Mobile,Place,Class,Lecture,,Name,Mobile,Lecture,Result\n";
 
+            // Use a Map to filter unique logins (Mobile + Lecture)
             const loginMap = new Map();
-
             studentData.login.forEach(s => {
                 const key = s.mobile + "_" + s.lecture;
-
-                if (!loginMap.has(key)) {
-                    loginMap.set(key, s);
-                }
+                if (!loginMap.has(key)) loginMap.set(key, s);
             });
 
             const loginArray = Array.from(loginMap.values());
             const answers = studentData.answers;
-
             const maxLength = Math.max(loginArray.length, answers.length);
 
             for (let i = 0; i < maxLength; i++) {
-
                 const l = loginArray[i];
                 const a = answers[i];
 
+                // Left side (Login Data)
                 const left = l
-                    ? `${l.name},${l.mobile},${l.place},${l.className},${l.lecture}`
+                    ? `"${l.name}","${l.mobile}","${l.place}","${l.className}","${l.lecture}"`
                     : ",,,,";
 
-                const right = a
-                    ? `${a.name},${a.mobile},${a.lecture},${a.correct ? "Correct" : "Wrong"}`
-                    : ",,,";
+                // Right side (Answer Data) - FIX: Get name from lookup
+                let right = ",,,";
+                if (a) {
+                    const studentName = nameLookup[a.mobile] || "Unknown";
+                    const resultText = a.correct ? "✅ Correct" : "❌ Wrong";
+                    right = `"${studentName}","${a.mobile}","${a.lecture}","${resultText}"`;
+                }
 
                 csv += `${left},,${right}\n`;
             }
 
-            const blob = new Blob([csv], { type: "text/csv" });
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
-
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "student_data.csv";
-            a.click();
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `Student_Report_${new Date().toLocaleDateString()}.csv`;
+            link.click();
         }
 
 
