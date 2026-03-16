@@ -159,10 +159,14 @@ loginForm.addEventListener("submit", async (e) => {
 
     /* -------- CHECK ATTEMPT -------- */
 
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 10000);
+
     const res = await fetch(`${API_BASE}/api/check-attempt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile, lecture })
+        body: JSON.stringify({ mobile, lecture }),
+        signal: controller.signal
     });
     const attemptData = await res.json();
 
