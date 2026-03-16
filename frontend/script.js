@@ -138,6 +138,11 @@ loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("userName").value;
     const mobile = document.getElementById("userMobile").value.trim();
+    if (!/^[0-9]{10}$/.test(mobile)) {
+        alert("Please enter a valid 10 digit mobile number");
+        document.getElementById("submitBtn").innerText = "Unlock Question";
+        return;
+    }
     const place = document.getElementById("userPlace").value;
     const className = document.getElementById("userClass").value;
     const lecture = document.getElementById("lectureNumber").value;
@@ -309,11 +314,4 @@ async function submitAnswer() {
         btn.innerText = "Retry Submit";
         if (syncText) syncText.innerText = "Sync Failed. Please click Retry.";
     }
-}
-
-const mobile = document.getElementById("userMobile").value.trim();
-
-if (!/^[0-9]{10}$/.test(mobile)) {
-    alert("Please enter a valid 10 digit mobile number");
-    return;
 }
