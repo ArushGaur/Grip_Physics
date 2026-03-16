@@ -68,7 +68,8 @@ const QuestionSchema = new mongoose.Schema({
     lecture: { type: String, index: true },
     question: String,
     options: [String],
-    correctIndex: Number
+    correctIndex: Number,
+    updatedAt: { type: Number, default: Date.now }
 });
 
 const StudentSchema = new mongoose.Schema({
@@ -81,6 +82,8 @@ const StudentSchema = new mongoose.Schema({
     correct: Boolean,
     time: Number
 });
+
+StudentSchema.index({ mobile: 1, lecture: 1 });
 
 const AttemptSchema = new mongoose.Schema({
     mobile: { type: String, index: true },
@@ -145,10 +148,12 @@ app.post("/api/check-attempt", async (req, res) => {
     const question = await Question.findOne({ lecture }).lean();
     if (!question) return res.json({ allowed: false });
 
+    // Get the student's latest attempt
     const lastAttempt = await Student.findOne({ mobile, lecture })
         .sort({ time: -1 })
         .lean();
 
+    // If no attempt → allow
     if (!lastAttempt) {
         return res.json({ allowed: true });
     }
@@ -156,12 +161,13 @@ app.post("/api/check-attempt", async (req, res) => {
     const attemptTime = lastAttempt.time || 0;
     const questionTime = question.updatedAt || 0;
 
+    // Block if attempt happened after the last question update
     if (attemptTime >= questionTime) {
         return res.json({ allowed: false });
     }
 
+    // Otherwise allow
     return res.json({ allowed: true });
-
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
@@ -171,9 +177,21 @@ app.post("/api/submit-attempt", async (req, res) => {
     const { mobile, lecture, selectedIndex } = req.body;
 
     const question = await Question.findOne({ lecture }).lean();
-
     if (!question) {
         return res.status(404).json({ error: "Lecture not found" });
+    }
+
+    const lastAttempt = await Student.findOne({ mobile, lecture })
+        .sort({ time: -1 })
+        .lean();
+
+    if (lastAttempt) {
+        const attemptTime = lastAttempt.time || 0;
+        const questionTime = question.updatedAt || 0;
+
+        if (attemptTime >= questionTime) {
+            return res.json({ allowed: false });
+        }
     }
 
     await Student.create({
@@ -237,13 +255,16 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
 /* ---------------- ADMIN STATS ---------------- */
 
 app.get("/api/admin/students", requireAdmin, async (req, res) => {
-    const students = await Student.find().lean();
 
-    // Filter for logins
-    const login = students.filter(s => s.name);
+    const login = await Student.find(
+        { name: { $exists: true, $ne: null } },
+        { name: 1, mobile: 1, place: 1, className: 1, lecture: 1, _id: 0 }
+    ).lean();
 
-    // Filter for answers: use hasOwnProperty to ensure index 0 is counted
-    const answers = students.filter(s => Object.prototype.hasOwnProperty.call(s, 'answer'));
+    const answers = await Student.find(
+        { answer: { $exists: true } },
+        { mobile: 1, lecture: 1, correct: 1, _id: 0 }
+    ).lean();
 
     res.json({ login, answers });
 });
