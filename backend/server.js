@@ -11,9 +11,11 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
 
 app.use(cors({
-    origin: true,
-    credentials: true,
-    methods: ["GET", "POST"]
+    origin: [
+        "https://grip-physics.onrender.com",
+        "https://grip-physics.vercel.app"
+    ],
+    credentials: true
 }));
 app.use(express.json());
 
