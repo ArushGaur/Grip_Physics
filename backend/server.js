@@ -16,21 +16,26 @@ app.use(cors({
         "https://grip-physics.onrender.com",
         "https://grip-physics.vercel.app"
     ],
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
 
 // Find your app.use(session(...)) block and update it to this:
+// Add this right after initializing 'app'
+app.set("trust proxy", 1); 
+
 app.use(session({
     secret: "grip_secret_key",
     resave: false,
     saveUninitialized: false,
-    proxy: true, // Required for Render/Heroku
+    proxy: true, 
     cookie: {
-        secure: true,      // Must be true for SameSite: 'none'
-        sameSite: "none",  // Allows the cookie to be sent from Vercel to Render
+        secure: true,      
+        sameSite: "none",  // Required for cross-site (Vercel to Render)
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000 
     }
 }));
 
