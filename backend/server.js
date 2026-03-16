@@ -88,6 +88,18 @@ StudentSchema.index({ mobile: 1, lecture: 1 });
 const Question = mongoose.model("Question", QuestionSchema);
 const Student = mongoose.model("Student", StudentSchema);
 
+/* ---------------- ATTEMPT SCHEMA ---------------- */
+
+const AttemptSchema = new mongoose.Schema({
+    mobile: { type: String, index: true },
+    lecture: { type: String, index: true },
+    time: Number
+});
+
+AttemptSchema.index({ mobile: 1, lecture: 1 });
+
+const Attempt = mongoose.model("Attempt", AttemptSchema);
+
 /* ---------------- ADMIN PAGE ---------------- */
 
 app.get("/admin", (req, res) => {
