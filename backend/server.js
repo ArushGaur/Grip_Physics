@@ -212,38 +212,37 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
         return res.status(409).json({ warning: "Lecture already exists" });
     }
 
-    if (existing) {
-        existing.question = question;
-        existing.options = options;
-        existing.correctIndex = correctIndex;
-        // Add a 'version' or timestamp to track when it was last updated
-        existing.updatedAt = Date.now();
-        await existing.save();
-        questionCache[lecture] = existing;
+    const updateData = {
+        question,
+        options,
+        correctIndex,
+        updatedAt: Date.now() // Critical for re-attempt logic
+    };
 
-        /* FIX: Do NOT use $unset or deleteMany here. 
-           This preserves your old "Answer Result Data" in the database.
-        */
+    if (existing) {
+        await Question.updateOne({ lecture }, { $set: updateData });
     } else {
-        const newQ = await Question.create({ lecture, question, options, correctIndex, updatedAt: Date.now() });
-        questionCache[lecture] = newQ;
+        await Question.create({ lecture, ...updateData });
     }
+
+    // Refresh cache
+    const updatedQ = await Question.findOne({ lecture }).lean();
+    questionCache[lecture] = updatedQ;
+
     res.json({ success: true });
 });
 /* ---------------- ADMIN STATS ---------------- */
 
 app.get("/api/admin/students", requireAdmin, async (req, res) => {
+    const students = await Student.find().lean();
 
-    const students = await Student.find();
-
+    // Filter for logins
     const login = students.filter(s => s.name);
-    const answers = students.filter(s => s.answer !== undefined);
 
-    res.json({
-        login,
-        answers
-    });
+    // Filter for answers: use hasOwnProperty to ensure index 0 is counted
+    const answers = students.filter(s => Object.prototype.hasOwnProperty.call(s, 'answer'));
 
+    res.json({ login, answers });
 });
 
 /* ---------------- LOGOUT ---------------- */
