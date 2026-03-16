@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 </head>
+
 <body>
 
     <div id="loader">
@@ -26,7 +28,8 @@
             <p class="subtitle">Student Enrollment Portal</p>
             <form id="loginForm">
                 <input type="text" name="name" id="userName" placeholder="Full Name" required>
-                <input type="tel" name="mobile" id="userMobile" placeholder="Mobile No." required>
+                <input type="tel" name="mobile" id="userMobile" placeholder="Mobile No." pattern="[0-9]{10}"
+                    maxlength="10" inputmode="numeric" required>
                 <input type="text" name="place" id="userPlace" placeholder="Place / City" required>
                 <input type="text" name="class" id="userClass" placeholder="Class (e.g. 11th Science)" required>
                 <input id="lectureNumber" placeholder="Enter Lecture Number">
@@ -37,20 +40,23 @@
         <div id="quiz-page" class="container hidden">
             <h2 class="accent-text">Challenge #1</h2>
             <p id="question-text">Which law states that for every action, there is an equal and opposite reaction?</p>
-            
+
             <div class="options-container">
                 <div class="option" onclick="selectAnswer(this, false)">Newton's 1st Law</div>
                 <div class="option" onclick="selectAnswer(this, false)">Newton's 2nd Law</div>
                 <div class="option" onclick="selectAnswer(this, true)">Newton's 3rd Law</div>
                 <div class="option" onclick="selectAnswer(this, false)">Law of Universal Gravitation</div>
             </div>
-            
+
             <div id="feedback"></div>
-            <button id="submitAnswerBtn" class="submit-answer-btn" onclick="submitAnswer()" disabled>Submit Answer</button>
-            <p class="sync-text" id="sync-text" style="display:none;">Data is being synced with Grip Physics Dashboard...</p>
+            <button id="submitAnswerBtn" class="submit-answer-btn" onclick="submitAnswer()" disabled>Submit
+                Answer</button>
+            <p class="sync-text" id="sync-text" style="display:none;">Data is being synced with Grip Physics
+                Dashboard...</p>
         </div>
     </main>
 
     <script src="script.js"></script>
 </body>
+
 </html>
