@@ -223,7 +223,7 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
 
     } else {
 
-        await Question.create({
+        const newQ = await Question.create({
             lecture,
             question,
             options,
