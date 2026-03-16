@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://gripphysics-api.onrender.com/api/$1"
+      "destination": "https://grip-physics.onrender.com/api/$1"
     }
   ]
 }
