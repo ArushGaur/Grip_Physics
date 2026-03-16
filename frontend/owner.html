@@ -456,7 +456,7 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
         async function loadStudents() {
 
-            const res = await ffetch(`${API_BASE}/api/admin/students`, {
+            const res = await fetch(`${API_BASE}/api/admin/students`, {
                 credentials: "include"
             });
 
@@ -644,22 +644,10 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
             });
 
             if (res.status === 409) {
-
                 window.pendingReplaceData = data;
                 const modal = document.getElementById("replaceModal");
                 modal.style.display = "flex";
                 return;
-
-                if (!confirmReplace) return;
-
-                data.replace = true;
-
-                res = await fetch(`${API_BASE}/api/admin/add-question`, {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data)
-                });
             }
 
             if (!res.ok) {
