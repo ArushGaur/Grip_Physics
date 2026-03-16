@@ -12,7 +12,8 @@ const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
 
 app.use(cors({
     origin: true,
-    credentials: true
+    credentials: true,
+    methods: ["GET","POST"]
 }));
 app.use(express.json());
 
