@@ -134,11 +134,8 @@ window.addEventListener("load", () => {
 /* ---------------- LOGIN FORM ---------------- */
 
 const loginForm = document.getElementById("loginForm");
-
 loginForm.addEventListener("submit", async (e) => {
-
     e.preventDefault();
-
     const name = document.getElementById("userName").value;
     const mobile = document.getElementById("userMobile").value.trim();
     const place = document.getElementById("userPlace").value;
@@ -147,87 +144,48 @@ loginForm.addEventListener("submit", async (e) => {
 
     document.getElementById("submitBtn").innerText = "Checking...";
 
-
-    /* -------- CHECK LECTURE FIRST -------- */
-
+    /* -------- 1. FETCH QUESTION DATA -------- */
     const questionData = await fetchLectureQuestion(lecture);
-
     if (!questionData) {
-
         document.getElementById("submitBtn").innerText = "Unlock Question";
         return;
-
     }
 
 
     /* -------- CHECK ATTEMPT -------- */
 
-    const attemptCheck = await fetch(`${API_BASE}/api/check-attempt`, {
-
+    const res = await fetch(`${API_BASE}/api/check-attempt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mobile, lecture })
-
     });
+    const attemptData = await res.json();
 
-    const attemptData = await attemptCheck.json();
+    // The Fix: Compare student's attempt time with question's update time
+    const lastAttemptTime = attemptData.time || 0;
+    const questionUpdateTime = questionData.updatedAt || 0;
 
-    if (!attemptData.allowed) {
-
+    if (!attemptData.allowed && lastAttemptTime >= questionUpdateTime) {
         showAlreadyAttempted();
         document.getElementById("submitBtn").innerText = "Unlock Question";
         return;
-
     }
 
 
     /* -------- REGISTER STUDENT -------- */
 
     await fetch(`${API_BASE}/api/student-register`, {
-
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            name,
-            mobile,
-            place,
-            className,
-            lecture
-        })
-
+        body: JSON.stringify({ name, mobile, place, className, lecture })
     });
-
-
-    /* -------- OPTIONAL EMAIL -------- */
-
-    await fetch("https://api.web3forms.com/submit", {
-
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-
-            access_key: ACCESS_KEY,
-            name: name,
-            mobile: mobile,
-            place: place,
-            class: className,
-            lecture: lecture,
-            subject: "New Student Enrollment: Grip Physics"
-
-        })
-
-    });
-
 
     /* -------- SHOW QUIZ PAGE -------- */
 
     currentLecture = lecture;
-
+    renderQuestion(questionData);
     document.getElementById("login-page").classList.add("hidden");
     document.getElementById("quiz-page").classList.remove("hidden");
-
-    renderQuestion(questionData);
-
 });
 
 
@@ -291,7 +249,6 @@ function selectAnswer(element, index) {
 
 
 async function submitAnswer() {
-
     if (selectedOption === null) return;
 
     const options = document.querySelectorAll(".option");
@@ -299,46 +256,36 @@ async function submitAnswer() {
     const mobile = document.getElementById("userMobile").value.trim();
 
     options.forEach(opt => {
-
         opt.style.pointerEvents = "none";
         opt.classList.remove("selected");
-
     });
 
+    const isCorrect = selectedIndex === currentCorrectIndex;
 
     /* -------- SHOW RESULT -------- */
-
-    if (selectedIndex === currentCorrectIndex) {
-
+    if (isCorrect) {
         selectedOption.classList.add("correct");
-
         feedback.innerHTML = "✨ Excellent! That's correct.";
         feedback.style.color = "var(--success)";
-
     } else {
-
         selectedOption.classList.add("incorrect");
-
         feedback.innerHTML = "❌ Incorrect. Keep studying!";
         feedback.style.color = "var(--error)";
-
         options[currentCorrectIndex].classList.add("correct");
-
     }
 
-
-    /* -------- SAVE ATTEMPT -------- */
-
+    /* -------- SAVE ATTEMPT WITH TIMESTAMP -------- */
     await fetch(`${API_BASE}/api/submit-attempt`, {
-
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            mobile: mobile,
+            mobile,
             lecture: currentLecture,
-            selectedIndex: selectedIndex
+            answer: selectedIndex,
+            correct: isCorrect,
+            time: Date.now() // Record the exact time of this attempt
         })
-
     });
 
+    document.getElementById("submitAnswerBtn").style.display = "none";
 }
