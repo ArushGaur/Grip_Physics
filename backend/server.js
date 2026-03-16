@@ -142,31 +142,26 @@ app.post("/api/check-attempt", async (req, res) => {
 
     const { mobile, lecture } = req.body;
 
-    const attempt = await Attempt.findOne({ mobile, lecture }).lean();
     const question = await Question.findOne({ lecture }).lean();
+    if (!question) return res.json({ allowed: false });
 
-    if (!question) {
-        return res.json({ allowed: false, time: 0 });
+    const lastAttempt = await Student.findOne({ mobile, lecture })
+        .sort({ time: -1 })
+        .lean();
+
+    if (!lastAttempt) {
+        return res.json({ allowed: true });
     }
 
-    if (!attempt) {
-        return res.json({ allowed: true, time: 0 });
-    }
-
-    const attemptTime = attempt.time || 0;
-    const QuestionSchema = new mongoose.Schema({
-        lecture: { type: String, index: true },
-        question: String,
-        options: [String],
-        correctIndex: Number,
-        updatedAt: { type: Number, default: Date.now }
-    });
+    const attemptTime = lastAttempt.time || 0;
+    const questionUpdateTime = question.updatedAt || 0;
 
     if (attemptTime >= questionUpdateTime) {
-        return res.json({ allowed: false, time: attemptTime });
+        return res.json({ allowed: false });
     }
 
-    return res.json({ allowed: true, time: attemptTime });
+    return res.json({ allowed: true });
+
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
@@ -180,18 +175,6 @@ app.post("/api/submit-attempt", async (req, res) => {
     if (!question) {
         return res.status(404).json({ error: "Lecture not found" });
     }
-
-    const existing = await Attempt.findOne({ mobile, lecture });
-
-    if (existing) {
-        return res.json({ allowed: false });
-    }
-
-    await Attempt.findOneAndUpdate(
-        { mobile, lecture },
-        { mobile, lecture, time: Date.now() },
-        { upsert: true }
-    );
 
     await Student.create({
         mobile,
