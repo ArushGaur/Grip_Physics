@@ -291,15 +291,14 @@ async function submitAnswer() {
             body: JSON.stringify({
                 mobile: mobile,
                 lecture: currentLecture,
-                answer: selectedIndex,
-                correct: isCorrect,
+                selectedIndex: selectedIndex,
                 time: Date.now() // This timestamp is critical for re-attempt logic
             })
         });
 
         if (response.ok) {
-            // ONLY hide the button if the server actually saved the data
-            btn.style.display = "none";
+            btn.innerText = "Submitted ✓";
+            btn.disabled = true;
             if (syncText) syncText.innerText = "Data Synced with Dashboard ✅";
         } else {
             throw new Error("Server Error");
