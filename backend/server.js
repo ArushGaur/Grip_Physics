@@ -33,13 +33,18 @@ app.use(session({
 let questionCache = {};
 
 async function loadQuestions() {
-    const questions = await Question.find().lean();
-    questions.forEach(q => {
-        questionCache[q.lecture] = q;
-    });
+    try {
+        const questions = await Question.find().lean();
+        questions.forEach(q => {
+            questionCache[q.lecture] = q;
+        });
+        console.log(`Question cache loaded: ${questions.length} questions`);
+    } catch (err) {
+        console.error("Failed to load question cache:", err);
+    }
 }
 
-mongoose.connection.once("open", loadQuestions);
+mongoose.connection.on("connected", loadQuestions);
 
 /* ---------------- MONGODB ---------------- */
 
@@ -121,13 +126,23 @@ app.post("/api/admin/login", (req, res) => {
 
 app.get("/api/question/:lecture", async (req, res) => {
     const lecture = req.params.lecture;
-    const question = questionCache[lecture] || await Question.findOne({ lecture }).lean();
 
-    if (!question) {
-        return res.status(404).json({ error: "Lecture not found" });
+    try {
+        // Always try DB — cache is just a performance bonus
+        const question = questionCache[lecture] || await Question.findOne({ lecture }).lean();
+
+        if (!question) {
+            return res.status(404).json({ error: "Lecture not found" });
+        }
+
+        // Refresh cache entry
+        questionCache[lecture] = question;
+
+        res.json(question);
+    } catch (err) {
+        console.error("Error fetching question:", err);
+        res.status(500).json({ error: "Server error fetching question" });
     }
-
-    res.json(question);
 });
 
 /* ---------------- CHECK ATTEMPT ---------------- */
@@ -237,14 +252,25 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
 
 app.get("/api/admin/students", requireAdmin, async (req, res) => {
 
-    const students = await Student.find();
+    const students = await Student.find().lean();
 
-    const login = students.filter(s => s.name);
-    const answers = students.filter(s => s.answer !== undefined);
+    const login = students.filter(s => s.name && s.place !== undefined);
+    const answers = students.filter(s => s.answer !== null && s.answer !== undefined);
+
+    // Attach name to answer records by matching mobile+lecture to login records
+    const loginMap = {};
+    login.forEach(s => {
+        loginMap[`${s.mobile}_${s.lecture}`] = s.name;
+    });
+
+    const enrichedAnswers = answers.map(a => ({
+        ...a,
+        name: a.name || loginMap[`${a.mobile}_${a.lecture}`] || "-"
+    }));
 
     res.json({
         login,
-        answers
+        answers: enrichedAnswers
     });
 
 });
