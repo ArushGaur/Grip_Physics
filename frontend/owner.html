@@ -279,7 +279,7 @@
 
             <h2>Statistics</h2>
 
-            <button onclick="exportExcel()">Export Data to Excel</button>
+            <button onclick="downloadCSV()">Export Data to Excel</button>
 
             <div class="statsCard">
 
@@ -445,15 +445,8 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
         /* -------- LOAD DATA -------- */
         async function loadStudents() {
             try {
-                const res = await fetch(`${API_BASE}/api/admin/students`, {
-                    credentials: "include" // Must be present for every admin request
-                });
-
-                if (res.status === 403) {
-                    alert("Session expired. Please login again.");
-                    location.reload();
-                    return;
-                }
+                const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
+                if (res.status === 403) return alert("Session Expired");
 
                 const data = await res.json();
                 studentData = data;
@@ -464,34 +457,38 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
                 loginBody.innerHTML = "";
                 answerBody.innerHTML = "";
 
-                /* LOGIN DATA - Fixed filtering */
+                // 1. Map mobile numbers to names for quick lookup
+                const nameMap = {};
                 data.login.forEach(s => {
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                    <td>${s.name || 'N/A'}</td>
-                    <td>${s.mobile || 'N/A'}</td>
-                    <td>${s.place || 'N/A'}</td>
-                    <td>${s.className || 'N/A'}</td>
-                    <td>${s.lecture || 'N/A'}</td>
-                `;
-                    loginBody.appendChild(row);
+                    if (s.mobile) nameMap[s.mobile] = s.name;
+
+                    const row = `<tr>
+                <td>${s.name || 'N/A'}</td>
+                <td>${s.mobile}</td>
+                <td>${s.place || 'N/A'}</td>
+                <td>${s.className || 'N/A'}</td>
+                <td>${s.lecture || 'N/A'}</td>
+            </tr>`;
+                    loginBody.insertAdjacentHTML('beforeend', row);
                 });
 
-                /* ANSWER DATA */
+                // 2. Populate Answers with mapped names
                 data.answers.forEach(a => {
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                    <td>${a.name || "-"}</td>
-                    <td>${a.mobile}</td>
-                    <td>${a.lecture}</td>
-                    <td>${a.correct ? "✅ Correct" : "❌ Wrong"}</td>
-                `;
-                    answerBody.appendChild(row);
+                    const studentName = nameMap[a.mobile] || "Unknown Student";
+                    const statusSymbol = a.correct ? "✅" : "❌";
+
+                    const row = `<tr>
+                <td>${studentName}</td>
+                <td>${a.mobile}</td>
+                <td>Lecture ${a.lecture}</td>
+                <td>${statusSymbol} ${a.correct ? "Correct" : "Wrong"}</td>
+            </tr>`;
+                    answerBody.insertAdjacentHTML('beforeend', row);
                 });
 
                 buildChart(data.answers);
             } catch (err) {
-                console.error("Error loading stats:", err);
+                console.error("Fetch error:", err);
             }
         }
 
@@ -542,48 +539,44 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
         /* EXPORT CSV */
 
-        function exportExcel() {
+        function downloadCSV() {
+            if (!studentData.answers || studentData.answers.length === 0) return alert("No data to download");
 
-            let csv = "Name,Mobile,Place,Class,Lecture,,Name,Mobile,Lecture,Result\n";
+            // Create a name map for the CSV as well
+            const nameMap = {};
+            studentData.login.forEach(s => { if (s.mobile) nameMap[s.mobile] = s.name; });
 
-            const loginMap = new Map();
+            // Decorative Header & Column Titles
+            let csvContent = "GRIP PHYSICS - STUDENT ATTEMPT REPORT\n";
+            csvContent += `Generated on: ${new Date().toLocaleString()}\n\n`;
+            csvContent += "Student Name,Mobile Number,Lecture ID,Result,Status\n";
 
-            studentData.login.forEach(s => {
-                const key = s.mobile + "_" + s.lecture;
+            studentData.answers.forEach(a => {
+                const name = nameMap[a.mobile] || "Unknown";
+                const symbol = a.correct ? "✅" : "❌";
+                const text = a.correct ? "PASS" : "FAIL";
 
-                if (!loginMap.has(key)) {
-                    loginMap.set(key, s);
-                }
+                // Clean data to prevent CSV breaking
+                const row = [
+                    `"${name}"`,
+                    `"${a.mobile}"`,
+                    `"Lecture ${a.lecture}"`,
+                    `"${symbol}"`,
+                    `"${text}"`
+                ];
+                csvContent += row.join(",") + "\n";
             });
 
-            const loginArray = Array.from(loginMap.values());
-            const answers = studentData.answers;
-
-            const maxLength = Math.max(loginArray.length, answers.length);
-
-            for (let i = 0; i < maxLength; i++) {
-
-                const l = loginArray[i];
-                const a = answers[i];
-
-                const left = l
-                    ? `${l.name},${l.mobile},${l.place},${l.className},${l.lecture}`
-                    : ",,,,";
-
-                const right = a
-                    ? `${a.name},${a.mobile},${a.lecture},${a.correct ? "Correct" : "Wrong"}`
-                    : ",,,";
-
-                csv += `${left},,${right}\n`;
-            }
-
-            const blob = new Blob([csv], { type: "text/csv" });
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
-
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "student_data.csv";
-            a.click();
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Grip_Physics_Report_${Date.now()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
 
