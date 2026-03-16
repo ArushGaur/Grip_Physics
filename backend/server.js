@@ -216,17 +216,16 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
         existing.question = question;
         existing.options = options;
         existing.correctIndex = correctIndex;
+        // Add a 'version' or timestamp to track when it was last updated
+        existing.updatedAt = Date.now();
         await existing.save();
         questionCache[lecture] = existing;
 
-        // --- THE FIX ---
-        // Delete previous attempts for this lecture so students can re-attempt
-        await Student.updateMany(
-            { lecture: lecture },
-            { $unset: { answer: "", correct: "" } }
-        );
+        /* FIX: Do NOT use $unset or deleteMany here. 
+           This preserves your old "Answer Result Data" in the database.
+        */
     } else {
-        const newQ = await Question.create({ lecture, question, options, correctIndex });
+        const newQ = await Question.create({ lecture, question, options, correctIndex, updatedAt: Date.now() });
         questionCache[lecture] = newQ;
     }
     res.json({ success: true });
