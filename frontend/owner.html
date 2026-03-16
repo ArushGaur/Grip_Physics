@@ -1,701 +1,344 @@
-<!DOCTYPE html>
-<html lang="en">
+// Replace with your Web3Forms key
+const ACCESS_KEY = "YOUR_ACCESS_KEY_HERE";
 
-<head>
+/* ---------------- API CONFIG ---------------- */
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+const API_BASE = "https://grip-physics.onrender.com";
 
-    <title>Grip Physics Owner Panel</title>
+/* ---------------- GLOBAL VARIABLES ---------------- */
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+let currentCorrectIndex = null;
+let currentLecture = null;
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+let selectedOption = null;
+let selectedIndex = null;
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            color: white;
-        }
 
-        .panel {
-            width: 100%;
-            max-width: 850px;
-            padding: 40px;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(12px);
-            border-radius: 22px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-        }
+/* ---------------- LOAD QUESTION ---------------- */
 
-        h2 {
-            text-align: center;
-            margin-top: 0;
-        }
+function renderQuestion(data) {
 
-        input,
-        textarea {
+    currentCorrectIndex = data.correctIndex;
 
-            width: 100%;
-            box-sizing: border-box;
+    document.getElementById("question-text").innerText = data.question;
 
-            padding: 14px;
-            margin-top: 12px;
+    const container = document.querySelector(".options-container");
+    container.innerHTML = "";
 
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.35);
+    data.options.forEach((opt, index) => {
 
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
+        const div = document.createElement("div");
 
-            font-size: 14px;
+        div.className = "option";
+        div.innerText = opt;
 
-        }
+        div.onclick = function () {
+            selectAnswer(this, index);
+        };
 
-        input::placeholder,
-        textarea::placeholder {
+        container.appendChild(div);
 
-            color: rgba(255, 255, 255, 0.95);
-            font-weight: 400;
+    });
+
+}
+
+
+/* ---------------- FETCH QUESTION ---------------- */
+
+async function fetchLectureQuestion(lecture) {
+
+    try {
+
+        const res = await fetch(`${API_BASE}/api/question/${lecture}`);
+
+        if (res.status === 404) {
+
+            alert("Lecture does not exist");
+            return null;
 
         }
 
-        textarea {
-            height: 90px;
-            resize: none;
+        const data = await res.json();
+
+        return data;
+
+    } catch (err) {
+
+        alert("Failed to load lecture question");
+        return null;
+
+    }
+
+}
+
+
+/* ---------------- PARTICLES ---------------- */
+
+particlesJS("particles-js", {
+
+    particles: {
+        number: { value: 100 },
+        color: { value: "#00f2fe" },
+        shape: { type: "circle" },
+        opacity: { value: 0.5, random: true },
+        size: { value: 3, random: true },
+        line_linked: {
+            enable: true,
+            distance: 150,
+            color: "#00f2fe",
+            opacity: 0.2,
+            width: 1
+        },
+        move: { enable: true, speed: 2 }
+    },
+
+    interactivity: {
+        detect_on: "canvas",
+        events: {
+            onhover: { enable: true, mode: "grab" },
+            onclick: { enable: true, mode: "push" }
+        },
+        modes: {
+            grab: { distance: 200, line_linked: { opacity: 0.5 } }
         }
+    },
 
-        .options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }
+    retina_detect: true
 
-        button {
+});
 
-            width: 100%;
-            padding: 14px;
 
-            margin-top: 18px;
+/* ---------------- LOADER ---------------- */
 
-            border: none;
-            border-radius: 12px;
+window.addEventListener("load", () => {
 
-            background: linear-gradient(45deg, #00f2fe, #4facfe);
+    setTimeout(() => {
 
-            color: white;
-            font-weight: 600;
+        const loader = document.getElementById("loader");
+        const main = document.getElementById("main-content");
 
-            cursor: pointer;
-        }
+        loader.style.opacity = "0";
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(0, 242, 254, 0.4);
-        }
+        setTimeout(() => {
 
-        .hidden {
-            display: none;
-        }
+            loader.style.display = "none";
+            main.classList.remove("hidden");
 
-        /* Dashboard cards */
+        }, 800);
 
-        .dashboard {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 25px;
-        }
+    }, 3000);
 
-        .card {
+});
 
-            flex: 1;
-            padding: 30px;
 
-            background: rgba(255, 255, 255, 0.1);
+/* ---------------- LOGIN FORM ---------------- */
 
-            border-radius: 16px;
+const loginForm = document.getElementById("loginForm");
 
-            text-align: center;
+loginForm.addEventListener("submit", async (e) => {
 
-            cursor: pointer;
+    e.preventDefault();
 
-            transition: 0.3s;
+    const name = document.getElementById("userName").value;
+    const mobile = document.getElementById("userMobile").value.trim();
+    const place = document.getElementById("userPlace").value;
+    const className = document.getElementById("userClass").value;
+    const lecture = document.getElementById("lectureNumber").value;
 
-        }
+    document.getElementById("submitBtn").innerText = "Checking...";
 
-        .card:hover {
 
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-3px);
+    /* -------- CHECK LECTURE FIRST -------- */
 
-        }
+    const questionData = await fetchLectureQuestion(lecture);
 
-        /* Tables */
+    if (!questionData) {
 
-        table {
-            width: 100%;
-            margin-top: 15px;
-            border-collapse: collapse;
-        }
+        document.getElementById("submitBtn").innerText = "Unlock Question";
+        return;
 
-        th,
-        td {
-            padding: 8px;
-            text-align: left;
-        }
+    }
 
-        .statsCard {
-            margin-top: 25px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.06);
-            border-radius: 15px;
-        }
 
-        /* -------- RESPONSIVE DESIGN -------- */
+    /* -------- CHECK ATTEMPT -------- */
 
-        @media (max-width: 900px) {
+    const attemptCheck = await fetch(`${API_BASE}/api/check-attempt`, {
 
-            .dashboard {
-                flex-direction: column;
-            }
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile, lecture })
 
-            .options {
-                grid-template-columns: 1fr;
-            }
+    });
 
-        }
+    const attemptData = await attemptCheck.json();
 
-        @media (max-width: 600px) {
+    if (!attemptData.allowed) {
 
-            body {
-                padding: 10px;
-                align-items: center;
-                justify-content: center;
-            }
+        showAlreadyAttempted();
+        document.getElementById("submitBtn").innerText = "Unlock Question";
+        return;
 
-            .panel {
-                padding: 25px;
-            }
+    }
 
-            h2 {
-                font-size: 20px;
-            }
 
-            .card {
-                padding: 20px;
-                font-size: 14px;
-            }
+    /* -------- REGISTER STUDENT -------- */
 
-            input,
-            textarea {
-                font-size: 13px;
-                padding: 12px;
-            }
+    await fetch(`${API_BASE}/api/student-register`, {
 
-            button {
-                font-size: 14px;
-                padding: 12px;
-            }
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            name,
+            mobile,
+            place,
+            className,
+            lecture
+        })
 
-            th,
-            td {
-                font-size: 12px;
-            }
+    });
 
-            #lectureChart {
-                max-height: 260px;
-            }
 
-        }
-    </style>
+    /* -------- OPTIONAL EMAIL -------- */
 
-</head>
+    await fetch("https://api.web3forms.com/submit", {
 
-<body>
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
 
-    <div class="panel" id="loginPanel">
+            access_key: ACCESS_KEY,
+            name: name,
+            mobile: mobile,
+            place: place,
+            class: className,
+            lecture: lecture,
+            subject: "New Student Enrollment: Grip Physics"
 
-        <h2>Admin Login</h2>
+        })
 
-        <input id="passcode" type="password" placeholder="Enter passcode">
+    });
 
-        <button onclick="login()">Login</button>
 
-    </div>
+    /* -------- SHOW QUIZ PAGE -------- */
 
+    currentLecture = lecture;
 
-    <div class="panel hidden" id="adminPanel">
+    document.getElementById("login-page").classList.add("hidden");
+    document.getElementById("quiz-page").classList.remove("hidden");
 
-        <h2>Admin Dashboard</h2>
+    renderQuestion(questionData);
 
-        <div class="dashboard">
+});
 
-            <div class="card" onclick="showUpdate()">
-                <h3>Update Question</h3>
-            </div>
 
-            <div class="card" onclick="showStats()">
-                <h3>See Statistics</h3>
-            </div>
+/* ---------------- ALREADY ATTEMPTED ---------------- */
 
-        </div>
+function showAlreadyAttempted() {
 
+    const form = document.getElementById("loginForm");
 
-        <!-- UPDATE QUESTION -->
+    form.style.animation = "shake 0.4s";
 
-        <div id="updateSection" class="hidden">
+    setTimeout(() => {
+        form.style.animation = "";
+    }, 400);
 
-            <h2>Update Question</h2>
+    const existing = document.getElementById("already-msg");
+    if (existing) existing.remove();
 
-            <textarea id="question" placeholder="Enter question"></textarea>
+    const msg = document.createElement("div");
 
-            <div class="options">
+    msg.id = "already-msg";
 
-                <input id="o1" placeholder="Option A">
-                <input id="o2" placeholder="Option B">
-                <input id="o3" placeholder="Option C">
-                <input id="o4" placeholder="Option D">
-
-            </div>
-
-            <input id="correct" placeholder="Correct Option (A/B/C/D)">
-            <input id="lecture" placeholder="Lecture Number">
-
-            <button onclick="updateQuestion()">Update Question</button>
-
-        </div>
-
-
-        <!-- STATISTICS -->
-
-        <div id="statsSection" class="hidden">
-
-            <h2>Statistics</h2>
-
-            <button onclick="exportExcel()">Export Data to Excel</button>
-
-            <div class="statsCard">
-
-                <h3>Lecture Wise Attempts</h3>
-
-                <canvas id="lectureChart"></canvas>
-
-            </div>
-
-
-            <div class="statsCard">
-
-                <h3>Login Form Data</h3>
-
-                <table id="loginTable">
-
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Mobile</th>
-                            <th>Place</th>
-                            <th>Class</th>
-                            <th>Lecture</th>
-                        </tr>
-                    </thead>
-
-                    <tbody></tbody>
-
-                </table>
-
-            </div>
-
-
-            <div class="statsCard">
-
-                <h3>Answer Result Data</h3>
-
-                <table id="answerTable">
-
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Mobile</th>
-                            <th>Lecture</th>
-                            <th>Result</th>
-                        </tr>
-                    </thead>
-
-                    <tbody></tbody>
-
-                </table>
-
-            </div>
-
-        </div>
-
-        <div id="replaceModal" class="hidden" style="
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.6);
-align-items:center;
-justify-content:center;
-z-index:999;
-">
-
-            <div style="
-background:#1e1b3a;
-padding:30px;
-border-radius:15px;
-width:350px;
-text-align:center;
-box-shadow:0 10px 30px rgba(0,0,0,0.6);
-">
-
-                <h3>Replace Question?</h3>
-
-                <p>Question for this lecture already exists.</p>
-
-                <button onclick="confirmReplace()" style="margin-top:10px">
-                    Replace
-                </button>
-
-                <button onclick="closeModal()" style="margin-top:10px;background:#e74c3c">
-                    Cancel
-                </button>
-
-            </div>
-        </div>
-
-        <div id="successModal" style="
-display:none;
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.6);
-align-items:center;
-justify-content:center;
-z-index:999;
-">
-
-            <div style="
-background:#1e1b3a;
-padding:30px;
-border-radius:15px;
-width:350px;
-text-align:center;
-box-shadow:0 10px 30px rgba(0,0,0,0.6);
-">
-
-                <h3>Success</h3>
-
-                <p id="successText">Question updated successfully</p>
-
-                <button onclick="closeSuccessModal()">OK</button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <script>
-
-        const API_BASE = "/api";
-
-        let studentData = [];
-
-        async function login() {
-
-            const passcode = document.getElementById("passcode").value;
-
-            const res = await fetch(`${API_BASE}/api/admin/login`, {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ passcode })
-            })
-
-            if (!res.ok) {
-                alert("Invalid passcode");
-                return;
-            }
-
-            document.getElementById("loginPanel").classList.add("hidden");
-            document.getElementById("adminPanel").classList.remove("hidden");
-
-        }
-
-
-        function showUpdate() {
-
-            document.getElementById("updateSection").classList.remove("hidden");
-            document.getElementById("statsSection").classList.add("hidden");
-
-        }
-
-        function showStats() {
-
-            document.getElementById("updateSection").classList.add("hidden");
-            document.getElementById("statsSection").classList.remove("hidden");
-
-            loadStudents();
-
-        }
-
-
-        /* LOAD DATA */
-
-        async function loadStudents() {
-
-            const res = await fetch(`${API_BASE}/api/admin/students`, {
-                credentials: "include"
-            });
-
-            const data = await res.json();
-
-            studentData = data;
-
-            const loginBody = document.querySelector("#loginTable tbody");
-            const answerBody = document.querySelector("#answerTable tbody");
-
-            loginBody.innerHTML = "";
-            answerBody.innerHTML = "";
-
-            /* LOGIN DATA */
-
-            data.login
-                .filter(s => s.place !== undefined)
-                .forEach(s => {
-
-                    const row = document.createElement("tr");
-
-                    row.innerHTML = `
-<td>${s.name}</td>
-<td>${s.mobile}</td>
-<td>${s.place}</td>
-<td>${s.className}</td>
-<td>${s.lecture}</td>
+    msg.innerHTML = `
+<div style="
+margin-top:18px;
+padding:14px 18px;
+border-radius:12px;
+background:rgba(231,76,60,0.18);
+border:1px solid rgba(231,76,60,0.5);
+color:#ff6b6b;
+font-size:0.85rem;
+text-align:center;">
+🚫 <strong>Already Attempted</strong><br>
+This number already answered this question.
+</div>
 `;
 
-                    loginBody.appendChild(row);
+    form.appendChild(msg);
 
-                });
+}
 
 
-            /* ANSWER DATA */
+/* ---------------- QUIZ LOGIC ---------------- */
 
-            data.answers.forEach(a => {
+function selectAnswer(element, index) {
 
-                const row = document.createElement("tr");
+    if (document.querySelector(".correct,.incorrect")) return;
 
-                row.innerHTML = `
-<td>${a.name || "-"}</td>
-<td>${a.mobile}</td>
-<td>${a.lecture}</td>
-<td>${a.correct ? "✅ Correct" : "❌ Wrong"}</td>
-`;
+    const options = document.querySelectorAll(".option");
 
-                answerBody.appendChild(row);
+    options.forEach(opt => opt.classList.remove("selected"));
 
-            });
+    element.classList.add("selected");
 
-            buildChart(data.answers);
+    selectedOption = element;
+    selectedIndex = index;
 
-        }
+    document.getElementById("submitAnswerBtn").disabled = false;
 
+}
 
-        /* LECTURE CHART */
 
-        function buildChart(data) {
+async function submitAnswer() {
 
-            const counts = {};
+    if (selectedOption === null) return;
 
-            data.forEach(a => {
-                if (!a.lecture) return;
+    const options = document.querySelectorAll(".option");
+    const feedback = document.getElementById("feedback");
+    const mobile = document.getElementById("userMobile").value.trim();
 
-                const lecture = String(a.lecture);
+    options.forEach(opt => {
 
-                counts[lecture] = (counts[lecture] || 0) + 1;
-            });
+        opt.style.pointerEvents = "none";
+        opt.classList.remove("selected");
 
-            const labels = Object.keys(counts);
-            const values = Object.values(counts);
+    });
 
-            const ctx = document.getElementById("lectureChart");
 
-            if (window.chart) {
-                window.chart.destroy();
-            }
+    /* -------- SHOW RESULT -------- */
 
-            window.chart = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: "Attempts",
-                        data: values,
-                        backgroundColor: "#4facfe"
-                    }]
-                },
-                options: {
-                    scales: {
-                        x: { ticks: { color: "#ffffff" } },
-                        y: { beginAtZero: true, ticks: { stepSize: 1, color: "#ffffff" } }
-                    }
-                }
-            });
+    if (selectedIndex === currentCorrectIndex) {
 
-        }
+        selectedOption.classList.add("correct");
 
+        feedback.innerHTML = "✨ Excellent! That's correct.";
+        feedback.style.color = "var(--success)";
 
-        /* EXPORT CSV */
+    } else {
 
-        function exportExcel() {
+        selectedOption.classList.add("incorrect");
 
-            let csv = "Name,Mobile,Place,Class,Lecture,,Name,Mobile,Lecture,Result\n";
+        feedback.innerHTML = "❌ Incorrect. Keep studying!";
+        feedback.style.color = "var(--error)";
 
-            const loginMap = new Map();
+        options[currentCorrectIndex].classList.add("correct");
 
-            studentData.login.forEach(s => {
-                const key = s.mobile + "_" + s.lecture;
+    }
 
-                if (!loginMap.has(key)) {
-                    loginMap.set(key, s);
-                }
-            });
 
-            const loginArray = Array.from(loginMap.values());
-            const answers = studentData.answers;
+    /* -------- SAVE ATTEMPT -------- */
 
-            const maxLength = Math.max(loginArray.length, answers.length);
+    await fetch(`${API_BASE}/api/submit-attempt`, {
 
-            for (let i = 0; i < maxLength; i++) {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            mobile: mobile,
+            lecture: currentLecture,
+            selectedIndex: selectedIndex
+        })
 
-                const l = loginArray[i];
-                const a = answers[i];
+    });
 
-                const left = l
-                    ? `${l.name},${l.mobile},${l.place},${l.className},${l.lecture}`
-                    : ",,,,";
-
-                const right = a
-                    ? `${a.name},${a.mobile},${a.lecture},${a.correct ? "Correct" : "Wrong"}`
-                    : ",,,";
-
-                csv += `${left},,${right}\n`;
-            }
-
-            const blob = new Blob([csv], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "student_data.csv";
-            a.click();
-        }
-
-
-        /* UPDATE QUESTION */
-
-        async function updateQuestion() {
-
-            let correctInput = document.getElementById("correct").value.trim().toUpperCase();
-
-            const map = { A: 0, B: 1, C: 2, D: 3 };
-
-            let correctIndex = map[correctInput];
-
-            if (correctIndex === undefined) {
-                alert("Correct option must be A B C or D");
-                return;
-            }
-
-            const data = {
-
-                lecture: document.getElementById("lecture").value,
-
-                question: document.getElementById("question").value,
-
-                options: [
-                    document.getElementById("o1").value,
-                    document.getElementById("o2").value,
-                    document.getElementById("o3").value,
-                    document.getElementById("o4").value
-                ],
-
-                correctIndex
-
-            };
-
-            let res = await fetch(`${API_BASE}/api/admin/add-question`, {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-
-            if (res.status === 409) {
-                window.pendingReplaceData = data;
-                const modal = document.getElementById("replaceModal");
-                modal.style.display = "flex";
-                return;
-            }
-
-            if (!res.ok) {
-                alert("Failed to update question");
-                return;
-            }
-
-            showSuccess("Question updated successfully")
-
-        }
-
-        async function confirmReplace() {
-
-            const data = window.pendingReplaceData;
-
-            data.replace = true;
-
-            const res = await fetch(`${API_BASE}/api/admin/add-question`, {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-
-            document.getElementById("replaceModal").style.display = "none";
-
-            if (res.ok) {
-                showSuccess("Question replaced successfully");
-            } else {
-                showSuccess("Failed to replace question");
-            }
-        }
-
-        function closeModal() {
-            document.getElementById("replaceModal").style.display = "none";
-        }
-
-        function showSuccess(message) {
-            document.getElementById("successText").innerText = message
-            document.getElementById("successModal").style.display = "flex"
-        }
-
-        function closeSuccessModal() {
-            document.getElementById("successModal").style.display = "none"
-        }
-
-    </script>
-
-</body>
-
-</html>
+}
