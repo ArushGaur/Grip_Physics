@@ -84,7 +84,8 @@ const StudentSchema = new mongoose.Schema({
 
 const AttemptSchema = new mongoose.Schema({
     mobile: { type: String, index: true },
-    lecture: { type: String, index: true }
+    lecture: { type: String, index: true },
+    time: Number
 });
 
 const Question = mongoose.model("Question", QuestionSchema);
@@ -142,12 +143,25 @@ app.post("/api/check-attempt", async (req, res) => {
     const { mobile, lecture } = req.body;
 
     const attempt = await Attempt.findOne({ mobile, lecture }).lean();
+    const question = await Question.findOne({ lecture }).lean();
 
-    if (attempt) {
+    if (!question) {
         return res.json({ allowed: false });
     }
 
-    res.json({ allowed: true });
+    if (!attempt) {
+        return res.json({ allowed: true });
+    }
+
+    const attemptTime = attempt.time || 0;
+    const questionUpdateTime = question.updatedAt || 0;
+
+    if (attemptTime >= questionUpdateTime) {
+        return res.json({ allowed: false, time: attemptTime });
+    }
+
+    res.json({ allowed: true, time: attemptTime });
+
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
@@ -168,10 +182,11 @@ app.post("/api/submit-attempt", async (req, res) => {
         return res.json({ allowed: false });
     }
 
-    await Attempt.create({
-        mobile,
-        lecture
-    });
+    await Attempt.findOneAndUpdate(
+        { mobile, lecture },
+        { mobile, lecture, time: Date.now() },
+        { upsert: true }
+    );
 
     await Student.create({
         mobile,
