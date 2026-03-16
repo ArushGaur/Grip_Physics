@@ -85,15 +85,8 @@ const StudentSchema = new mongoose.Schema({
 
 StudentSchema.index({ mobile: 1, lecture: 1 });
 
-const AttemptSchema = new mongoose.Schema({
-    mobile: { type: String, index: true },
-    lecture: { type: String, index: true },
-    time: Number
-});
-
 const Question = mongoose.model("Question", QuestionSchema);
 const Student = mongoose.model("Student", StudentSchema);
-const Attempt = mongoose.model("Attempt", AttemptSchema);
 
 /* ---------------- ADMIN PAGE ---------------- */
 
@@ -146,28 +139,24 @@ app.post("/api/check-attempt", async (req, res) => {
     const { mobile, lecture } = req.body;
 
     const question = await Question.findOne({ lecture }).lean();
-    if (!question) return res.json({ allowed: false });
+    if (!question) return res.json({ allowed: false, time: 0 });
 
-    // Get the student's latest attempt
     const lastAttempt = await Student.findOne({ mobile, lecture })
         .sort({ time: -1 })
         .lean();
 
-    // If no attempt → allow
     if (!lastAttempt) {
-        return res.json({ allowed: true });
+        return res.json({ allowed: true, time: 0 });
     }
 
     const attemptTime = lastAttempt.time || 0;
     const questionTime = question.updatedAt || 0;
 
-    // Block if attempt happened after the last question update
     if (attemptTime >= questionTime) {
-        return res.json({ allowed: false });
+        return res.json({ allowed: false, time: attemptTime });
     }
 
-    // Otherwise allow
-    return res.json({ allowed: true });
+    return res.json({ allowed: true, time: attemptTime });
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
@@ -263,7 +252,7 @@ app.get("/api/admin/students", requireAdmin, async (req, res) => {
 
     const answers = await Student.find(
         { answer: { $exists: true } },
-        { mobile: 1, lecture: 1, correct: 1, _id: 0 }
+        { mobile: 1, lecture: 1, answer: 1, correct: 1, _id: 0 }
     ).lean();
 
     res.json({ login, answers });
