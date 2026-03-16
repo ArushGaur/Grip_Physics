@@ -3,7 +3,7 @@ const ACCESS_KEY = "YOUR_ACCESS_KEY_HERE";
 
 /* ---------------- API CONFIG ---------------- */
 
-const API_BASE = "https://grip-physics.onrender.com";
+const API_BASE = "/api";
 
 /* ---------------- GLOBAL VARIABLES ---------------- */
 
