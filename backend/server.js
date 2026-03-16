@@ -154,9 +154,9 @@ app.post("/api/check-attempt", async (req, res) => {
     }
 
     const attemptTime = lastAttempt.time || 0;
-    const questionUpdateTime = question.updatedAt || 0;
+    const questionTime = question.updatedAt || 0;
 
-    if (attemptTime >= questionUpdateTime) {
+    if (attemptTime >= questionTime) {
         return res.json({ allowed: false });
     }
 
