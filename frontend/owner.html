@@ -446,47 +446,70 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
         async function loadStudents() {
             try {
                 const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
+
+                if (res.status === 403) {
+                    alert("Session expired. Please login again.");
+                    location.reload();
+                    return;
+                }
+
                 const data = await res.json();
                 studentData = data;
 
                 const loginBody = document.querySelector("#loginTable tbody");
                 const answerBody = document.querySelector("#answerTable tbody");
+
                 loginBody.innerHTML = "";
                 answerBody.innerHTML = "";
 
-                // Create a Map to link Mobile -> Name
+                // 1. Create a Name Map (Mobile -> Name) 
+                // We use a Map to ensure we always have the student's name even if they answer multiple lectures
                 const nameLookup = {};
 
-                data.login.forEach(s => {
-                    nameLookup[s.mobile] = s.name; // Store name for later lookup
-                    loginBody.insertAdjacentHTML('beforeend', `
-                <tr>
-                    <td>${s.name}</td>
-                    <td>${s.mobile}</td>
-                    <td>${s.place || 'N/A'}</td>
-                    <td>${s.className || 'N/A'}</td>
-                    <td>${s.lecture}</td>
-                </tr>
-            `);
-                });
+                if (data.login && data.login.length > 0) {
+                    data.login.forEach(s => {
+                        nameLookup[s.mobile] = s.name; // Link the phone number to the name
 
-                data.answers.forEach(a => {
-                    // Fix: Find the name using the mobile number
-                    const studentName = nameLookup[a.mobile] || "Unknown Student";
-                    const statusIcon = a.correct ? "✅" : "❌";
-                    const statusText = a.correct ? "Correct" : "Wrong";
+                        loginBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td>${s.name || 'N/A'}</td>
+                        <td>${s.mobile}</td>
+                        <td>${s.place || 'N/A'}</td>
+                        <td>${s.className || 'N/A'}</td>
+                        <td>${s.lecture || 'N/A'}</td>
+                    </tr>
+                `);
+                    });
+                }
 
-                    answerBody.insertAdjacentHTML('beforeend', `
-                <tr>
-                    <td>${studentName}</td>
-                    <td>${a.mobile}</td>
-                    <td>Lec ${a.lecture}</td>
-                    <td><span style="font-size:1.1rem">${statusIcon}</span> ${statusText}</td>
-                </tr>
-            `);
-                });
+                // 2. Render Answer Data
+                if (data.answers && data.answers.length > 0) {
+                    data.answers.forEach(a => {
+                        // Look up the name using the phone number from the map we just built
+                        const studentName = nameLookup[a.mobile] || "Student";
 
-                buildChart(data.answers);
+                        // Ensure icons show correctly even if the database structure changed
+                        const isCorrect = a.correct === true;
+                        const statusIcon = isCorrect ? "✅" : "❌";
+                        const statusText = isCorrect ? "Correct" : "Wrong";
+
+                        answerBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td>${studentName}</td>
+                        <td>${a.mobile}</td>
+                        <td>Lec ${a.lecture}</td>
+                        <td><span style="font-size:1.1rem">${statusIcon}</span> ${statusText}</td>
+                    </tr>
+                `);
+                    });
+
+                    // 3. Update the Chart only if there is answer data
+                    buildChart(data.answers);
+                } else {
+                    // Handle empty state so graph doesn't crash
+                    answerBody.innerHTML = "<tr><td colspan='4'>No answer data available yet.</td></tr>";
+                }
+
             } catch (err) {
                 console.error("Error loading stats:", err);
             }
