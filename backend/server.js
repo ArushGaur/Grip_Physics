@@ -33,18 +33,13 @@ app.use(session({
 let questionCache = {};
 
 async function loadQuestions() {
-    try {
-        const questions = await Question.find().lean();
-        questions.forEach(q => {
-            questionCache[q.lecture] = q;
-        });
-        console.log(`Question cache loaded: ${questions.length} questions`);
-    } catch (err) {
-        console.error("Failed to load question cache:", err);
-    }
+    const questions = await Question.find().lean();
+    questions.forEach(q => {
+        questionCache[q.lecture] = q;
+    });
 }
 
-mongoose.connection.on("connected", loadQuestions);
+mongoose.connection.once("open", loadQuestions);
 
 /* ---------------- MONGODB ---------------- */
 
@@ -125,24 +120,15 @@ app.post("/api/admin/login", (req, res) => {
 /* ---------------- GET QUESTION ---------------- */
 
 app.get("/api/question/:lecture", async (req, res) => {
-    const lecture = req.params.lecture;
+    const lecture = req.params.lecture.trim(); // Trim spaces
+    const q = questionCache[lecture];
+    const question = questionCache[lecture] || await Question.findOne({ lecture }).lean();
 
-    try {
-        // Always try DB — cache is just a performance bonus
-        const question = questionCache[lecture] || await Question.findOne({ lecture }).lean();
-
-        if (!question) {
-            return res.status(404).json({ error: "Lecture not found" });
-        }
-
-        // Refresh cache entry
-        questionCache[lecture] = question;
-
-        res.json(question);
-    } catch (err) {
-        console.error("Error fetching question:", err);
-        res.status(500).json({ error: "Server error fetching question" });
+    if (!question) {
+        return res.status(404).json({ error: "Lecture not found" });
     }
+
+    res.json(question);
 });
 
 /* ---------------- CHECK ATTEMPT ---------------- */
@@ -233,6 +219,7 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
         existing.correctIndex = correctIndex;
 
         await existing.save();
+        questionCache[lecture] = existing;
 
     } else {
 
@@ -242,6 +229,7 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
             options,
             correctIndex
         });
+        questionCache[lecture] = newQ;
 
     }
 
@@ -252,25 +240,14 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
 
 app.get("/api/admin/students", requireAdmin, async (req, res) => {
 
-    const students = await Student.find().lean();
+    const students = await Student.find();
 
-    const login = students.filter(s => s.name && s.place !== undefined);
-    const answers = students.filter(s => s.answer !== null && s.answer !== undefined);
-
-    // Attach name to answer records by matching mobile+lecture to login records
-    const loginMap = {};
-    login.forEach(s => {
-        loginMap[`${s.mobile}_${s.lecture}`] = s.name;
-    });
-
-    const enrichedAnswers = answers.map(a => ({
-        ...a,
-        name: a.name || loginMap[`${a.mobile}_${a.lecture}`] || "-"
-    }));
+    const login = students.filter(s => s.name);
+    const answers = students.filter(s => s.answer !== undefined);
 
     res.json({
         login,
-        answers: enrichedAnswers
+        answers
     });
 
 });
