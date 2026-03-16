@@ -139,24 +139,24 @@ app.post("/api/check-attempt", async (req, res) => {
     const { mobile, lecture } = req.body;
 
     const question = await Question.findOne({ lecture }).lean();
-    if (!question) return res.json({ allowed: false, time: 0 });
+    if (!question) return res.json({ allowed: false });
 
-    const lastAttempt = await Student.findOne({ mobile, lecture })
+    const lastAttempt = await Attempt.findOne({ mobile, lecture })
         .sort({ time: -1 })
         .lean();
 
     if (!lastAttempt) {
-        return res.json({ allowed: true, time: 0 });
+        return res.json({ allowed: true });
     }
 
     const attemptTime = lastAttempt.time || 0;
     const questionTime = question.updatedAt || 0;
 
     if (attemptTime >= questionTime) {
-        return res.json({ allowed: false, time: attemptTime });
+        return res.json({ allowed: false });
     }
 
-    return res.json({ allowed: true, time: attemptTime });
+    return res.json({ allowed: true });
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
@@ -170,7 +170,7 @@ app.post("/api/submit-attempt", async (req, res) => {
         return res.status(404).json({ error: "Lecture not found" });
     }
 
-    const lastAttempt = await Student.findOne({ mobile, lecture })
+    const lastAttempt = await Attempt.findOne({ mobile, lecture })
         .sort({ time: -1 })
         .lean();
 
@@ -183,12 +183,22 @@ app.post("/api/submit-attempt", async (req, res) => {
         }
     }
 
+    const now = Date.now();
+
+    // Save attempt record
+    await Attempt.create({
+        mobile,
+        lecture,
+        time: now
+    });
+
+    // Save answer
     await Student.create({
         mobile,
         lecture,
         answer: selectedIndex,
         correct: selectedIndex === question.correctIndex,
-        time: Date.now()
+        time: now
     });
 
     res.json({ success: true });
