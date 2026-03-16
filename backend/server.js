@@ -154,7 +154,13 @@ app.post("/api/check-attempt", async (req, res) => {
     }
 
     const attemptTime = attempt.time || 0;
-    const questionUpdateTime = question.updatedAt || 0;
+    const QuestionSchema = new mongoose.Schema({
+        lecture: { type: String, index: true },
+        question: String,
+        options: [String],
+        correctIndex: Number,
+        updatedAt: { type: Number, default: Date.now }
+    });
 
     if (attemptTime >= questionUpdateTime) {
         return res.json({ allowed: false, time: attemptTime });
