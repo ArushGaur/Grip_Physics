@@ -409,20 +409,18 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
     <script>
 
-        const API_BASE = "https://grip-physics.onrender.com";
+        const API_BASE = "";
 
         let studentData = [];
 
         async function login() {
-
             const passcode = document.getElementById("passcode").value;
-
             const res = await fetch(`${API_BASE}/api/admin/login`, {
                 method: "POST",
-                credentials: "include",
+                credentials: "include", // Required to send/receive session cookies
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ passcode })
-            })
+            });
 
             if (!res.ok) {
                 alert("Invalid passcode");
@@ -431,85 +429,70 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
             document.getElementById("loginPanel").classList.add("hidden");
             document.getElementById("adminPanel").classList.remove("hidden");
-
         }
 
-
         function showUpdate() {
-
             document.getElementById("updateSection").classList.remove("hidden");
             document.getElementById("statsSection").classList.add("hidden");
-
         }
 
         function showStats() {
-
             document.getElementById("updateSection").classList.add("hidden");
             document.getElementById("statsSection").classList.remove("hidden");
-
-            loadStudents();
-
+            loadStudents(); // Triggers the data fetch
         }
 
-
-        /* LOAD DATA */
-
+        /* -------- LOAD DATA -------- */
         async function loadStudents() {
-
-            const res = await fetch(`${API_BASE}/api/admin/students`, {
-                credentials: "include"
-            });
-
-            const data = await res.json();
-
-            studentData = data;
-
-            const loginBody = document.querySelector("#loginTable tbody");
-            const answerBody = document.querySelector("#answerTable tbody");
-
-            loginBody.innerHTML = "";
-            answerBody.innerHTML = "";
-
-            /* LOGIN DATA */
-
-            data.login
-                .filter(s => s.place !== undefined)
-                .forEach(s => {
-
-                    const row = document.createElement("tr");
-
-                    row.innerHTML = `
-<td>${s.name}</td>
-<td>${s.mobile}</td>
-<td>${s.place}</td>
-<td>${s.className}</td>
-<td>${s.lecture}</td>
-`;
-
-                    loginBody.appendChild(row);
-
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/students`, {
+                    credentials: "include" // Must be present for every admin request
                 });
 
+                if (res.status === 403) {
+                    alert("Session expired. Please login again.");
+                    location.reload();
+                    return;
+                }
 
-            /* ANSWER DATA */
+                const data = await res.json();
+                studentData = data;
 
-            data.answers.forEach(a => {
+                const loginBody = document.querySelector("#loginTable tbody");
+                const answerBody = document.querySelector("#answerTable tbody");
 
-                const row = document.createElement("tr");
+                loginBody.innerHTML = "";
+                answerBody.innerHTML = "";
 
-                row.innerHTML = `
-<td>${a.name || "-"}</td>
-<td>${a.mobile}</td>
-<td>${a.lecture}</td>
-<td>${a.correct ? "✅ Correct" : "❌ Wrong"}</td>
-`;
+                /* LOGIN DATA - Fixed filtering */
+                data.login.forEach(s => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                    <td>${s.name || 'N/A'}</td>
+                    <td>${s.mobile || 'N/A'}</td>
+                    <td>${s.place || 'N/A'}</td>
+                    <td>${s.className || 'N/A'}</td>
+                    <td>${s.lecture || 'N/A'}</td>
+                `;
+                    loginBody.appendChild(row);
+                });
 
-                answerBody.appendChild(row);
+                /* ANSWER DATA */
+                data.answers.forEach(a => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                    <td>${a.name || "-"}</td>
+                    <td>${a.mobile}</td>
+                    <td>${a.lecture}</td>
+                    <td>${a.correct ? "✅ Correct" : "❌ Wrong"}</td>
+                `;
+                    answerBody.appendChild(row);
+                });
 
-            });
-
-            buildChart(data.answers);
-
+                buildChart(data.answers);
+            } catch (err) {
+                console.error("Error loading stats:", err);
+            }
         }
 
 
@@ -607,36 +590,23 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
         /* UPDATE QUESTION */
 
         async function updateQuestion() {
-
-            let correctInput = document.getElementById("correct").value.trim().toUpperCase();
-
-            const map = { A: 0, B: 1, C: 2, D: 3 };
-
-            let correctIndex = map[correctInput];
-
-            if (correctIndex === undefined) {
-                alert("Correct option must be A B C or D");
-                return;
-            }
+            // Map A,B,C,D to 0,1,2,3 for the backend
+            const correctMap = { "A": 0, "B": 1, "C": 2, "D": 3 };
+            const selectedLetter = document.getElementById("correct").value.trim().toUpperCase();
 
             const data = {
-
-                lecture: document.getElementById("lecture").value,
-
                 question: document.getElementById("question").value,
-
                 options: [
                     document.getElementById("o1").value,
                     document.getElementById("o2").value,
                     document.getElementById("o3").value,
                     document.getElementById("o4").value
                 ],
-
-                correctIndex
-
+                correctIndex: correctMap[selectedLetter],
+                lecture: document.getElementById("lecture").value
             };
 
-            let res = await fetch(`${API_BASE}/api/admin/add-question`, {
+            const res = await fetch(`${API_BASE}/api/admin/add-question`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
@@ -645,18 +615,15 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
             if (res.status === 409) {
                 window.pendingReplaceData = data;
-                const modal = document.getElementById("replaceModal");
-                modal.style.display = "flex";
+                document.getElementById("replaceModal").style.display = "flex";
                 return;
             }
 
-            if (!res.ok) {
-                alert("Failed to update question");
-                return;
+            if (res.ok) {
+                showSuccess("Question updated successfully");
+            } else {
+                alert("Update failed. Check if you are logged in.");
             }
-
-            showSuccess("Question updated successfully")
-
         }
 
         async function confirmReplace() {
