@@ -161,7 +161,6 @@ app.post("/api/check-attempt", async (req, res) => {
     }
 
     return res.json({ allowed: true, time: attemptTime });
-
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
