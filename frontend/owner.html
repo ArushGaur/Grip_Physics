@@ -563,17 +563,20 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
                 const l = loginArray[i];
                 const a = answers[i];
 
-                // Left side (Login Data)
                 const left = l
                     ? `"${l.name}","${l.mobile}","${l.place}","${l.className}","${l.lecture}"`
                     : ",,,,";
 
-                // Right side (Answer Data) - FIX: Get name from lookup
+                // Handle the "Right" side safely
                 let right = ",,,";
                 if (a) {
                     const studentName = nameLookup[a.mobile] || "Unknown";
-                    const resultText = a.correct ? "✅ Correct" : "❌ Wrong";
-                    right = `"${studentName}","${a.mobile}","${a.lecture}","${resultText}"`;
+                    // If 'correct' is missing (because of previous $unset), show "Reset/Re-attempting"
+                    let status = "Not Answered";
+                    if (a.correct === true) status = "Correct";
+                    if (a.correct === false) status = "Wrong";
+
+                    right = `"${studentName}","${a.mobile}","${a.lecture}","${status}"`;
                 }
 
                 csv += `${left},,${right}\n`;
