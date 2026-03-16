@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Grip Physics Owner Panel</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .panel {
+            width: 100%;
+            max-width: 850px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            border-radius: 22px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 0;
+        }
+
+        input,
+        textarea {
+
+            width: 100%;
+            box-sizing: border-box;
+
+            padding: 14px;
+            margin-top: 12px;
+
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+
+            font-size: 14px;
+
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 400;
+
+        }
+
+        textarea {
+            height: 90px;
+            resize: none;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        button {
+
+            width: 100%;
+            padding: 14px;
+
+            margin-top: 18px;
+
+            border: none;
+            border-radius: 12px;
+
+            background: linear-gradient(45deg, #00f2fe, #4facfe);
+
+            color: white;
+            font-weight: 600;
+
+            cursor: pointer;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 242, 254, 0.4);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Dashboard cards */
+
+        .dashboard {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+
+            flex: 1;
+            padding: 30px;
+
+            background: rgba(255, 255, 255, 0.1);
+
+            border-radius: 16px;
+
+            text-align: center;
+
+            cursor: pointer;
+
+            transition: 0.3s;
+
+        }
+
+        .card:hover {
+
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+
+        }
+
+        /* Tables */
+
+        table {
+            width: 100%;
+            margin-top: 15px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        .statsCard {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 15px;
+        }
+
+        /* -------- RESPONSIVE DESIGN -------- */
+
+        @media (max-width: 900px) {
+
+            .dashboard {
+                flex-direction: column;
+            }
+
+            .options {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+        @media (max-width: 600px) {
+
+            body {
+                padding: 10px;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .panel {
+                padding: 25px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+
+            .card {
+                padding: 20px;
+                font-size: 14px;
+            }
+
+            input,
+            textarea {
+                font-size: 13px;
+                padding: 12px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 12px;
+            }
+
+            th,
+            td {
+                font-size: 12px;
+            }
+
+            #lectureChart {
+                max-height: 260px;
+            }
+
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="panel" id="loginPanel">
+
+        <h2>Admin Login</h2>
+
+        <input id="passcode" type="password" placeholder="Enter passcode">
+
+        <button onclick="login()">Login</button>
+
+    </div>
+
+
+    <div class="panel hidden" id="adminPanel">
+
+        <h2>Admin Dashboard</h2>
+
+        <div class="dashboard">
+
+            <div class="card" onclick="showUpdate()">
+                <h3>Update Question</h3>
+            </div>
+
+            <div class="card" onclick="showStats()">
+                <h3>See Statistics</h3>
+            </div>
+
+        </div>
+
+
+        <!-- UPDATE QUESTION -->
+
+        <div id="updateSection" class="hidden">
+
+            <h2>Update Question</h2>
+
+            <textarea id="question" placeholder="Enter question"></textarea>
+
+            <div class="options">
+
+                <input id="o1" placeholder="Option A">
+                <input id="o2" placeholder="Option B">
+                <input id="o3" placeholder="Option C">
+                <input id="o4" placeholder="Option D">
+
+            </div>
+
+            <input id="correct" placeholder="Correct Option (A/B/C/D)">
+            <input id="lecture" placeholder="Lecture Number">
+
+            <button onclick="updateQuestion()">Update Question</button>
+
+        </div>
+
+
+        <!-- STATISTICS -->
+
+        <div id="statsSection" class="hidden">
+
+            <h2>Statistics</h2>
+
+            <button onclick="exportExcel()">Export Data to Excel</button>
+
+            <div class="statsCard">
+
+                <h3>Lecture Wise Attempts</h3>
+
+                <canvas id="lectureChart"></canvas>
+
+            </div>
+
+
+            <div class="statsCard">
+
+                <h3>Login Form Data</h3>
+
+                <table id="loginTable">
+
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Mobile</th>
+                            <th>Place</th>
+                            <th>Class</th>
+                            <th>Lecture</th>
+                        </tr>
+                    </thead>
+
+                    <tbody></tbody>
+
+                </table>
+
+            </div>
+
+
+            <div class="statsCard">
+
+                <h3>Answer Result Data</h3>
+
+                <table id="answerTable">
+
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Mobile</th>
+                            <th>Lecture</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+
+                    <tbody></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <div id="replaceModal" class="hidden" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+align-items:center;
+justify-content:center;
+z-index:999;
+">
+
+            <div style="
+background:#1e1b3a;
+padding:30px;
+border-radius:15px;
+width:350px;
+text-align:center;
+box-shadow:0 10px 30px rgba(0,0,0,0.6);
+">
+
+                <h3>Replace Question?</h3>
+
+                <p>Question for this lecture already exists.</p>
+
+                <button onclick="confirmReplace()" style="margin-top:10px">
+                    Replace
+                </button>
+
+                <button onclick="closeModal()" style="margin-top:10px;background:#e74c3c">
+                    Cancel
+                </button>
+
+            </div>
+        </div>
+
+        <div id="successModal" style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+align-items:center;
+justify-content:center;
+z-index:999;
+">
+
+            <div style="
+background:#1e1b3a;
+padding:30px;
+border-radius:15px;
+width:350px;
+text-align:center;
+box-shadow:0 10px 30px rgba(0,0,0,0.6);
+">
+
+                <h3>Success</h3>
+
+                <p id="successText">Question updated successfully</p>
+
+                <button onclick="closeSuccessModal()">OK</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        let studentData = [];
+
+        async function login() {
+
+            const passcode = document.getElementById("passcode").value;
+
+            const res = await fetch("/api/admin/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ passcode })
+            });
+
+            if (!res.ok) {
+                alert("Invalid passcode");
+                return;
+            }
+
+            document.getElementById("loginPanel").classList.add("hidden");
+            document.getElementById("adminPanel").classList.remove("hidden");
+
+        }
+
+
+        function showUpdate() {
+
+            document.getElementById("updateSection").classList.remove("hidden");
+            document.getElementById("statsSection").classList.add("hidden");
+
+        }
+
+        function showStats() {
+
+            document.getElementById("updateSection").classList.add("hidden");
+            document.getElementById("statsSection").classList.remove("hidden");
+
+            loadStudents();
+
+        }
+
+
+        /* LOAD DATA */
+
+        async function loadStudents() {
+
+            const res = await fetch("/api/admin/students");
+
+            const data = await res.json();
+
+            studentData = data;
+
+            const loginBody = document.querySelector("#loginTable tbody");
+            const answerBody = document.querySelector("#answerTable tbody");
+
+            loginBody.innerHTML = "";
+            answerBody.innerHTML = "";
+
+            /* LOGIN DATA */
+
+            data.login
+                .filter(s => s.place !== undefined)
+                .forEach(s => {
+
+                    const row = document.createElement("tr");
+
+                    row.innerHTML = `
+<td>${s.name}</td>
+<td>${s.mobile}</td>
+<td>${s.place}</td>
+<td>${s.className}</td>
+<td>${s.lecture}</td>
+`;
+
+                    loginBody.appendChild(row);
+
+                });
+
+
+            /* ANSWER DATA */
+
+            data.answers.forEach(a => {
+
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+<td>${a.name || "-"}</td>
+<td>${a.mobile}</td>
+<td>${a.lecture}</td>
+<td>${a.correct ? "✅ Correct" : "❌ Wrong"}</td>
+`;
+
+                answerBody.appendChild(row);
+
+            });
+
+            buildChart(data.answers);
+
+        }
+
+
+        /* LECTURE CHART */
+
+        function buildChart(data) {
+
+            const counts = {};
+
+            data.forEach(a => {
+                if (!a.lecture) return;
+
+                const lecture = String(a.lecture);
+
+                counts[lecture] = (counts[lecture] || 0) + 1;
+            });
+
+            const labels = Object.keys(counts);
+            const values = Object.values(counts);
+
+            const ctx = document.getElementById("lectureChart");
+
+            if (window.chart) {
+                window.chart.destroy();
+            }
+
+            window.chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Attempts",
+                        data: values,
+                        backgroundColor: "#4facfe"
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: { ticks: { color: "#ffffff" } },
+                        y: { beginAtZero: true, ticks: { stepSize: 1, color: "#ffffff" } }
+                    }
+                }
+            });
+
+        }
+
+
+        /* EXPORT CSV */
+
+        function exportExcel() {
+
+            let csv = "Name,Mobile,Place,Class,Lecture,,Name,Mobile,Lecture,Result\n";
+
+            const loginMap = new Map();
+
+            studentData.login.forEach(s => {
+                const key = s.mobile + "_" + s.lecture;
+
+                if (!loginMap.has(key)) {
+                    loginMap.set(key, s);
+                }
+            });
+
+            const loginArray = Array.from(loginMap.values());
+            const answers = studentData.answers;
+
+            const maxLength = Math.max(loginArray.length, answers.length);
+
+            for (let i = 0; i < maxLength; i++) {
+
+                const l = loginArray[i];
+                const a = answers[i];
+
+                const left = l
+                    ? `${l.name},${l.mobile},${l.place},${l.className},${l.lecture}`
+                    : ",,,,";
+
+                const right = a
+                    ? `${a.name},${a.mobile},${a.lecture},${a.correct ? "Correct" : "Wrong"}`
+                    : ",,,";
+
+                csv += `${left},,${right}\n`;
+            }
+
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "student_data.csv";
+            a.click();
+        }
+
+
+        /* UPDATE QUESTION */
+
+        async function updateQuestion() {
+
+            let correctInput = document.getElementById("correct").value.trim().toUpperCase();
+
+            const map = { A: 0, B: 1, C: 2, D: 3 };
+
+            let correctIndex = map[correctInput];
+
+            if (correctIndex === undefined) {
+                alert("Correct option must be A B C or D");
+                return;
+            }
+
+            const data = {
+
+                lecture: document.getElementById("lecture").value,
+
+                question: document.getElementById("question").value,
+
+                options: [
+                    document.getElementById("o1").value,
+                    document.getElementById("o2").value,
+                    document.getElementById("o3").value,
+                    document.getElementById("o4").value
+                ],
+
+                correctIndex
+
+            };
+
+            let res = await fetch("/api/admin/add-question", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (res.status === 409) {
+
+                window.pendingReplaceData = data;
+                const modal = document.getElementById("replaceModal");
+                modal.style.display = "flex";
+                return;
+
+                if (!confirmReplace) return;
+
+                data.replace = true;
+
+                res = await fetch("/api/admin/add-question", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+            }
+
+            if (!res.ok) {
+                alert("Failed to update question");
+                return;
+            }
+
+            showSuccess("Question updated successfully")
+
+        }
+
+        async function confirmReplace() {
+
+            const data = window.pendingReplaceData;
+
+            data.replace = true;
+
+            const res = await fetch("/api/admin/add-question", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            document.getElementById("replaceModal").style.display = "none";
+
+            if (res.ok) {
+                showSuccess("Question replaced successfully");
+            } else {
+                showSuccess("Failed to replace question");
+            }
+        }
+
+        function closeModal() {
+            document.getElementById("replaceModal").style.display = "none";
+        }
+
+        function showSuccess(message) {
+            document.getElementById("successText").innerText = message
+            document.getElementById("successModal").style.display = "flex"
+        }
+
+        function closeSuccessModal() {
+            document.getElementById("successModal").style.display = "none"
+        }
+
+    </script>
+
+</body>
+
+</html>
