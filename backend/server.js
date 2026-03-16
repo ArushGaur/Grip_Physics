@@ -10,20 +10,30 @@ const PORT = process.env.PORT || 3000;
 
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
 
-app.use(cors());
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 app.use(express.json());
 
 app.use(session({
     secret: "grip_secret_key",
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+        secure: false,
+        sameSite: "lax"
+    }
 }));
 
 /* ---------------- MONGODB ---------------- */
 
-mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physics", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
+mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physics")
+.then(() => {
+    console.log("MongoDB connected");
+})
+.catch(err => {
+    console.error("MongoDB connection error:", err);
 });
 
 /* ---------------- SCHEMAS ---------------- */
