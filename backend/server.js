@@ -146,11 +146,11 @@ app.post("/api/check-attempt", async (req, res) => {
     const question = await Question.findOne({ lecture }).lean();
 
     if (!question) {
-        return res.json({ allowed: false });
+        return res.json({ allowed: false, time: 0 });
     }
 
     if (!attempt) {
-        return res.json({ allowed: true });
+        return res.json({ allowed: true, time: 0 });
     }
 
     const attemptTime = attempt.time || 0;
@@ -160,7 +160,7 @@ app.post("/api/check-attempt", async (req, res) => {
         return res.json({ allowed: false, time: attemptTime });
     }
 
-    res.json({ allowed: true, time: attemptTime });
+    return res.json({ allowed: true, time: attemptTime });
 
 });
 
