@@ -30,13 +30,18 @@ app.use(session({
 
 console.log("MONGO_URI:", process.env.MONGO_URI ? "present" : "missing");
 
-mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physics")
-.then(() => {
-    console.log("MongoDB connected");
-})
-.catch(err => {
-    console.error("MongoDB connection error:", err);
-});
+mongoose.connect(
+    process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physics",
+    {
+        dbName: "grip_physics"
+    }
+)
+    .then(() => {
+        console.log("MongoDB connected to grip_physics");
+    })
+    .catch(err => {
+        console.error("MongoDB connection error:", err);
+    });
 
 /* ---------------- SCHEMAS ---------------- */
 
@@ -69,44 +74,44 @@ const Attempt = mongoose.model("Attempt", AttemptSchema);
 
 /* ---------------- ADMIN PAGE ---------------- */
 
-app.get("/admin", (req,res)=>{
-    res.sendFile(path.join(__dirname,"private","owner.html"));
+app.get("/admin", (req, res) => {
+    res.sendFile(path.join(__dirname, "private", "owner.html"));
 });
 
 /* ---------------- ADMIN AUTH ---------------- */
 
-function requireAdmin(req,res,next){
-    if(!req.session.admin){
-        return res.status(403).json({error:"Unauthorized"});
+function requireAdmin(req, res, next) {
+    if (!req.session.admin) {
+        return res.status(403).json({ error: "Unauthorized" });
     }
     next();
 }
 
 /* ---------------- ADMIN LOGIN ---------------- */
 
-app.post("/api/admin/login",(req,res)=>{
+app.post("/api/admin/login", (req, res) => {
 
-    const {passcode} = req.body;
+    const { passcode } = req.body;
 
-    if(passcode !== ADMIN_PASSCODE){
-        return res.status(401).json({error:"Invalid passcode"});
+    if (passcode !== ADMIN_PASSCODE) {
+        return res.status(401).json({ error: "Invalid passcode" });
     }
 
     req.session.admin = true;
 
-    res.json({success:true});
+    res.json({ success: true });
 });
 
 /* ---------------- GET QUESTION ---------------- */
 
-app.get("/api/question/:lecture", async (req,res)=>{
+app.get("/api/question/:lecture", async (req, res) => {
 
     const lecture = req.params.lecture;
 
-    const question = await Question.findOne({lecture});
+    const question = await Question.findOne({ lecture });
 
-    if(!question){
-        return res.status(404).json({error:"Lecture not found"});
+    if (!question) {
+        return res.status(404).json({ error: "Lecture not found" });
     }
 
     res.json(question);
@@ -114,35 +119,35 @@ app.get("/api/question/:lecture", async (req,res)=>{
 
 /* ---------------- CHECK ATTEMPT ---------------- */
 
-app.post("/api/check-attempt", async (req,res)=>{
+app.post("/api/check-attempt", async (req, res) => {
 
-    const {mobile,lecture} = req.body;
+    const { mobile, lecture } = req.body;
 
-    const attempt = await Attempt.findOne({mobile,lecture});
+    const attempt = await Attempt.findOne({ mobile, lecture });
 
-    if(attempt){
-        return res.json({allowed:false});
+    if (attempt) {
+        return res.json({ allowed: false });
     }
 
-    res.json({allowed:true});
+    res.json({ allowed: true });
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
 
-app.post("/api/submit-attempt", async (req,res)=>{
+app.post("/api/submit-attempt", async (req, res) => {
 
-    const {mobile,lecture,selectedIndex} = req.body;
+    const { mobile, lecture, selectedIndex } = req.body;
 
-    const question = await Question.findOne({lecture});
+    const question = await Question.findOne({ lecture });
 
-    if(!question){
-        return res.status(404).json({error:"Lecture not found"});
+    if (!question) {
+        return res.status(404).json({ error: "Lecture not found" });
     }
 
-    const existing = await Attempt.findOne({mobile,lecture});
+    const existing = await Attempt.findOne({ mobile, lecture });
 
-    if(existing){
-        return res.json({allowed:false});
+    if (existing) {
+        return res.json({ allowed: false });
     }
 
     await Attempt.create({
@@ -153,19 +158,19 @@ app.post("/api/submit-attempt", async (req,res)=>{
     await Student.create({
         mobile,
         lecture,
-        answer:selectedIndex,
-        correct:selectedIndex === question.correctIndex,
-        time:Date.now()
+        answer: selectedIndex,
+        correct: selectedIndex === question.correctIndex,
+        time: Date.now()
     });
 
-    res.json({success:true});
+    res.json({ success: true });
 });
 
 /* ---------------- STUDENT REGISTER ---------------- */
 
-app.post("/api/student-register", async (req,res)=>{
+app.post("/api/student-register", async (req, res) => {
 
-    const {name,mobile,place,className,lecture} = req.body;
+    const { name, mobile, place, className, lecture } = req.body;
 
     await Student.create({
         name,
@@ -173,27 +178,27 @@ app.post("/api/student-register", async (req,res)=>{
         place,
         className,
         lecture,
-        time:Date.now()
+        time: Date.now()
     });
 
-    res.json({success:true});
+    res.json({ success: true });
 });
 
 /* ---------------- ADD QUESTION ---------------- */
 
-app.post("/api/admin/add-question", requireAdmin, async (req,res)=>{
+app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
 
-    const {lecture,question,options,correctIndex,replace} = req.body;
+    const { lecture, question, options, correctIndex, replace } = req.body;
 
-    const existing = await Question.findOne({lecture});
+    const existing = await Question.findOne({ lecture });
 
-    if(existing && !replace){
+    if (existing && !replace) {
         return res.status(409).json({
-            warning:"Lecture already exists"
+            warning: "Lecture already exists"
         });
     }
 
-    if(existing){
+    if (existing) {
 
         existing.question = question;
         existing.options = options;
@@ -201,7 +206,7 @@ app.post("/api/admin/add-question", requireAdmin, async (req,res)=>{
 
         await existing.save();
 
-    }else{
+    } else {
 
         await Question.create({
             lecture,
@@ -212,17 +217,17 @@ app.post("/api/admin/add-question", requireAdmin, async (req,res)=>{
 
     }
 
-    res.json({success:true});
+    res.json({ success: true });
 });
 
 /* ---------------- ADMIN STATS ---------------- */
 
-app.get("/api/admin/students", requireAdmin, async (req,res)=>{
+app.get("/api/admin/students", requireAdmin, async (req, res) => {
 
     const students = await Student.find();
 
-    const login = students.filter(s=>s.name);
-    const answers = students.filter(s=>s.answer !== undefined);
+    const login = students.filter(s => s.name);
+    const answers = students.filter(s => s.answer !== undefined);
 
     res.json({
         login,
@@ -233,14 +238,14 @@ app.get("/api/admin/students", requireAdmin, async (req,res)=>{
 
 /* ---------------- LOGOUT ---------------- */
 
-app.post("/api/admin/logout",(req,res)=>{
-    req.session.destroy(()=>{
-        res.json({message:"Logged out"});
+app.post("/api/admin/logout", (req, res) => {
+    req.session.destroy(() => {
+        res.json({ message: "Logged out" });
     });
 });
 
 /* ---------------- START SERVER ---------------- */
 
-app.listen(PORT,()=>{
+app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
