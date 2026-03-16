@@ -409,13 +409,15 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
     <script>
 
+        const API_BASE = "https://grip-physics.onrender.com";
+
         let studentData = [];
 
         async function login() {
 
             const passcode = document.getElementById("passcode").value;
 
-            const res = await fetch("/api/admin/login", {
+            const res = await fetch(`${API_BASE}/api/admin/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ passcode })
@@ -453,7 +455,7 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
         async function loadStudents() {
 
-            const res = await fetch("/api/admin/students");
+            const res = await fetch(`${API_BASE}/api/admin/students`);
 
             const data = await res.json();
 
@@ -631,7 +633,7 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
             };
 
-            let res = await fetch("/api/admin/add-question", {
+            let res = await fetch(`${API_BASE}/api/admin/add-question`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -648,7 +650,7 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
                 data.replace = true;
 
-                res = await fetch("/api/admin/add-question", {
+                res = await fetch(`${API_BASE}/api/admin/add-question`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(data)
@@ -670,7 +672,7 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
 
             data.replace = true;
 
-            const res = await fetch("/api/admin/add-question", {
+            const res = await fetch(`${API_BASE}/api/admin/add-question`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
