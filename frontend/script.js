@@ -251,9 +251,16 @@ function selectAnswer(element, index) {
 async function submitAnswer() {
     if (selectedOption === null) return;
 
+    const btn = document.getElementById("submitAnswerBtn");
+    const syncText = document.getElementById("sync-text");
     const options = document.querySelectorAll(".option");
     const feedback = document.getElementById("feedback");
     const mobile = document.getElementById("userMobile").value.trim();
+
+    // 1. Disable UI immediately to prevent double-clicks
+    btn.disabled = true;
+    btn.innerText = "Syncing...";
+    if (syncText) syncText.style.display = "block";
 
     options.forEach(opt => {
         opt.style.pointerEvents = "none";
@@ -262,7 +269,7 @@ async function submitAnswer() {
 
     const isCorrect = selectedIndex === currentCorrectIndex;
 
-    /* -------- SHOW RESULT -------- */
+    /* -------- SHOW VISUAL RESULT -------- */
     if (isCorrect) {
         selectedOption.classList.add("correct");
         feedback.innerHTML = "✨ Excellent! That's correct.";
@@ -271,21 +278,36 @@ async function submitAnswer() {
         selectedOption.classList.add("incorrect");
         feedback.innerHTML = "❌ Incorrect. Keep studying!";
         feedback.style.color = "var(--error)";
-        options[currentCorrectIndex].classList.add("correct");
+        if (options[currentCorrectIndex]) {
+            options[currentCorrectIndex].classList.add("correct");
+        }
     }
 
-    /* -------- SAVE ATTEMPT WITH TIMESTAMP -------- */
-    await fetch(`${API_BASE}/api/submit-attempt`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            mobile,
-            lecture: currentLecture,
-            answer: selectedIndex,
-            correct: isCorrect,
-            time: Date.now() // Record the exact time of this attempt
-        })
-    });
+    /* -------- SAVE ATTEMPT TO DATABASE -------- */
+    try {
+        const response = await fetch(`${API_BASE}/api/submit-attempt`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                mobile: mobile,
+                lecture: currentLecture,
+                answer: selectedIndex,
+                correct: isCorrect,
+                time: Date.now() // This timestamp is critical for re-attempt logic
+            })
+        });
 
-    document.getElementById("submitAnswerBtn").style.display = "none";
+        if (response.ok) {
+            // ONLY hide the button if the server actually saved the data
+            btn.style.display = "none";
+            if (syncText) syncText.innerText = "Data Synced with Dashboard ✅";
+        } else {
+            throw new Error("Server Error");
+        }
+    } catch (err) {
+        console.error("Save failed:", err);
+        btn.disabled = false;
+        btn.innerText = "Retry Submit";
+        if (syncText) syncText.innerText = "Sync Failed. Please click Retry.";
+    }
 }
