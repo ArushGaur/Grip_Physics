@@ -13,7 +13,7 @@ const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
 app.use(cors({
     origin: true,
     credentials: true,
-    methods: ["GET","POST"]
+    methods: ["GET", "POST"]
 }));
 app.use(express.json());
 
@@ -22,8 +22,8 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,
-        sameSite: "lax"
+        secure: true,
+        sameSite: "none"
     }
 }));
 
