@@ -139,24 +139,26 @@ app.post("/api/check-attempt", async (req, res) => {
     const { mobile, lecture } = req.body;
 
     const question = await Question.findOne({ lecture }).lean();
-    if (!question) return res.json({ allowed: false });
+    if (!question) {
+        return res.json({ allowed: false, time: 0 });
+    }
 
     const lastAttempt = await Attempt.findOne({ mobile, lecture })
         .sort({ time: -1 })
         .lean();
 
     if (!lastAttempt) {
-        return res.json({ allowed: true });
+        return res.json({ allowed: true, time: 0 });
     }
 
     const attemptTime = lastAttempt.time || 0;
     const questionTime = question.updatedAt || 0;
 
     if (attemptTime >= questionTime) {
-        return res.json({ allowed: false });
+        return res.json({ allowed: false, time: attemptTime });
     }
 
-    return res.json({ allowed: true });
+    return res.json({ allowed: true, time: attemptTime });
 });
 
 /* ---------------- SUBMIT ATTEMPT ---------------- */
