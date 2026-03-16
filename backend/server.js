@@ -27,6 +27,17 @@ app.use(session({
     }
 }));
 
+let questionCache = {};
+
+async function loadQuestions() {
+    const questions = await Question.find().lean();
+    questions.forEach(q => {
+        questionCache[q.lecture] = q;
+    });
+}
+
+mongoose.connection.once("open", loadQuestions);
+
 /* ---------------- MONGODB ---------------- */
 
 console.log("MONGO_URI:", process.env.MONGO_URI ? "present" : "missing");
@@ -47,7 +58,7 @@ mongoose.connect(
 /* ---------------- SCHEMAS ---------------- */
 
 const QuestionSchema = new mongoose.Schema({
-    lecture: String,
+    lecture: { type: String, index: true },
     question: String,
     options: [String],
     correctIndex: Number
@@ -55,18 +66,18 @@ const QuestionSchema = new mongoose.Schema({
 
 const StudentSchema = new mongoose.Schema({
     name: String,
-    mobile: String,
+    mobile: { type: String, index: true },
     place: String,
     className: String,
-    lecture: String,
+    lecture: { type: String, index: true },
     answer: Number,
     correct: Boolean,
     time: Number
 });
 
 const AttemptSchema = new mongoose.Schema({
-    mobile: String,
-    lecture: String
+    mobile: { type: String, index: true },
+    lecture: { type: String, index: true }
 });
 
 const Question = mongoose.model("Question", QuestionSchema);
@@ -106,10 +117,8 @@ app.post("/api/admin/login", (req, res) => {
 /* ---------------- GET QUESTION ---------------- */
 
 app.get("/api/question/:lecture", async (req, res) => {
-
     const lecture = req.params.lecture;
-
-    const question = await Question.findOne({ lecture });
+    const question = questionCache[lecture] || await Question.findOne({ lecture }).lean();
 
     if (!question) {
         return res.status(404).json({ error: "Lecture not found" });
@@ -124,7 +133,7 @@ app.post("/api/check-attempt", async (req, res) => {
 
     const { mobile, lecture } = req.body;
 
-    const attempt = await Attempt.findOne({ mobile, lecture });
+    const attempt = await Attempt.findOne({ mobile, lecture }).lean();
 
     if (attempt) {
         return res.json({ allowed: false });
@@ -139,7 +148,7 @@ app.post("/api/submit-attempt", async (req, res) => {
 
     const { mobile, lecture, selectedIndex } = req.body;
 
-    const question = await Question.findOne({ lecture });
+    const question = await Question.findOne({ lecture }).lean();
 
     if (!question) {
         return res.status(404).json({ error: "Lecture not found" });
