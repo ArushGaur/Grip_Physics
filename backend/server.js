@@ -205,28 +205,32 @@ app.post("/api/student-register", async (req, res) => {
 /* ---------------- ADD QUESTION ---------------- */
 
 app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
-
     const { lecture, question, options, correctIndex, replace } = req.body;
 
     const existing = await Question.findOne({ lecture });
 
     if (existing && !replace) {
-        return res.status(409).json({
-            warning: "Lecture already exists"
-        });
+        return res.status(409).json({ warning: "Lecture already exists" });
     }
 
     if (existing) {
-
+        // Update the question
         existing.question = question;
         existing.options = options;
         existing.correctIndex = correctIndex;
-
         await existing.save();
         questionCache[lecture] = existing;
 
-    } else {
+        // --- NEW LOGIC START ---
+        // Clear all previous student attempts for THIS lecture 
+        // so they can solve the new version
+        await Student.updateMany(
+            { lecture: lecture },
+            { $unset: { answer: "", correct: "" } }
+        );
+        // --- NEW LOGIC END ---
 
+    } else {
         const newQ = await Question.create({
             lecture,
             question,
@@ -234,12 +238,10 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
             correctIndex
         });
         questionCache[lecture] = newQ;
-
     }
 
     res.json({ success: true });
 });
-
 /* ---------------- ADMIN STATS ---------------- */
 
 app.get("/api/admin/students", requireAdmin, async (req, res) => {
