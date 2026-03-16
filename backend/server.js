@@ -20,13 +20,17 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Find your app.use(session(...)) block and update it to this:
 app.use(session({
     secret: "grip_secret_key",
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Required for Render/Heroku
     cookie: {
-        secure: true,
-        sameSite: "none"
+        secure: true,      // Must be true for SameSite: 'none'
+        sameSite: "none",  // Allows the cookie to be sent from Vercel to Render
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
 
