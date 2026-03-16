@@ -206,7 +206,6 @@ app.post("/api/student-register", async (req, res) => {
 
 app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
     const { lecture, question, options, correctIndex, replace } = req.body;
-
     const existing = await Question.findOne({ lecture });
 
     if (existing && !replace) {
@@ -214,32 +213,22 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
     }
 
     if (existing) {
-        // Update the question
         existing.question = question;
         existing.options = options;
         existing.correctIndex = correctIndex;
         await existing.save();
         questionCache[lecture] = existing;
 
-        // --- NEW LOGIC START ---
-        // Clear all previous student attempts for THIS lecture 
-        // so they can solve the new version
+        // --- THE FIX ---
+        // Delete previous attempts for this lecture so students can re-attempt
         await Student.updateMany(
             { lecture: lecture },
             { $unset: { answer: "", correct: "" } }
         );
-        // --- NEW LOGIC END ---
-
     } else {
-        const newQ = await Question.create({
-            lecture,
-            question,
-            options,
-            correctIndex
-        });
+        const newQ = await Question.create({ lecture, question, options, correctIndex });
         questionCache[lecture] = newQ;
     }
-
     res.json({ success: true });
 });
 /* ---------------- ADMIN STATS ---------------- */
