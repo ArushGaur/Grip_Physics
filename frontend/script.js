@@ -310,3 +310,10 @@ async function submitAnswer() {
         if (syncText) syncText.innerText = "Sync Failed. Please click Retry.";
     }
 }
+
+const mobile = document.getElementById("userMobile").value.trim();
+
+if (!/^[0-9]{10}$/.test(mobile)) {
+    alert("Please enter a valid 10 digit mobile number");
+    return;
+}
