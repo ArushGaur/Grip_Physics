@@ -563,53 +563,46 @@ box-shadow:0 10px 30px rgba(0,0,0,0.6);
         /* EXPORT CSV */
 
         function exportExcel() {
-            // 1. Create a "Phone to Name" lookup dictionary
-            const nameLookup = {};
+
+            // Create lookup table for login details by mobile
+            const loginLookup = {};
             studentData.login.forEach(s => {
-                nameLookup[s.mobile] = s.name;
+                loginLookup[s.mobile] = {
+                    name: s.name || "",
+                    place: s.place || "",
+                    className: s.className || ""
+                };
             });
 
-            let csv = "Name,Mobile,Place,Class,Lecture,,Name,Mobile,Lecture,Result\n";
+            // CSV header
+            let csv = "Name,Mobile,Place,Class,Lecture,Result\n";
 
-            // Use a Map to filter unique logins (Mobile + Lecture)
-            const loginMap = new Map();
-            studentData.login.forEach(s => {
-                const key = s.mobile + "_" + s.lecture;
-                if (!loginMap.has(key)) loginMap.set(key, s);
+            // Iterate through all answers
+            studentData.answers.forEach(a => {
+
+                const login = loginLookup[a.mobile] || {};
+
+                const name = login.name || "Unknown";
+                const place = login.place || "";
+                const className = login.className || "";
+
+                let status = "Not Answered";
+                if (a.correct === true) status = "Correct";
+                if (a.correct === false) status = "Wrong";
+
+                // Prevent Excel scientific notation
+                const mobile = `="${a.mobile}"`;
+
+                csv += `"${name}",${mobile},"${place}","${className}","${a.lecture}","${status}"\n`;
             });
 
-            const loginArray = Array.from(loginMap.values());
-            const answers = studentData.answers;
-            const maxLength = Math.max(loginArray.length, answers.length);
-
-            for (let i = 0; i < maxLength; i++) {
-                const l = loginArray[i];
-                const a = answers[i];
-
-                const left = l
-                    ? `"${l.name}","${l.mobile}","${l.place}","${l.className}","${l.lecture}"`
-                    : ",,,,";
-
-                // Handle the "Right" side safely
-                let right = ",,,";
-                if (a) {
-                    const studentName = nameLookup[a.mobile] || "Unknown";
-                    // If 'correct' is missing (because of previous $unset), show "Reset/Re-attempting"
-                    let status = "Not Answered";
-                    if (a.correct === true) status = "Correct";
-                    if (a.correct === false) status = "Wrong";
-
-                    right = `"${studentName}","${a.mobile}","${a.lecture}","${status}"`;
-                }
-
-                csv += `${left},,${right}\n`;
-            }
-
+            // Create downloadable file
             const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
+
             const link = document.createElement("a");
             link.href = url;
-            link.download = `Student_Report_${new Date().toLocaleDateString()}.csv`;
+            link.download = `Student_Report_${new Date().toISOString().slice(0, 10)}.csv`;
             link.click();
         }
 
