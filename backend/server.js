@@ -333,29 +333,75 @@ app.get("/api/admin/questions", requireAdmin, async (req, res) => {
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     const { questionImageBase64, answerImageBase64 } = req.body;
     if (!questionImageBase64 || !answerImageBase64) return res.status(400).json({ error: "Both images required" });
-    if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY not set on server" });
+
+    const prompt = "First image = physics MCQ questions. Second image = answer key.\nExtract ALL questions, match each answer, return ONLY a raw JSON array (no markdown, no backticks).\nFormat: [{\"question\":\"...\",\"options\":[\"A text\",\"B text\",\"C text\",\"D text\"],\"correctIndex\":0}]\nRules: correctIndex 0=A 1=B 2=C 3=D. If answer key uses 1/2/3/4 map to 0/1/2/3. Write equations in plain text. Include every question visible.";
 
     try {
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
+        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY;
+
+        const body = {
+            contents: [{
+                parts: [
+                    { inline_data: { mime_type: "image/jpeg", data: questionImageBase64 } },
+                    { inline_data: { mime_type: "image/jpeg", data: answerImageBase64 } },
+                    { text: prompt }
+                ]
+            }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 4000 }
+        };
+
+        const r = await fetch(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-            body: JSON.stringify({
-                model: "claude-opus-4-6", max_tokens: 4000,
-                messages: [{ role: "user", content: [
-                    { type: "image", source: { type: "base64", media_type: "image/jpeg", data: questionImageBase64 } },
-                    { type: "image", source: { type: "base64", media_type: "image/jpeg", data: answerImageBase64 } },
-                    { type: "text", text: `First image = questions, second image = answer key. Extract ALL questions and match answers. Return ONLY a raw JSON array, no markdown.\nFormat: [{"question":"...","options":["A text","B text","C text","D text"],"correctIndex":0}]\nRules: correctIndex 0=A,1=B,2=C,3=D. Write equations in plain text. All 4 options per question.` }
-                ]}]
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
         });
-        if (!r.ok) { const e = await r.json(); return res.status(502).json({ error: e.error?.message || "Anthropic error" }); }
+
+        if (!r.ok) {
+            const e = await r.json();
+            const msg = (e.error && e.error.message) || "Gemini API error";
+            console.error("Gemini error:", msg);
+            return res.status(502).json({ error: msg });
+        }
+
         const data = await r.json();
-        const text = data.content.map(c => c.text || "").join("").trim();
+        let text = (data.candidates &&
+                    data.candidates[0] &&
+                    data.candidates[0].content &&
+                    data.candidates[0].content.parts &&
+                    data.candidates[0].content.parts[0] &&
+                    data.candidates[0].content.parts[0].text) || "";
+        text = text.trim()
+                   .replace(/^```json\s*/i, "")
+                   .replace(/^```\s*/i, "")
+                   .replace(/\s*```$/, "")
+                   .trim();
+
         let parsed;
-        try { parsed = JSON.parse(text); }
-        catch { const m = text.match(/\[[\s\S]*\]/); if (m) parsed = JSON.parse(m[0]); else return res.status(500).json({ error: "Could not parse AI response" }); }
+        try {
+            parsed = JSON.parse(text);
+        } catch (parseErr) {
+            const m = text.match(/\[[\s\S]*\]/);
+            if (m) {
+                try { parsed = JSON.parse(m[0]); }
+                catch { return res.status(500).json({ error: "Could not parse AI response. Try clearer images." }); }
+            } else {
+                console.error("Gemini unparseable response:", text.slice(0, 300));
+                return res.status(500).json({ error: "Could not parse AI response. Try clearer images." });
+            }
+        }
+
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            return res.status(500).json({ error: "No questions found in images." });
+        }
+
+        console.log("Extracted " + parsed.length + " questions via Gemini");
         res.json({ questions: parsed });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Server error" }); }
+
+    } catch (e) {
+        console.error("Extract error:", e);
+        res.status(500).json({ error: "Server error during extraction" });
+    }
 });
 
 /* ---- START ---- */
