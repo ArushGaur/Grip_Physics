@@ -54,14 +54,14 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physic
 
 /* ---- SCHEMAS  (strict:false keeps old fields alive) ---- */
 const QuestionSchema = new mongoose.Schema({
-    chapter:      { type: String, index: true },
-    lecture:      { type: String, index: true },
-    questions:    [{ question: String, options: [String], correctIndex: Number }],
+    chapter: { type: String, index: true },
+    lecture: { type: String, index: true },
+    questions: [{ question: String, options: [String], correctIndex: Number }],
     // OLD single-question fields kept so old docs don't lose data
-    question:     String,
-    options:      [String],
+    question: String,
+    options: [String],
     correctIndex: Number,
-    updatedAt:    { type: Number, default: Date.now }
+    updatedAt: { type: Number, default: Date.now }
 }, { strict: false });
 
 const StudentSchema = new mongoose.Schema({
@@ -85,8 +85,8 @@ const AttemptSchema = new mongoose.Schema({
 AttemptSchema.index({ mobile: 1, lecture: 1 });
 
 const Question = mongoose.model("Question", QuestionSchema);
-const Student   = mongoose.model("Student",  StudentSchema);
-const Attempt   = mongoose.model("Attempt",  AttemptSchema);
+const Student = mongoose.model("Student", StudentSchema);
+const Attempt = mongoose.model("Attempt", AttemptSchema);
 
 /* ---- NORMALIZE HELPERS ---- */
 
@@ -120,8 +120,8 @@ function normalizeStudent(doc) {
     const s = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
     if (typeof s.correctCount === "number") return s;           // already new format
     if (typeof s.answer === "number") {                         // old single-answer format
-        s.answers       = [s.answer];
-        s.correctCount  = s.correct === true ? 1 : 0;
+        s.answers = [s.answer];
+        s.correctCount = s.correct === true ? 1 : 0;
         s.totalQuestions = 1;
     }
     return s;
@@ -223,7 +223,7 @@ app.post("/api/check-attempt", async (req, res) => {
     const lastAttempt = await Attempt.findOne({ mobile, lecture }).sort({ time: -1 }).lean();
     if (!lastAttempt) return res.json({ allowed: true, time: 0 });
 
-    const attemptTime  = lastAttempt.time || 0;
+    const attemptTime = lastAttempt.time || 0;
     const questionTime = q.updatedAt || 0;
 
     res.json(attemptTime >= questionTime ? { allowed: false, time: attemptTime } : { allowed: true, time: attemptTime });
@@ -276,9 +276,14 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
         return res.status(400).json({ error: "Missing fields" });
     }
 
-    // Find existing — first with chapter, then without (old docs have no chapter)
-    let existing = chapter ? await Question.findOne({ chapter, lecture }) : null;
-    if (!existing) existing = await Question.findOne({ lecture });   // catches old single-lecture docs
+    // Match on BOTH chapter AND lecture — each chapter can have its own Lecture 1, 2, etc.
+    // Only fall back to lecture-only match for old records that have no chapter (null/undefined)
+    let existing = await Question.findOne({ chapter: chapter || null, lecture });
+
+    // If still not found and no chapter provided, also check truly old docs
+    if (!existing && !chapter) {
+        existing = await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] });
+    }
 
     if (existing && !replace) return res.status(409).json({ warning: "Lecture already exists" });
 
@@ -305,8 +310,8 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
 
 /* -- Delete question -- */
 app.delete("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, res) => {
-    const chapter  = decodeURIComponent(req.params.chapter);
-    const lecture  = decodeURIComponent(req.params.lecture);
+    const chapter = decodeURIComponent(req.params.chapter);
+    const lecture = decodeURIComponent(req.params.lecture);
     await Question.deleteMany({ lecture, $or: [{ chapter }, { chapter: null }, { chapter: { $exists: false } }] });
     delete questionCache[`${chapter}::${lecture}`];
     delete questionCache[`::${lecture}`];
@@ -391,15 +396,15 @@ Rules:
 
         const data = await r.json();
         let text = (data.choices &&
-                    data.choices[0] &&
-                    data.choices[0].message &&
-                    data.choices[0].message.content) || "";
+            data.choices[0] &&
+            data.choices[0].message &&
+            data.choices[0].message.content) || "";
 
         text = text.trim()
-                   .replace(/^```json\s*/i, "")
-                   .replace(/^```\s*/i, "")
-                   .replace(/\s*```$/, "")
-                   .trim();
+            .replace(/^```json\s*/i, "")
+            .replace(/^```\s*/i, "")
+            .replace(/\s*```$/, "")
+            .trim();
 
         let parsed;
         try {
