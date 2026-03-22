@@ -1540,7 +1540,7 @@
             qItems.forEach((item, qi) => {
                 const lec = item.querySelector(`[id^="eq_lec_"]`)?.value.trim();
                 const txt = item.querySelector(`[id^="eq_q_"]`)?.value.trim();
-                const opts = [0, 1, 2, 3].map(oi => item.querySelector(`[id$="_${oi}"]`)?.value.trim() || "");
+                const opts = [0, 1, 2, 3].map(oi => item.querySelector(`[id*="eq_opt_"][id$="_${oi}"]`)?.value.trim() || "");
                 const ci = parseInt(item.querySelector(`[id^="eq_correct_"]`)?.value || 0);
                 if (!lec || !txt || !opts.every(o => o)) { hasError = true; return; }
                 if (!groups[lec]) groups[lec] = [];
@@ -1550,13 +1550,16 @@
             const lectures = Object.keys(groups);
             if (!lectures.length) { alert("No complete questions to save."); return; }
 
+            console.log("Saving groups:", JSON.stringify(Object.keys(groups).map(l => ({ lecture: l, count: groups[l].length }))));
             let saved = 0, failed = [];
             for (const lec of lectures) {
+                console.log("Saving lecture", lec, "with", groups[lec].length, "question(s)");
                 const r = await fetch(`${API_BASE}/api/admin/add-question`, {
                     method: "POST", credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false })
                 });
+                console.log("Response for lecture", lec, ":", r.status);
                 if (r.ok) { saved++; }
                 else if (r.status === 409) {
                     if (confirm(`Lecture ${lec} already exists. Replace it?`)) {
