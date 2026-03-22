@@ -90,14 +90,28 @@ const Attempt   = mongoose.model("Attempt",  AttemptSchema);
 
 /* ---- NORMALIZE HELPERS ---- */
 
-// Converts old single-question doc  →  new { questions:[...] } shape
+// Converts any question doc shape → new { questions:[...] } shape
+// Handles: new format, old single-question format, AND corrupted docs with empty options/no question
 function normalizeQuestion(doc) {
     if (!doc) return null;
     const d = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
-    if (d.questions && d.questions.length > 0) return d;       // already new format
-    if (d.question) {                                           // old format
-        d.questions = [{ question: d.question, options: d.options || [], correctIndex: d.correctIndex ?? 0 }];
+
+    // Already new format with real questions
+    if (d.questions && d.questions.length > 0) return d;
+
+    // Old format with actual question text
+    if (d.question && typeof d.question === "string" && d.question.trim()) {
+        d.questions = [{
+            question: d.question,
+            options: Array.isArray(d.options) && d.options.length > 0 ? d.options : [],
+            correctIndex: typeof d.correctIndex === "number" ? d.correctIndex : 0
+        }];
+        return d;
     }
+
+    // Corrupted/empty record — mark it so callers can skip it
+    d.questions = [];
+    d._corrupted = true;
     return d;
 }
 
@@ -120,9 +134,10 @@ async function loadQuestions() {
     const all = await Question.find().lean();
     all.forEach(q => {
         const n = normalizeQuestion(q);
-        // store under both keys so lookup works regardless of whether chapter is set
-        questionCache[`${q.chapter || ""}::${q.lecture}`] = n;
-        if (!questionCache[`::${q.lecture}`]) questionCache[`::${q.lecture}`] = n;
+        if (!n._corrupted) {
+            questionCache[`${q.chapter || ""}::${q.lecture}`] = n;
+            if (!questionCache[`::${q.lecture}`]) questionCache[`::${q.lecture}`] = n;
+        }
     });
     console.log(`Cached ${all.length} questions`);
 }
@@ -131,15 +146,25 @@ mongoose.connection.once("open", loadQuestions);
 /* ---- HELPER: find question from cache or DB ---- */
 async function findQuestion(chapter, lecture) {
     const key = `${chapter || ""}::${lecture}`;
-    if (questionCache[key]) return questionCache[key];
-    // Try DB with chapter first, then without
+
+    // Use cache only if it has real questions
+    const cached = questionCache[key];
+    if (cached && !cached._corrupted && cached.questions && cached.questions.length > 0) return cached;
+
+    // Try DB: chapter+lecture first, then lecture-only (old records without chapter)
     let doc = chapter ? await Question.findOne({ chapter, lecture }).lean() : null;
-    if (!doc) doc = await Question.findOne({ lecture }).lean();   // catches old docs with no chapter
+    if (!doc) doc = await Question.findOne({ lecture }).lean();
     if (!doc) return null;
+
     const n = normalizeQuestion(doc);
-    questionCache[key] = n;
-    questionCache[`::${lecture}`] = n;
-    return n;
+
+    // Cache only valid records; corrupted ones return null so caller shows "lecture not found"
+    if (!n._corrupted) {
+        questionCache[key] = n;
+        questionCache[`::${lecture}`] = n;
+        return n;
+    }
+    return null;
 }
 
 /* ---- ADMIN AUTH ---- */
