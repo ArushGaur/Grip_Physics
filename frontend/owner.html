@@ -1,110 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grip Physics — Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg: #080714;
-            --surface: rgba(255,255,255,0.05);
-            --surface-hover: rgba(255,255,255,0.09);
-            --border: rgba(255,255,255,0.1);
+            --surface: rgba(255, 255, 255, 0.05);
+            --surface-hover: rgba(255, 255, 255, 0.09);
+            --border: rgba(255, 255, 255, 0.1);
             --accent: #00f2fe;
             --accent-2: #4facfe;
-            --accent-glow: rgba(0,242,254,0.2);
+            --accent-glow: rgba(0, 242, 254, 0.2);
             --success: #2ecc71;
             --error: #e74c3c;
             --warn: #f39c12;
             --text: #f0f0f0;
-            --text-dim: rgba(255,255,255,0.5);
+            --text-dim: rgba(255, 255, 255, 0.5);
             --sidebar-w: 220px;
             --radius: 14px;
         }
 
-        * { box-sizing: border-box; font-family: 'Outfit', sans-serif; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
             background: radial-gradient(ellipse at 10% 30%, #1a0533 0%, #080714 50%, #0f1422 100%);
-            min-height: 100vh; color: var(--text);
+            min-height: 100vh;
+            color: var(--text);
             display: flex;
         }
 
         /* ===== LOGIN OVERLAY ===== */
         #loginOverlay {
-            position: fixed; inset: 0; z-index: 999;
+            position: fixed;
+            inset: 0;
+            z-index: 999;
             background: radial-gradient(ellipse at center, #1a0533, #080714);
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .login-card {
-            background: rgba(255,255,255,0.06);
+            background: rgba(255, 255, 255, 0.06);
             backdrop-filter: blur(20px);
             border: 1px solid var(--border);
             border-radius: 20px;
             padding: 44px 40px;
             width: 380px;
             text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         }
 
-        .login-card .brand-logo { font-size: 2.5rem; margin-bottom: 6px; animation: spin 5s linear infinite; display: inline-block; }
-        .login-card h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; background: linear-gradient(90deg,var(--accent),var(--accent-2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-        .login-card p { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 28px; }
+        .login-card .brand-logo {
+            font-size: 2.5rem;
+            margin-bottom: 6px;
+            animation: spin 5s linear infinite;
+            display: inline-block;
+        }
+
+        .login-card h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-card p {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 28px;
+        }
 
         .login-input-wrap {
-            display: flex; align-items: center; gap: 10px;
-            background: rgba(255,255,255,0.07);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.07);
             border: 1px solid var(--border);
-            border-radius: 10px; padding: 0 14px;
+            border-radius: 10px;
+            padding: 0 14px;
             margin-bottom: 16px;
         }
+
         .login-input-wrap input {
-            flex: 1; background: transparent; border: none; padding: 13px 0;
-            color: var(--text); font-size: 0.9rem; outline: none;
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 13px 0;
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
         }
 
         /* ===== SIDEBAR ===== */
         #sidebar {
             width: var(--sidebar-w);
-            background: rgba(255,255,255,0.04);
+            background: rgba(255, 255, 255, 0.04);
             border-right: 1px solid var(--border);
-            display: flex; flex-direction: column;
+            display: flex;
+            flex-direction: column;
             padding: 28px 16px;
-            position: fixed; top: 0; left: 0; height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
             z-index: 100;
         }
 
         .sidebar-brand {
-            display: flex; align-items: center; gap: 10px;
-            margin-bottom: 36px; padding: 0 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 36px;
+            padding: 0 4px;
         }
 
-        .sidebar-brand-icon { font-size: 1.5rem; animation: spin 6s linear infinite; display: inline-block; }
+        .sidebar-brand-icon {
+            font-size: 1.5rem;
+            animation: spin 6s linear infinite;
+            display: inline-block;
+        }
 
         .sidebar-brand-text h3 {
-            font-size: 0.95rem; font-weight: 700;
+            font-size: 0.95rem;
+            font-weight: 700;
             background: linear-gradient(90deg, var(--accent), var(--accent-2));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .sidebar-brand-text span { font-size: 0.65rem; color: var(--text-dim); }
-
-        .nav-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 11px 14px; border-radius: 10px;
-            cursor: pointer; transition: 0.2s;
-            font-size: 0.88rem; font-weight: 500;
-            color: var(--text-dim); margin-bottom: 4px;
+        .sidebar-brand-text span {
+            font-size: 0.65rem;
+            color: var(--text-dim);
         }
 
-        .nav-item:hover { background: var(--surface-hover); color: var(--text); }
-        .nav-item.active { background: rgba(0,242,254,0.12); color: var(--accent); border: 1px solid rgba(0,242,254,0.2); }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
 
-        .nav-item .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+        .nav-item:hover {
+            background: var(--surface-hover);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: rgba(0, 242, 254, 0.12);
+            color: var(--accent);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+        }
+
+        .nav-item .nav-icon {
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
 
         .sidebar-footer {
             margin-top: auto;
@@ -125,8 +200,16 @@
             margin-bottom: 28px;
         }
 
-        .page-header h1 { font-size: 1.6rem; font-weight: 700; }
-        .page-header p { color: var(--text-dim); font-size: 0.85rem; margin-top: 4px; }
+        .page-header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .page-header p {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
 
         /* ===== STAT CARDS ===== */
         .stats-grid {
@@ -145,10 +228,33 @@
             transition: 0.2s;
         }
 
-        .stat-card:hover { background: var(--surface-hover); transform: translateY(-2px); }
-        .stat-card .stat-icon { font-size: 1.8rem; margin-bottom: 8px; }
-        .stat-card .stat-num { font-size: 2rem; font-weight: 700; font-family: 'Space Mono', monospace; background: linear-gradient(90deg,var(--accent),var(--accent-2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-        .stat-card .stat-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+        .stat-card:hover {
+            background: var(--surface-hover);
+            transform: translateY(-2px);
+        }
+
+        .stat-card .stat-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .stat-num {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
 
         /* ===== SECTION PANELS ===== */
         .panel {
@@ -160,19 +266,38 @@
         }
 
         .panel-title {
-            font-size: 1rem; font-weight: 600; margin-bottom: 18px;
-            display: flex; align-items: center; gap: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         /* ===== FORM ELEMENTS ===== */
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
 
-        .field { margin-bottom: 14px; }
-        .field label { font-size: 0.78rem; color: var(--text-dim); font-weight: 500; margin-bottom: 6px; display: block; }
+        .field {
+            margin-bottom: 14px;
+        }
 
-        .field input, .field textarea, .field select {
+        .field label {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .field input,
+        .field textarea,
+        .field select {
             width: 100%;
-            background: rgba(255,255,255,0.07);
+            background: rgba(255, 255, 255, 0.07);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 11px 14px;
@@ -183,22 +308,41 @@
             transition: 0.2s;
         }
 
-        .field input:focus, .field textarea:focus, .field select:focus {
+        .field input:focus,
+        .field textarea:focus,
+        .field select:focus {
             border-color: var(--accent);
-            background: rgba(0,242,254,0.05);
+            background: rgba(0, 242, 254, 0.05);
         }
 
-        .field textarea { height: 90px; resize: vertical; }
-        .field select option { background: #1a1535; }
+        .field textarea {
+            height: 90px;
+            resize: vertical;
+        }
 
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .field select option {
+            background: #1a1535;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
 
         /* ===== BUTTONS ===== */
         .btn {
-            padding: 11px 22px; border: none; border-radius: 10px;
-            font-size: 0.88rem; font-weight: 600; cursor: pointer;
-            font-family: 'Outfit', sans-serif; transition: 0.2s;
-            display: inline-flex; align-items: center; gap: 8px;
+            padding: 11px 22px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-primary {
@@ -206,19 +350,39 @@
             color: white;
         }
 
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--accent-glow); }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
 
-        .btn-danger { background: rgba(231,76,60,0.2); border: 1px solid rgba(231,76,60,0.4); color: #ff6b6b; }
-        .btn-danger:hover { background: rgba(231,76,60,0.35); }
+        .btn-danger {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid rgba(231, 76, 60, 0.4);
+            color: #ff6b6b;
+        }
 
-        .btn-ghost { background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); }
-        .btn-ghost:hover { background: rgba(255,255,255,0.15); }
+        .btn-danger:hover {
+            background: rgba(231, 76, 60, 0.35);
+        }
 
-        .btn-full { width: 100%; justify-content: center; }
+        .btn-ghost {
+            background: var(--surface-hover);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-full {
+            width: 100%;
+            justify-content: center;
+        }
 
         /* ===== UPLOAD ZONES ===== */
         .upload-zone {
-            border: 2px dashed rgba(255,255,255,0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
             border-radius: var(--radius);
             padding: 28px;
             text-align: center;
@@ -227,61 +391,119 @@
             position: relative;
         }
 
-        .upload-zone:hover, .upload-zone.dragover {
+        .upload-zone:hover,
+        .upload-zone.dragover {
             border-color: var(--accent);
-            background: rgba(0,242,254,0.05);
+            background: rgba(0, 242, 254, 0.05);
         }
 
         .upload-zone input[type=file] {
-            position: absolute; inset: 0; opacity: 0; cursor: pointer;
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
         }
 
-        .upload-zone .upload-icon { font-size: 2rem; margin-bottom: 8px; }
-        .upload-zone p { font-size: 0.82rem; color: var(--text-dim); }
-        .upload-zone strong { color: var(--accent); }
+        .upload-zone .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-zone p {
+            font-size: 0.82rem;
+            color: var(--text-dim);
+        }
+
+        .upload-zone strong {
+            color: var(--accent);
+        }
 
         .upload-preview {
-            margin-top: 12px; border-radius: 10px; overflow: hidden;
-            max-height: 200px; display: none;
-        }
-
-        .upload-preview img { width: 100%; object-fit: contain; max-height: 200px; }
-
-        /* ===== AI EXTRACT STATUS ===== */
-        .extract-status {
-            padding: 12px 16px; border-radius: 10px;
-            font-size: 0.82rem; margin-top: 12px;
+            margin-top: 12px;
+            border-radius: 10px;
+            overflow: hidden;
+            max-height: 200px;
             display: none;
         }
 
-        .extract-status.loading { background: rgba(0,242,254,0.08); border: 1px solid rgba(0,242,254,0.2); color: var(--accent); }
-        .extract-status.success { background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); color: var(--success); }
-        .extract-status.error { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); color: var(--error); }
+        .upload-preview img {
+            width: 100%;
+            object-fit: contain;
+            max-height: 200px;
+        }
+
+        /* ===== AI EXTRACT STATUS ===== */
+        .extract-status {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .extract-status.loading {
+            background: rgba(0, 242, 254, 0.08);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+            color: var(--accent);
+        }
+
+        .extract-status.success {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            color: var(--success);
+        }
+
+        .extract-status.error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: var(--error);
+        }
 
         /* ===== QUESTION PREVIEW ===== */
         #questionPreview {
             display: none;
             margin-top: 16px;
-            background: rgba(255,255,255,0.04);
+            background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 18px;
         }
 
-        .preview-q { font-weight: 600; margin-bottom: 12px; font-size: 0.92rem; }
-        .preview-opt {
-            padding: 8px 14px; margin: 6px 0;
-            background: rgba(255,255,255,0.06); border-radius: 8px;
-            font-size: 0.85rem; display: flex; gap: 10px;
+        .preview-q {
+            font-weight: 600;
+            margin-bottom: 12px;
+            font-size: 0.92rem;
         }
-        .preview-opt.correct-opt { background: rgba(46,204,113,0.15); border: 1px solid rgba(46,204,113,0.3); }
-        .preview-opt .opt-letter { font-family: 'Space Mono', monospace; font-size: 0.75rem; opacity: 0.7; }
+
+        .preview-opt {
+            padding: 8px 14px;
+            margin: 6px 0;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            display: flex;
+            gap: 10px;
+        }
+
+        .preview-opt.correct-opt {
+            background: rgba(46, 204, 113, 0.15);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .preview-opt .opt-letter {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
 
         /* ===== EXTRACTED QUESTIONS LIST ===== */
-        #extractedList { display: none; margin-top: 20px; }
+        #extractedList {
+            display: none;
+            margin-top: 20px;
+        }
 
         .extracted-q-item {
-            background: rgba(255,255,255,0.04);
+            background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 16px;
@@ -289,422 +511,598 @@
         }
 
         .extracted-q-header {
-            display: flex; justify-content: space-between; align-items: flex-start;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
             margin-bottom: 10px;
         }
 
-        .extracted-q-text { font-weight: 600; font-size: 0.88rem; flex: 1; margin-right: 12px; }
-        .extracted-q-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .extracted-q-text {
+            font-weight: 600;
+            font-size: 0.88rem;
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .extracted-q-opts {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
 
         .eq-opt {
-            padding: 6px 10px; border-radius: 8px;
-            font-size: 0.8rem; background: rgba(255,255,255,0.06);
-            display: flex; gap: 8px; align-items: center;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.06);
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
-        .eq-opt.correct { background: rgba(46,204,113,0.2); }
+
+        .eq-opt.correct {
+            background: rgba(46, 204, 113, 0.2);
+        }
 
         /* ===== TABLES ===== */
         .table-search {
             width: 100%;
-            background: rgba(255,255,255,0.07);
+            background: rgba(255, 255, 255, 0.07);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 10px 14px;
-            color: var(--text); font-size: 0.88rem;
-            outline: none; margin-bottom: 14px;
+            color: var(--text);
+            font-size: 0.88rem;
+            outline: none;
+            margin-bottom: 14px;
             font-family: 'Outfit', sans-serif;
         }
 
-        .table-wrap { overflow-x: auto; }
+        .table-wrap {
+            overflow-x: auto;
+        }
 
-        table { width: 100%; border-collapse: collapse; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
         th {
-            text-align: left; padding: 10px 12px;
-            font-size: 0.72rem; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.5px;
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             color: var(--text-dim);
             border-bottom: 1px solid var(--border);
         }
 
         td {
-            padding: 10px 12px; font-size: 0.83rem;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            padding: 10px 12px;
+            font-size: 0.83rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         }
 
-        tr:hover td { background: rgba(255,255,255,0.02); }
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
 
         .badge-pill {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
         }
-        .badge-pill.ok { background: rgba(46,204,113,0.15); color: var(--success); border: 1px solid rgba(46,204,113,0.3); }
-        .badge-pill.wrong { background: rgba(231,76,60,0.15); color: var(--error); border: 1px solid rgba(231,76,60,0.3); }
+
+        .badge-pill.ok {
+            background: rgba(46, 204, 113, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .badge-pill.wrong {
+            background: rgba(231, 76, 60, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
 
         /* ===== CHARTS ===== */
-        .chart-wrap { position: relative; height: 280px; }
+        .chart-wrap {
+            position: relative;
+            height: 280px;
+        }
 
         /* ===== QUESTION MANAGER TABLE ===== */
-        .q-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-        .q-info { flex: 1; font-size: 0.85rem; }
-        .q-chapter { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+        .q-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .q-info {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .q-chapter {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
 
         /* ===== MODALS ===== */
         .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 500; display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+            display: none;
         }
 
         .modal-box {
-            background: #1a1535; border-radius: 16px; padding: 32px;
-            width: 380px; text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            background: #1a1535;
+            border-radius: 16px;
+            padding: 32px;
+            width: 380px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
             border: 1px solid var(--border);
         }
 
-        .modal-box h3 { font-size: 1.1rem; margin-bottom: 10px; }
-        .modal-box p { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 20px; }
-        .modal-actions { display: flex; gap: 10px; }
-        .modal-actions .btn { flex: 1; justify-content: center; }
+        .modal-box h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .modal-box p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+            justify-content: center;
+        }
 
         /* ===== MISC ===== */
-        .hidden { display: none !important; }
-        .section { display: none; }
-        .section.active { display: block; }
-        .mt-12 { margin-top: 12px; }
-        .mt-20 { margin-top: 20px; }
-        .flex-end { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+        .hidden {
+            display: none !important;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .mt-12 {
+            margin-top: 12px;
+        }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        .flex-end {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+        }
 
         .spinner {
-            display: inline-block; width: 14px; height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: var(--accent); border-radius: 50%;
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
             animation: spin 0.7s linear infinite;
         }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
-            #sidebar { width: 60px; padding: 16px 10px; }
-            #sidebar .sidebar-brand-text, #sidebar .nav-label { display: none; }
-            #mainContent { margin-left: 60px; padding: 20px 16px; }
-            .form-row { grid-template-columns: 1fr; }
-            .options-grid { grid-template-columns: 1fr; }
+            #sidebar {
+                width: 60px;
+                padding: 16px 10px;
+            }
+
+            #sidebar .sidebar-brand-text,
+            #sidebar .nav-label {
+                display: none;
+            }
+
+            #mainContent {
+                margin-left: 60px;
+                padding: 20px 16px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
+
 <body>
 
-<!-- ===== LOGIN OVERLAY ===== -->
-<div id="loginOverlay">
-    <div class="login-card">
-        <div class="brand-logo">⚛</div>
-        <h2>Grip Physics Admin</h2>
-        <p>Enter your passcode to continue</p>
-        <div class="login-input-wrap">
-            <span>🔑</span>
-            <input id="passcode" type="password" placeholder="Admin passcode" onkeydown="if(event.key==='Enter') login()">
-        </div>
-        <button class="btn btn-primary btn-full" onclick="login()">Login to Dashboard</button>
-        <p id="loginError" style="color:#ff6b6b;font-size:0.8rem;margin-top:12px;display:none">Invalid passcode. Try again.</p>
-    </div>
-</div>
-
-<!-- ===== SIDEBAR ===== -->
-<nav id="sidebar" class="hidden">
-    <div class="sidebar-brand">
-        <span class="sidebar-brand-icon">⚛</span>
-        <div class="sidebar-brand-text">
-            <h3>Grip Physics</h3>
-            <span>Admin Panel</span>
-        </div>
-    </div>
-
-    <div class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard">
-        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
-    </div>
-    <div class="nav-item" onclick="showSection('addQuestion')" id="nav-addQuestion">
-        <span class="nav-icon">➕</span><span class="nav-label">Add Question</span>
-    </div>
-    <div class="nav-item" onclick="showSection('importQuestion')" id="nav-importQuestion">
-        <span class="nav-icon">📷</span><span class="nav-label">Import from Screenshot</span>
-    </div>
-    <div class="nav-item" onclick="showSection('manageQuestions')" id="nav-manageQuestions">
-        <span class="nav-icon">📋</span><span class="nav-label">Manage Questions</span>
-    </div>
-    <div class="nav-item" onclick="showSection('students')" id="nav-students">
-        <span class="nav-icon">👥</span><span class="nav-label">Students</span>
-    </div>
-    <div class="nav-item" onclick="showSection('migrate')" id="nav-migrate">
-        <span class="nav-icon">🔧</span><span class="nav-label">Fix DB Records</span>
-    </div>
-
-    <div class="sidebar-footer">
-        <div class="nav-item" onclick="logout()" style="color:var(--error)">
-            <span class="nav-icon">🚪</span><span class="nav-label">Logout</span>
-        </div>
-    </div>
-</nav>
-
-<!-- ===== MAIN CONTENT ===== -->
-<div id="mainContent" class="hidden">
-
-    <!-- DASHBOARD -->
-    <div class="section active" id="section-dashboard">
-        <div class="page-header">
-            <h1>Dashboard</h1>
-            <p>Overview of all student activity</p>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total Students</div></div>
-            <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num" id="stat-correct">—</div><div class="stat-label">Correct Answers</div></div>
-            <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num" id="stat-wrong">—</div><div class="stat-label">Wrong Answers</div></div>
-            <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-num" id="stat-lectures">—</div><div class="stat-label">Active Lectures</div></div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-title">📈 Lecture-wise Attempts (Correct vs Wrong)</div>
-            <div class="chart-wrap"><canvas id="lectureChart"></canvas></div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-title">🔍 Drill-down by Lecture</div>
-            <div class="field">
-                <label>Select Chapter</label>
-                <select id="drillChapter" onchange="loadDrillLectures()">
-                    <option value="">— All Chapters —</option>
-                </select>
+    <!-- ===== LOGIN OVERLAY ===== -->
+    <div id="loginOverlay">
+        <div class="login-card">
+            <div class="brand-logo">⚛</div>
+            <h2>Grip Physics Admin</h2>
+            <p>Enter your passcode to continue</p>
+            <div class="login-input-wrap">
+                <span>🔑</span>
+                <input id="passcode" type="password" placeholder="Admin passcode"
+                    onkeydown="if(event.key==='Enter') login()">
             </div>
-            <div class="field">
-                <label>Select Lecture</label>
-                <select id="drillLecture" onchange="loadDrillData()">
-                    <option value="">— Select —</option>
-                </select>
+            <button class="btn btn-primary btn-full" onclick="login()">Login to Dashboard</button>
+            <p id="loginError" style="color:#ff6b6b;font-size:0.8rem;margin-top:12px;display:none">Invalid passcode. Try
+                again.</p>
+        </div>
+    </div>
+
+    <!-- ===== SIDEBAR ===== -->
+    <nav id="sidebar" class="hidden">
+        <div class="sidebar-brand">
+            <span class="sidebar-brand-icon">⚛</span>
+            <div class="sidebar-brand-text">
+                <h3>Grip Physics</h3>
+                <span>Admin Panel</span>
             </div>
-            <div id="drillResults" style="display:none">
-                <div class="stats-grid mt-12" id="drillStats"></div>
-                <div class="table-wrap mt-12">
-                    <table id="drillTable">
-                        <thead><tr><th>Name</th><th>Mobile</th><th>Correct</th><th>Total</th><th>Result</th></tr></thead>
-                        <tbody></tbody>
+        </div>
+
+        <div class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard">
+            <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="showSection('addQuestion')" id="nav-addQuestion">
+            <span class="nav-icon">➕</span><span class="nav-label">Add Question</span>
+        </div>
+        <div class="nav-item" onclick="showSection('importQuestion')" id="nav-importQuestion">
+            <span class="nav-icon">📷</span><span class="nav-label">Import from Screenshot</span>
+        </div>
+        <div class="nav-item" onclick="showSection('manageQuestions')" id="nav-manageQuestions">
+            <span class="nav-icon">📋</span><span class="nav-label">Manage Questions</span>
+        </div>
+        <div class="nav-item" onclick="showSection('students')" id="nav-students">
+            <span class="nav-icon">👥</span><span class="nav-label">Students</span>
+        </div>
+        <div class="nav-item" onclick="showSection('migrate')" id="nav-migrate">
+            <span class="nav-icon">🔧</span><span class="nav-label">Fix DB Records</span>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="nav-item" onclick="logout()" style="color:var(--error)">
+                <span class="nav-icon">🚪</span><span class="nav-label">Logout</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent" class="hidden">
+
+        <!-- DASHBOARD -->
+        <div class="section active" id="section-dashboard">
+            <div class="page-header">
+                <h1>Dashboard</h1>
+                <p>Overview of all student activity</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-num" id="stat-total">—</div>
+                    <div class="stat-label">Total Students</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-num" id="stat-correct">—</div>
+                    <div class="stat-label">Correct Answers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-num" id="stat-wrong">—</div>
+                    <div class="stat-label">Wrong Answers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-num" id="stat-lectures">—</div>
+                    <div class="stat-label">Active Lectures</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">📈 Lecture-wise Attempts (Correct vs Wrong)</div>
+                <div class="chart-wrap"><canvas id="lectureChart"></canvas></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">🔍 Drill-down by Lecture</div>
+                <div class="field">
+                    <label>Select Chapter</label>
+                    <select id="drillChapter" onchange="loadDrillLectures()">
+                        <option value="">— All Chapters —</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Select Lecture</label>
+                    <select id="drillLecture" onchange="loadDrillData()">
+                        <option value="">— Select —</option>
+                    </select>
+                </div>
+                <div id="drillResults" style="display:none">
+                    <div class="stats-grid mt-12" id="drillStats"></div>
+                    <div class="table-wrap mt-12">
+                        <table id="drillTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Mobile</th>
+                                    <th>Correct</th>
+                                    <th>Total</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-end">
+                <button class="btn btn-primary" onclick="exportCSV()">⬇ Export to CSV</button>
+            </div>
+        </div>
+
+        <!-- ADD QUESTION (manual) -->
+        <div class="section" id="section-addQuestion">
+            <div class="page-header">
+                <h1>Add / Update Question</h1>
+                <p>Manually add a question for a lecture</p>
+            </div>
+
+            <div class="panel">
+                <div class="form-row">
+                    <div class="field">
+                        <label>Chapter Name</label>
+                        <input id="aq-chapter" placeholder="e.g. Laws of Motion" list="existingChapters">
+                        <datalist id="existingChapters"></datalist>
+                    </div>
+                    <div class="field">
+                        <label>Lecture Number</label>
+                        <input id="aq-lecture" placeholder="e.g. 5">
+                    </div>
+                </div>
+
+                <div id="aqQuestionsContainer"></div>
+
+                <button class="btn btn-ghost mt-12" onclick="addManualQuestion()">+ Add Another Question</button>
+
+                <div class="flex-end">
+                    <button class="btn btn-primary" onclick="saveManualQuestions()">💾 Save Questions</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- IMPORT FROM SCREENSHOT -->
+        <div class="section" id="section-importQuestion">
+            <div class="page-header">
+                <h1>Import from Screenshot</h1>
+                <p>AI detects all questions from a single screenshot. Multiple questions get auto-assigned lecture
+                    numbers starting from what you enter.</p>
+            </div>
+            <div class="panel">
+                <div class="form-row">
+                    <div class="field">
+                        <label>Chapter Name</label>
+                        <input id="imp-chapter" placeholder="e.g. Laws of Motion" list="existingChapters2">
+                        <datalist id="existingChapters2"></datalist>
+                    </div>
+                    <div class="field">
+                        <label>Starting Lecture Number</label>
+                        <input id="imp-lecture" type="number" min="1" placeholder="e.g. 4">
+                        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:5px">If image has 3 questions →
+                            lectures 4, 5, 6 assigned automatically</div>
+                    </div>
+                </div>
+
+                <div class="field" style="margin-top:8px">
+                    <label>📄 Questions Screenshot
+                        <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste
+                            (Ctrl+V)</span>
+                    </label>
+                    <div class="upload-zone" id="qZone" tabindex="0">
+                        <input type="file" accept="image/*" id="qFileInput" onchange="handleQFileInput(this)">
+                        <div class="upload-icon">📸</div>
+                        <p><strong>Click, drag &amp; drop, or paste</strong> the questions screenshot</p>
+                    </div>
+                    <div id="qPreview" class="upload-preview"><img id="qPreviewImg" src=""></div>
+                </div>
+
+                <div class="field">
+                    <label>🔑 Answer Key Screenshot
+                        <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste
+                            (Ctrl+V)</span>
+                    </label>
+                    <div class="upload-zone" id="aZone" tabindex="0">
+                        <input type="file" accept="image/*" id="aFileInput" onchange="handleAFileInput(this)">
+                        <div class="upload-icon">🔑</div>
+                        <p><strong>Click, drag &amp; drop, or paste</strong> the answer key screenshot</p>
+                    </div>
+                    <div class="upload-preview" id="aPreview"><img id="aPreviewImg" src=""></div>
+                </div>
+
+                <div class="extract-status" id="extractStatus"></div>
+                <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>
+                    🤖 Extract Questions with AI
+                </button>
+            </div>
+
+            <div id="extractedList" style="display:none">
+                <div class="panel">
+                    <div class="panel-title">📋 Extracted Questions — Review &amp; Edit Lecture Assignments</div>
+                    <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">Each question gets its own
+                        lecture number. Edit below before saving.</p>
+                    <div id="extractedQContainer"></div>
+                    <div class="flex-end mt-20">
+                        <button class="btn btn-ghost" onclick="addExtractedQuestion()">+ Add Question</button>
+                        <button class="btn btn-primary" onclick="saveExtractedQuestions()">💾 Save All to
+                            Database</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIX DB RECORDS -->
+        <div class="section" id="section-migrate">
+            <div class="page-header">
+                <h1>Fix DB Records</h1>
+                <p>Scan for and remove corrupted question records so those lecture numbers can be re-added cleanly.</p>
+            </div>
+            <div class="panel">
+                <div class="panel-title">🔍 Corrupted Record Scanner</div>
+                <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:20px">
+                    Old MongoDB records with no question text or empty options block new questions from saving for those
+                    lectures.
+                    <strong>Scan</strong> finds them. <strong>Delete Corrupted</strong> removes them permanently.
+                </p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <button class="btn btn-ghost" onclick="scanCorrupted()">🔍 Scan for Corrupted Records</button>
+                    <button class="btn btn-danger hidden" id="deleteCorruptedBtn" onclick="deleteCorrupted()">🗑 Delete
+                        Corrupted Records</button>
+                </div>
+                <div id="migrateStatus" style="margin-top:16px"></div>
+                <div id="migrateResults" style="margin-top:16px"></div>
+            </div>
+        </div>
+
+        <!-- MANAGE QUESTIONS -->
+        <div class="section" id="section-manageQuestions">
+            <div class="page-header">
+                <h1>Manage Questions</h1>
+                <p>View, edit, or delete questions by lecture</p>
+            </div>
+            <div class="panel">
+                <input class="table-search" placeholder="🔍 Search by chapter or lecture..."
+                    oninput="filterQuestions(this.value)">
+                <div id="questionList"></div>
+            </div>
+        </div>
+
+        <!-- STUDENTS -->
+        <div class="section" id="section-students">
+            <div class="page-header">
+                <h1>Student Records</h1>
+                <p>All registered students and their answers</p>
+            </div>
+            <div class="panel">
+                <input class="table-search" placeholder="🔍 Search by name, mobile, or lecture..." id="studentSearch"
+                    oninput="filterStudents(this.value)">
+                <div class="table-wrap">
+                    <table id="studentTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Mobile</th>
+                                <th>Place</th>
+                                <th>Class</th>
+                                <th>Chapter</th>
+                                <th>Lecture</th>
+                                <th>Score</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <div class="flex-end">
-            <button class="btn btn-primary" onclick="exportCSV()">⬇ Export to CSV</button>
-        </div>
     </div>
 
-    <!-- ADD QUESTION (manual) -->
-    <div class="section" id="section-addQuestion">
-        <div class="page-header">
-            <h1>Add / Update Question</h1>
-            <p>Manually add a question for a lecture</p>
-        </div>
-
-        <div class="panel">
-            <div class="form-row">
-                <div class="field">
-                    <label>Chapter Name</label>
-                    <input id="aq-chapter" placeholder="e.g. Laws of Motion" list="existingChapters">
-                    <datalist id="existingChapters"></datalist>
-                </div>
-                <div class="field">
-                    <label>Lecture Number</label>
-                    <input id="aq-lecture" placeholder="e.g. 5">
-                </div>
-            </div>
-
-            <div id="aqQuestionsContainer"></div>
-
-            <button class="btn btn-ghost mt-12" onclick="addManualQuestion()">+ Add Another Question</button>
-
-            <div class="flex-end">
-                <button class="btn btn-primary" onclick="saveManualQuestions()">💾 Save Questions</button>
+    <!-- REPLACE MODAL -->
+    <div class="modal-overlay" id="replaceModal">
+        <div class="modal-box">
+            <h3>Replace Existing Question?</h3>
+            <p>A question for this lecture already exists. Replacing it will allow all students to answer again.</p>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="confirmReplace()">Replace</button>
+                <button class="btn btn-ghost" onclick="closeModal('replaceModal')">Cancel</button>
             </div>
         </div>
     </div>
 
-    <!-- IMPORT FROM SCREENSHOT -->
-    <div class="section" id="section-importQuestion">
-        <div class="page-header">
-            <h1>Import from Screenshot</h1>
-            <p>AI detects all questions from a single screenshot. Multiple questions get auto-assigned lecture numbers starting from what you enter.</p>
-        </div>
-        <div class="panel">
-            <div class="form-row">
-                <div class="field">
-                    <label>Chapter Name</label>
-                    <input id="imp-chapter" placeholder="e.g. Laws of Motion" list="existingChapters2">
-                    <datalist id="existingChapters2"></datalist>
-                </div>
-                <div class="field">
-                    <label>Starting Lecture Number</label>
-                    <input id="imp-lecture" type="number" min="1" placeholder="e.g. 4">
-                    <div style="font-size:0.72rem;color:var(--text-dim);margin-top:5px">If image has 3 questions → lectures 4, 5, 6 assigned automatically</div>
-                </div>
-            </div>
-
-            <div class="field" style="margin-top:8px">
-                <label>📄 Questions Screenshot
-                    <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste (Ctrl+V)</span>
-                </label>
-                <div class="upload-zone" id="qZone" tabindex="0">
-                    <input type="file" accept="image/*" id="qFileInput" onchange="handleQFileInput(this)">
-                    <div class="upload-icon">📸</div>
-                    <p><strong>Click, drag &amp; drop, or paste</strong> the questions screenshot</p>
-                </div>
-                <div id="qPreview" class="upload-preview"><img id="qPreviewImg" src=""></div>
-            </div>
-
-            <div class="field">
-                <label>🔑 Answer Key Screenshot
-                    <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste (Ctrl+V)</span>
-                </label>
-                <div class="upload-zone" id="aZone" tabindex="0">
-                    <input type="file" accept="image/*" id="aFileInput" onchange="handleAFileInput(this)">
-                    <div class="upload-icon">🔑</div>
-                    <p><strong>Click, drag &amp; drop, or paste</strong> the answer key screenshot</p>
-                </div>
-                <div class="upload-preview" id="aPreview"><img id="aPreviewImg" src=""></div>
-            </div>
-
-            <div class="extract-status" id="extractStatus"></div>
-            <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>
-                🤖 Extract Questions with AI
-            </button>
-        </div>
-
-        <div id="extractedList" style="display:none">
-            <div class="panel">
-                <div class="panel-title">📋 Extracted Questions — Review &amp; Edit Lecture Assignments</div>
-                <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">Each question gets its own lecture number. Edit below before saving.</p>
-                <div id="extractedQContainer"></div>
-                <div class="flex-end mt-20">
-                    <button class="btn btn-ghost" onclick="addExtractedQuestion()">+ Add Question</button>
-                    <button class="btn btn-primary" onclick="saveExtractedQuestions()">💾 Save All to Database</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- FIX DB RECORDS -->
-    <div class="section" id="section-migrate">
-        <div class="page-header">
-            <h1>Fix DB Records</h1>
-            <p>Scan for and remove corrupted question records so those lecture numbers can be re-added cleanly.</p>
-        </div>
-        <div class="panel">
-            <div class="panel-title">🔍 Corrupted Record Scanner</div>
-            <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:20px">
-                Old MongoDB records with no question text or empty options block new questions from saving for those lectures.
-                <strong>Scan</strong> finds them. <strong>Delete Corrupted</strong> removes them permanently.
-            </p>
-            <div style="display:flex;gap:12px;flex-wrap:wrap">
-                <button class="btn btn-ghost" onclick="scanCorrupted()">🔍 Scan for Corrupted Records</button>
-                <button class="btn btn-danger hidden" id="deleteCorruptedBtn" onclick="deleteCorrupted()">🗑 Delete Corrupted Records</button>
-            </div>
-            <div id="migrateStatus" style="margin-top:16px"></div>
-            <div id="migrateResults" style="margin-top:16px"></div>
+    <!-- SUCCESS MODAL -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal-box">
+            <div style="font-size:2.5rem;margin-bottom:12px">✅</div>
+            <h3 id="successModalTitle">Success</h3>
+            <p id="successModalText">Operation completed successfully.</p>
+            <button class="btn btn-primary btn-full" onclick="closeModal('successModal')">OK</button>
         </div>
     </div>
 
-    <!-- MANAGE QUESTIONS -->
-    <div class="section" id="section-manageQuestions">
-        <div class="page-header">
-            <h1>Manage Questions</h1>
-            <p>View, edit, or delete questions by lecture</p>
-        </div>
-        <div class="panel">
-            <input class="table-search" placeholder="🔍 Search by chapter or lecture..." oninput="filterQuestions(this.value)">
-            <div id="questionList"></div>
-        </div>
-    </div>
-
-    <!-- STUDENTS -->
-    <div class="section" id="section-students">
-        <div class="page-header">
-            <h1>Student Records</h1>
-            <p>All registered students and their answers</p>
-        </div>
-        <div class="panel">
-            <input class="table-search" placeholder="🔍 Search by name, mobile, or lecture..." id="studentSearch" oninput="filterStudents(this.value)">
-            <div class="table-wrap">
-                <table id="studentTable">
-                    <thead>
-                        <tr>
-                            <th>Name</th><th>Mobile</th><th>Place</th><th>Class</th>
-                            <th>Chapter</th><th>Lecture</th><th>Score</th><th>Result</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentTableBody"></tbody>
-                </table>
+    <!-- DELETE CONFIRM MODAL -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <div style="font-size:2rem;margin-bottom:12px">🗑</div>
+            <h3>Delete Question?</h3>
+            <p id="deleteModalText">This will permanently remove this question and cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+                <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
             </div>
         </div>
     </div>
 
-</div>
+    <script>
+        const API_BASE = ""; // Vercel proxies /api/* to Render via vercel.json
 
-<!-- REPLACE MODAL -->
-<div class="modal-overlay" id="replaceModal">
-    <div class="modal-box">
-        <h3>Replace Existing Question?</h3>
-        <p>A question for this lecture already exists. Replacing it will allow all students to answer again.</p>
-        <div class="modal-actions">
-            <button class="btn btn-danger" onclick="confirmReplace()">Replace</button>
-            <button class="btn btn-ghost" onclick="closeModal('replaceModal')">Cancel</button>
-        </div>
-    </div>
-</div>
+        /* ========== STATE ========== */
+        let allStudents = [];
+        let allQuestions = [];
+        let pendingReplaceData = null;
+        let pendingDeleteChapter = null;
+        let pendingDeleteLecture = null;
+        let qImageBase64 = null;
+        let aImageBase64 = null;
+        let extractedQuestions = [];
+        let manualQuestionCount = 0;
 
-<!-- SUCCESS MODAL -->
-<div class="modal-overlay" id="successModal">
-    <div class="modal-box">
-        <div style="font-size:2.5rem;margin-bottom:12px">✅</div>
-        <h3 id="successModalTitle">Success</h3>
-        <p id="successModalText">Operation completed successfully.</p>
-        <button class="btn btn-primary btn-full" onclick="closeModal('successModal')">OK</button>
-    </div>
-</div>
-
-<!-- DELETE CONFIRM MODAL -->
-<div class="modal-overlay" id="deleteModal">
-    <div class="modal-box">
-        <div style="font-size:2rem;margin-bottom:12px">🗑</div>
-        <h3>Delete Question?</h3>
-        <p id="deleteModalText">This will permanently remove this question and cannot be undone.</p>
-        <div class="modal-actions">
-            <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
-            <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<script>
-const API_BASE = "https://grip-physics.onrender.com";
-
-/* ========== STATE ========== */
-let allStudents = [];
-let allQuestions = [];
-let pendingReplaceData = null;
-let pendingDeleteChapter = null;
-let pendingDeleteLecture = null;
-let qImageBase64 = null;
-let aImageBase64 = null;
-let extractedQuestions = [];
-let manualQuestionCount = 0;
-
-/* ========== LOGIN ========== */
-// Check if session is still active on page load — skips login screen if already logged in
+        /* ========== LOGIN ========== */
+        // Check if session is still active on page load — skips login screen if already logged in
         (async function checkSession() {
             try {
                 const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
                 if (res.ok) enterDashboard();
-            } catch(e) { /* stay on login */ }
+            } catch (e) { /* stay on login */ }
         })();
 
         function enterDashboard() {
@@ -729,118 +1127,118 @@ let manualQuestionCount = 0;
             enterDashboard();
         }
 
-async function logout() {
-    await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" });
-    location.reload();
-}
-
-/* ========== NAVIGATION ========== */
-function showSection(name) {
-    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-    document.getElementById(`section-${name}`).classList.add("active");
-    document.getElementById(`nav-${name}`).classList.add("active");
-
-    if (name === "students") renderStudentTable(allStudents);
-    if (name === "manageQuestions") renderQuestionList(allQuestions);
-}
-
-/* ========== DASHBOARD ========== */
-async function loadDashboard() {
-    try {
-        const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
-        allStudents = await res.json();
-
-        // Stats
-        const withAnswers = allStudents.filter(s => s.answers && s.answers.length > 0);
-        const totalCorrect = withAnswers.reduce((sum, s) => sum + (s.correctCount || 0), 0);
-        const totalWrong = withAnswers.reduce((sum, s) => sum + ((s.totalQuestions || 0) - (s.correctCount || 0)), 0);
-        const lectures = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
-
-        document.getElementById("stat-total").textContent = allStudents.length;
-        document.getElementById("stat-correct").textContent = totalCorrect;
-        document.getElementById("stat-wrong").textContent = totalWrong;
-        document.getElementById("stat-lectures").textContent = lectures.size;
-
-        buildChart(withAnswers);
-        populateDrillChapters();
-        renderStudentTable(allStudents);
-    } catch (err) { console.error("Dashboard load error:", err); }
-}
-
-function buildChart(data) {
-    const lectureMap = {};
-    data.forEach(s => {
-        const key = `${s.chapter} / L${s.lecture}`;
-        if (!lectureMap[key]) lectureMap[key] = { correct: 0, wrong: 0 };
-        lectureMap[key].correct += s.correctCount || 0;
-        lectureMap[key].wrong += ((s.totalQuestions || 0) - (s.correctCount || 0));
-    });
-
-    const labels = Object.keys(lectureMap).sort();
-    const corrects = labels.map(k => lectureMap[k].correct);
-    const wrongs = labels.map(k => lectureMap[k].wrong);
-
-    const ctx = document.getElementById("lectureChart");
-    if (window._chart) window._chart.destroy();
-
-    window._chart = new Chart(ctx, {
-        type: "bar",
-        data: {
-            labels,
-            datasets: [
-                { label: "Correct", data: corrects, backgroundColor: "rgba(46,204,113,0.7)", borderRadius: 6 },
-                { label: "Wrong", data: wrongs, backgroundColor: "rgba(231,76,60,0.7)", borderRadius: 6 }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: "#fff", font: { family: "Outfit" } } } },
-            scales: {
-                x: { stacked: false, ticks: { color: "#aaa", font: { family: "Outfit", size: 11 } }, grid: { color: "rgba(255,255,255,0.05)" } },
-                y: { beginAtZero: true, ticks: { color: "#aaa", stepSize: 1, font: { family: "Outfit" } }, grid: { color: "rgba(255,255,255,0.05)" } }
-            }
+        async function logout() {
+            await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" });
+            location.reload();
         }
-    });
-}
 
-/* ========== DRILL DOWN ========== */
-function populateDrillChapters() {
-    const chapters = [...new Set(allStudents.map(s => s.chapter).filter(Boolean))].sort();
-    const sel = document.getElementById("drillChapter");
-    sel.innerHTML = '<option value="">— All Chapters —</option>';
-    chapters.forEach(ch => { const o = document.createElement("option"); o.value = ch; o.textContent = ch; sel.appendChild(o); });
-}
+        /* ========== NAVIGATION ========== */
+        function showSection(name) {
+            document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+            document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+            document.getElementById(`section-${name}`).classList.add("active");
+            document.getElementById(`nav-${name}`).classList.add("active");
 
-function loadDrillLectures() {
-    const chapter = document.getElementById("drillChapter").value;
-    const lectures = [...new Set(allStudents.filter(s => !chapter || s.chapter === chapter).map(s => s.lecture).filter(Boolean))].sort((a,b) => Number(a)-Number(b));
-    const sel = document.getElementById("drillLecture");
-    sel.innerHTML = '<option value="">— Select Lecture —</option>';
-    lectures.forEach(l => { const o = document.createElement("option"); o.value = l; o.textContent = `Lecture ${l}`; sel.appendChild(o); });
-    document.getElementById("drillResults").style.display = "none";
-}
+            if (name === "students") renderStudentTable(allStudents);
+            if (name === "manageQuestions") renderQuestionList(allQuestions);
+        }
 
-function loadDrillData() {
-    const chapter = document.getElementById("drillChapter").value;
-    const lecture = document.getElementById("drillLecture").value;
-    if (!lecture) { document.getElementById("drillResults").style.display = "none"; return; }
+        /* ========== DASHBOARD ========== */
+        async function loadDashboard() {
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
+                allStudents = await res.json();
 
-    const filtered = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lecture && (!chapter || s.chapter === chapter));
-    const totalCorrect = filtered.reduce((sum, s) => sum + (s.correctCount || 0), 0);
-    const totalWrong = filtered.reduce((sum, s) => sum + ((s.totalQuestions || 0) - (s.correctCount || 0)), 0);
+                // Stats
+                const withAnswers = allStudents.filter(s => s.answers && s.answers.length > 0);
+                const totalCorrect = withAnswers.reduce((sum, s) => sum + (s.correctCount || 0), 0);
+                const totalWrong = withAnswers.reduce((sum, s) => sum + ((s.totalQuestions || 0) - (s.correctCount || 0)), 0);
+                const lectures = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
 
-    document.getElementById("drillStats").innerHTML = `
+                document.getElementById("stat-total").textContent = allStudents.length;
+                document.getElementById("stat-correct").textContent = totalCorrect;
+                document.getElementById("stat-wrong").textContent = totalWrong;
+                document.getElementById("stat-lectures").textContent = lectures.size;
+
+                buildChart(withAnswers);
+                populateDrillChapters();
+                renderStudentTable(allStudents);
+            } catch (err) { console.error("Dashboard load error:", err); }
+        }
+
+        function buildChart(data) {
+            const lectureMap = {};
+            data.forEach(s => {
+                const key = `${s.chapter} / L${s.lecture}`;
+                if (!lectureMap[key]) lectureMap[key] = { correct: 0, wrong: 0 };
+                lectureMap[key].correct += s.correctCount || 0;
+                lectureMap[key].wrong += ((s.totalQuestions || 0) - (s.correctCount || 0));
+            });
+
+            const labels = Object.keys(lectureMap).sort();
+            const corrects = labels.map(k => lectureMap[k].correct);
+            const wrongs = labels.map(k => lectureMap[k].wrong);
+
+            const ctx = document.getElementById("lectureChart");
+            if (window._chart) window._chart.destroy();
+
+            window._chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [
+                        { label: "Correct", data: corrects, backgroundColor: "rgba(46,204,113,0.7)", borderRadius: 6 },
+                        { label: "Wrong", data: wrongs, backgroundColor: "rgba(231,76,60,0.7)", borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: "#fff", font: { family: "Outfit" } } } },
+                    scales: {
+                        x: { stacked: false, ticks: { color: "#aaa", font: { family: "Outfit", size: 11 } }, grid: { color: "rgba(255,255,255,0.05)" } },
+                        y: { beginAtZero: true, ticks: { color: "#aaa", stepSize: 1, font: { family: "Outfit" } }, grid: { color: "rgba(255,255,255,0.05)" } }
+                    }
+                }
+            });
+        }
+
+        /* ========== DRILL DOWN ========== */
+        function populateDrillChapters() {
+            const chapters = [...new Set(allStudents.map(s => s.chapter).filter(Boolean))].sort();
+            const sel = document.getElementById("drillChapter");
+            sel.innerHTML = '<option value="">— All Chapters —</option>';
+            chapters.forEach(ch => { const o = document.createElement("option"); o.value = ch; o.textContent = ch; sel.appendChild(o); });
+        }
+
+        function loadDrillLectures() {
+            const chapter = document.getElementById("drillChapter").value;
+            const lectures = [...new Set(allStudents.filter(s => !chapter || s.chapter === chapter).map(s => s.lecture).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+            const sel = document.getElementById("drillLecture");
+            sel.innerHTML = '<option value="">— Select Lecture —</option>';
+            lectures.forEach(l => { const o = document.createElement("option"); o.value = l; o.textContent = `Lecture ${l}`; sel.appendChild(o); });
+            document.getElementById("drillResults").style.display = "none";
+        }
+
+        function loadDrillData() {
+            const chapter = document.getElementById("drillChapter").value;
+            const lecture = document.getElementById("drillLecture").value;
+            if (!lecture) { document.getElementById("drillResults").style.display = "none"; return; }
+
+            const filtered = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lecture && (!chapter || s.chapter === chapter));
+            const totalCorrect = filtered.reduce((sum, s) => sum + (s.correctCount || 0), 0);
+            const totalWrong = filtered.reduce((sum, s) => sum + ((s.totalQuestions || 0) - (s.correctCount || 0)), 0);
+
+            document.getElementById("drillStats").innerHTML = `
         <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${filtered.length}</div><div class="stat-label">Attempted</div></div>
         <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${totalCorrect}</div><div class="stat-label">Correct</div></div>
         <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num">${totalWrong}</div><div class="stat-label">Wrong</div></div>
     `;
 
-    const tbody = document.querySelector("#drillTable tbody");
-    tbody.innerHTML = "";
-    filtered.forEach(s => {
-        const pct = s.totalQuestions ? Math.round((s.correctCount/s.totalQuestions)*100) : 0;
-        tbody.insertAdjacentHTML("beforeend", `
+            const tbody = document.querySelector("#drillTable tbody");
+            tbody.innerHTML = "";
+            filtered.forEach(s => {
+                const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
+                tbody.insertAdjacentHTML("beforeend", `
             <tr>
                 <td>${s.name || "—"}</td>
                 <td><span style="font-family:'Space Mono',monospace;font-size:0.8rem">${s.mobile}</span></td>
@@ -849,38 +1247,38 @@ function loadDrillData() {
                 <td><span class="badge-pill ${pct >= 50 ? 'ok' : 'wrong'}">${pct}%</span></td>
             </tr>
         `);
-    });
+            });
 
-    document.getElementById("drillResults").style.display = "block";
-}
-
-/* ========== CHAPTERS ADMIN ========== */
-async function loadChaptersAdmin() {
-    try {
-        const res = await fetch(`${API_BASE}/api/chapters`);
-        const chapters = await res.json();
-        ["existingChapters", "existingChapters2"].forEach(id => {
-            const dl = document.getElementById(id);
-            if (!dl) return;
-            dl.innerHTML = chapters.map(ch => `<option value="${ch}">`).join("");
-        });
-        // Drill chapter
-        const drillCh = document.getElementById("drillChapter");
-        if (drillCh) {
-            drillCh.innerHTML = '<option value="">— All Chapters —</option>' + chapters.map(ch => `<option value="${ch}">${ch}</option>`).join("");
+            document.getElementById("drillResults").style.display = "block";
         }
-    } catch (err) { console.error(err); }
-}
 
-/* ========== MANUAL ADD QUESTION ========== */
-function addManualQuestion(data) {
-    manualQuestionCount++;
-    const id = `mq_${manualQuestionCount}`;
-    const container = document.getElementById("aqQuestionsContainer");
-    const div = document.createElement("div");
-    div.className = "panel"; div.id = id; div.style.background = "rgba(255,255,255,0.03)";
+        /* ========== CHAPTERS ADMIN ========== */
+        async function loadChaptersAdmin() {
+            try {
+                const res = await fetch(`${API_BASE}/api/chapters`);
+                const chapters = await res.json();
+                ["existingChapters", "existingChapters2"].forEach(id => {
+                    const dl = document.getElementById(id);
+                    if (!dl) return;
+                    dl.innerHTML = chapters.map(ch => `<option value="${ch}">`).join("");
+                });
+                // Drill chapter
+                const drillCh = document.getElementById("drillChapter");
+                if (drillCh) {
+                    drillCh.innerHTML = '<option value="">— All Chapters —</option>' + chapters.map(ch => `<option value="${ch}">${ch}</option>`).join("");
+                }
+            } catch (err) { console.error(err); }
+        }
 
-    div.innerHTML = `
+        /* ========== MANUAL ADD QUESTION ========== */
+        function addManualQuestion(data) {
+            manualQuestionCount++;
+            const id = `mq_${manualQuestionCount}`;
+            const container = document.getElementById("aqQuestionsContainer");
+            const div = document.createElement("div");
+            div.className = "panel"; div.id = id; div.style.background = "rgba(255,255,255,0.03)";
+
+            div.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <strong style="font-size:0.9rem">Question ${container.children.length + 1}</strong>
             <button class="btn btn-danger" style="padding:6px 12px;font-size:0.78rem" onclick="this.closest('.panel').remove()">Remove</button>
@@ -901,35 +1299,35 @@ function addManualQuestion(data) {
             </select>
         </div>
     `;
-    container.appendChild(div);
-}
-
-// Initialize with one question slot
-addManualQuestion();
-
-async function saveManualQuestions() {
-    const chapter = document.getElementById("aq-chapter").value.trim();
-    const lecture = document.getElementById("aq-lecture").value.trim();
-    if (!chapter || !lecture) { alert("Please enter chapter and lecture."); return; }
-
-    const questionBlocks = document.querySelectorAll("#aqQuestionsContainer .panel");
-    const questions = [];
-
-    questionBlocks.forEach(block => {
-        const text = block.querySelector(".mq-text").value.trim();
-        const opts = [...block.querySelectorAll(".mq-opt")].map(i => i.value.trim());
-        const correctIndex = parseInt(block.querySelector(".mq-correct").value);
-        if (text && opts.every(o => o)) {
-            questions.push({ question: text, options: opts, correctIndex });
+            container.appendChild(div);
         }
-    });
 
-    if (questions.length === 0) { alert("Please fill in at least one complete question."); return; }
+        // Initialize with one question slot
+        addManualQuestion();
 
-    await submitQuestions(chapter, lecture, questions);
-}
+        async function saveManualQuestions() {
+            const chapter = document.getElementById("aq-chapter").value.trim();
+            const lecture = document.getElementById("aq-lecture").value.trim();
+            if (!chapter || !lecture) { alert("Please enter chapter and lecture."); return; }
 
-/* ========== SCREENSHOT IMPORT ========== */
+            const questionBlocks = document.querySelectorAll("#aqQuestionsContainer .panel");
+            const questions = [];
+
+            questionBlocks.forEach(block => {
+                const text = block.querySelector(".mq-text").value.trim();
+                const opts = [...block.querySelectorAll(".mq-opt")].map(i => i.value.trim());
+                const correctIndex = parseInt(block.querySelector(".mq-correct").value);
+                if (text && opts.every(o => o)) {
+                    questions.push({ question: text, options: opts, correctIndex });
+                }
+            });
+
+            if (questions.length === 0) { alert("Please fill in at least one complete question."); return; }
+
+            await submitQuestions(chapter, lecture, questions);
+        }
+
+        /* ========== SCREENSHOT IMPORT ========== */
 
         function fileToBase64(file) {
             return new Promise((res, rej) => {
@@ -965,7 +1363,7 @@ async function saveManualQuestions() {
         }
 
         // Paste support — Ctrl+V anywhere on the import page
-        document.addEventListener("paste", async function(e) {
+        document.addEventListener("paste", async function (e) {
             if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return;
             const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
             if (!items) return;
@@ -1050,7 +1448,7 @@ async function saveManualQuestions() {
         function renderExtractedQuestions(questions) {
             const container = document.getElementById("extractedQContainer");
             container.innerHTML = "";
-            const letters = ["A","B","C","D"];
+            const letters = ["A", "B", "C", "D"];
             questions.forEach((q, qi) => {
                 const div = document.createElement("div");
                 div.className = "extracted-q-item"; div.id = `eq_${qi}`;
@@ -1058,7 +1456,7 @@ async function saveManualQuestions() {
                 div.innerHTML = `
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap">
                         <div style="display:flex;align-items:center;gap:10px">
-                            <strong style="font-size:0.88rem">Q${qi+1}</strong>
+                            <strong style="font-size:0.88rem">Q${qi + 1}</strong>
                             <div style="display:flex;align-items:center;gap:8px;background:rgba(0,242,254,0.08);border:1px solid rgba(0,242,254,0.2);border-radius:8px;padding:4px 12px">
                                 <span style="font-size:0.75rem;opacity:0.7">Lecture</span>
                                 <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1"
@@ -1074,14 +1472,14 @@ async function saveManualQuestions() {
                         ${q.options.map((opt, oi) => `
                             <div class="eq-opt ${oi === q.correctIndex ? 'correct' : ''}">
                                 <span style="font-family:'Space Mono',monospace;font-size:0.7rem;font-weight:700;flex-shrink:0">${letters[oi]}</span>
-                                <input value="${(opt||'').replace(/"/g,'&quot;')}" id="eq_opt_${qi}_${oi}"
+                                <input value="${(opt || '').replace(/"/g, '&quot;')}" id="eq_opt_${qi}_${oi}"
                                     style="flex:1;background:transparent;border:none;color:white;font-size:0.82rem;outline:none;font-family:Outfit,sans-serif">
                             </div>`).join("")}
                     </div>
                     <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
                         <label style="font-size:0.78rem;color:var(--text-dim)">Correct Answer:</label>
                         <select id="eq_correct_${qi}" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none">
-                            ${letters.map((l,i) => `<option value="${i}" ${i===q.correctIndex?"selected":""}>${l}</option>`).join("")}
+                            ${letters.map((l, i) => `<option value="${i}" ${i === q.correctIndex ? "selected" : ""}>${l}</option>`).join("")}
                         </select>
                     </div>`;
                 container.appendChild(div);
@@ -1093,7 +1491,7 @@ async function saveManualQuestions() {
         function addExtractedQuestion() {
             const startLecture = parseInt(document.getElementById("imp-lecture").value) || 1;
             const count = document.querySelectorAll(".extracted-q-item").length;
-            extractedQuestions.push({ question:"", options:["","","",""], correctIndex:0, assignedLecture: startLecture + count });
+            extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndex: 0, assignedLecture: startLecture + count });
             renderExtractedQuestions(extractedQuestions);
         }
 
@@ -1109,38 +1507,38 @@ async function saveManualQuestions() {
             qItems.forEach((item, qi) => {
                 const lec = item.querySelector(`[id^="eq_lec_"]`)?.value.trim();
                 const txt = item.querySelector(`[id^="eq_q_"]`)?.value.trim();
-                const opts = [0,1,2,3].map(oi => item.querySelector(`[id$="_${oi}"]`)?.value.trim()||"");
-                const ci = parseInt(item.querySelector(`[id^="eq_correct_"]`)?.value||0);
-                if (!lec || !txt || !opts.every(o=>o)) { hasError = true; return; }
+                const opts = [0, 1, 2, 3].map(oi => item.querySelector(`[id$="_${oi}"]`)?.value.trim() || "");
+                const ci = parseInt(item.querySelector(`[id^="eq_correct_"]`)?.value || 0);
+                if (!lec || !txt || !opts.every(o => o)) { hasError = true; return; }
                 if (!groups[lec]) groups[lec] = [];
-                groups[lec].push({ question:txt, options:opts, correctIndex:ci });
+                groups[lec].push({ question: txt, options: opts, correctIndex: ci });
             });
             if (hasError) { alert("Some questions are incomplete. Fill in all fields and lecture numbers."); return; }
             const lectures = Object.keys(groups);
             if (!lectures.length) { alert("No complete questions to save."); return; }
 
-            let saved=0, failed=[];
+            let saved = 0, failed = [];
             for (const lec of lectures) {
                 const r = await fetch(`${API_BASE}/api/admin/add-question`, {
-                    method:"POST", credentials:"include",
-                    headers:{"Content-Type":"application/json"},
-                    body: JSON.stringify({ chapter, lecture:lec, questions:groups[lec], replace:false })
+                    method: "POST", credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false })
                 });
                 if (r.ok) { saved++; }
-                else if (r.status===409) {
+                else if (r.status === 409) {
                     if (confirm(`Lecture ${lec} already exists. Replace it?`)) {
                         const r2 = await fetch(`${API_BASE}/api/admin/add-question`, {
-                            method:"POST", credentials:"include",
-                            headers:{"Content-Type":"application/json"},
-                            body: JSON.stringify({ chapter, lecture:lec, questions:groups[lec], replace:true })
+                            method: "POST", credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true })
                         });
                         if (r2.ok) saved++; else failed.push(lec);
                     }
                 } else { failed.push(lec); }
             }
             openModal("successModal");
-            document.getElementById("successModalTitle").textContent = saved>0 ? "Saved!" : "Failed";
-            document.getElementById("successModalText").textContent = failed.length===0
+            document.getElementById("successModalTitle").textContent = saved > 0 ? "Saved!" : "Failed";
+            document.getElementById("successModalText").textContent = failed.length === 0
                 ? `${saved} lecture(s) saved for "${chapter}".`
                 : `Saved: ${saved}. Failed lectures: ${failed.join(", ")}.`;
             loadQuestionsAdmin(); loadChaptersAdmin();
@@ -1153,19 +1551,19 @@ async function saveManualQuestions() {
             status.innerHTML = '<span class="spinner"></span>&nbsp; Scanning database...';
             results.innerHTML = "";
             try {
-                const res = await fetch(`${API_BASE}/api/admin/migrate`, { credentials:"include" });
-                if (res.status===404) { status.innerHTML='<div style="color:var(--error)">Endpoint not found — update server.js first.</div>'; return; }
+                const res = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" });
+                if (res.status === 404) { status.innerHTML = '<div style="color:var(--error)">Endpoint not found — update server.js first.</div>'; return; }
                 const data = await res.json();
                 status.innerHTML = "";
-                if (data.corrupted===0) {
-                    results.innerHTML=`<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ No corrupted records found. Database is clean!</div>`;
+                if (data.corrupted === 0) {
+                    results.innerHTML = `<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ No corrupted records found. Database is clean!</div>`;
                     document.getElementById("deleteCorruptedBtn").classList.add("hidden");
                 } else {
-                    const rows = data.corruptedLectures.map(l=>`<tr><td>${l.chapter||"<em style='opacity:0.4'>none</em>"}</td><td>Lecture ${l.lecture}</td><td style="font-family:'Space Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join("");
-                    results.innerHTML=`<div style="padding:14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:10px;color:var(--error);margin-bottom:14px">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s) out of ${data.total} total.</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>Document ID</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+                    const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "<em style='opacity:0.4'>none</em>"}</td><td>Lecture ${l.lecture}</td><td style="font-family:'Space Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join("");
+                    results.innerHTML = `<div style="padding:14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:10px;color:var(--error);margin-bottom:14px">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s) out of ${data.total} total.</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>Document ID</th></tr></thead><tbody>${rows}</tbody></table></div>`;
                     document.getElementById("deleteCorruptedBtn").classList.remove("hidden");
                 }
-            } catch(err) { status.innerHTML=`<div style="color:var(--error)">Error: ${err.message}</div>`; }
+            } catch (err) { status.innerHTML = `<div style="color:var(--error)">Error: ${err.message}</div>`; }
         }
 
         async function deleteCorrupted() {
@@ -1173,12 +1571,15 @@ async function saveManualQuestions() {
             const status = document.getElementById("migrateStatus");
             status.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...';
             try {
-                const res = await fetch(`${API_BASE}/api/admin/migrate`, { method:"POST", credentials:"include" });
+                const res = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" });
                 const data = await res.json();
                 status.innerHTML = "";
-                document.getElementById("migrateResults").innerHTML=`<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ ${data.message}</div>`;
+                document.getElementById("migrateResults").innerHTML = `<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ ${data.message}</div>`;
                 document.getElementById("deleteCorruptedBtn").classList.add("hidden");
                 loadQuestionsAdmin();
-            } catch(err) { status.innerHTML=`<div style="color:var(--error)">Error: ${err.message}</div>`; }
+            } catch (err) { status.innerHTML = `<div style="color:var(--error)">Error: ${err.message}</div>`; }
         }
+    </script>
+</body>
 
+</html>
