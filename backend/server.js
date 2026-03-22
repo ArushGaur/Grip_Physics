@@ -333,56 +333,68 @@ app.get("/api/admin/questions", requireAdmin, async (req, res) => {
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     const { questionImageBase64, answerImageBase64 } = req.body;
     if (!questionImageBase64 || !answerImageBase64) return res.status(400).json({ error: "Both images required" });
-    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY not set on server" });
+    if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
 
-    // Detect actual mime type from base64 header bytes so PNG/JPG both work
-    function getMimeType(b64) {
-        const sig = b64.slice(0, 8);
-        if (sig.startsWith("/9j/")) return "image/jpeg";
-        if (sig.startsWith("iVBORw")) return "image/png";
-        if (sig.startsWith("R0lGOD")) return "image/gif";
-        if (sig.startsWith("UklGRi")) return "image/webp";
-        return "image/jpeg"; // fallback
+    // Detect mime type from base64 signature
+    function getMime(b64) {
+        if (b64.startsWith("/9j/")) return "image/jpeg";
+        if (b64.startsWith("iVBORw")) return "image/png";
+        if (b64.startsWith("R0lGOD")) return "image/gif";
+        if (b64.startsWith("UklGRi")) return "image/webp";
+        return "image/jpeg";
     }
 
-    const qMime = getMimeType(questionImageBase64);
-    const aMime = getMimeType(answerImageBase64);
+    const qMime = getMime(questionImageBase64);
+    const aMime = getMime(answerImageBase64);
 
-    const prompt = "First image = physics MCQ questions. Second image = answer key.\nExtract ALL questions, match each answer, return ONLY a raw JSON array (no markdown, no backticks).\nFormat: [{\"question\":\"...\",\"options\":[\"A text\",\"B text\",\"C text\",\"D text\"],\"correctIndex\":0}]\nRules: correctIndex 0=A 1=B 2=C 3=D. If answer key uses 1/2/3/4 map to 0/1/2/3. Write equations in plain text (e.g. v^2=u^2+2as). Include every question visible.";
+    const prompt = `First image = physics MCQ questions. Second image = answer key.
+Extract ALL questions from the first image, match each with the correct answer from the second image.
+Return ONLY a raw JSON array — no markdown, no backticks, no explanation.
+Format: [{"question":"full question text","options":["Option A","Option B","Option C","Option D"],"correctIndex":0}]
+Rules:
+- correctIndex: 0=A, 1=B, 2=C, 3=D
+- If answer key uses numbers 1/2/3/4 map them to 0/1/2/3
+- Write all equations in plain text (e.g. v^2 = u^2 + 2as, F = ma)
+- Include all 4 options for every question
+- Extract every single question visible in the image`;
 
     try {
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + process.env.GEMINI_API_KEY;
-
-        const body = {
-            contents: [{
-                parts: [
-                    { inline_data: { mime_type: qMime, data: questionImageBase64 } },
-                    { inline_data: { mime_type: aMime, data: answerImageBase64 } },
-                    { text: prompt }
-                ]
-            }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 4000 }
-        };
-        const r = await fetch(url, {
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + process.env.GROQ_API_KEY
+            },
+            body: JSON.stringify({
+                model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                max_tokens: 4000,
+                temperature: 0.1,
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "image_url", image_url: { url: "data:" + qMime + ";base64," + questionImageBase64 } },
+                            { type: "image_url", image_url: { url: "data:" + aMime + ";base64," + answerImageBase64 } },
+                            { type: "text", text: prompt }
+                        ]
+                    }
+                ]
+            })
         });
 
         if (!r.ok) {
             const e = await r.json();
-            const msg = (e.error && e.error.message) || "Gemini API error";
-            console.error("Gemini error:", msg);
+            const msg = (e.error && e.error.message) || "Groq API error";
+            console.error("Groq error:", msg);
             return res.status(502).json({ error: msg });
         }
 
         const data = await r.json();
-        let text = (data.candidates &&
-                    data.candidates[0] &&
-                    data.candidates[0].content &&
-                    data.candidates[0].content.parts &&
-                    data.candidates[0].content.parts[0] &&
-                    data.candidates[0].content.parts[0].text) || "";
+        let text = (data.choices &&
+                    data.choices[0] &&
+                    data.choices[0].message &&
+                    data.choices[0].message.content) || "";
+
         text = text.trim()
                    .replace(/^```json\s*/i, "")
                    .replace(/^```\s*/i, "")
@@ -398,7 +410,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
                 try { parsed = JSON.parse(m[0]); }
                 catch { return res.status(500).json({ error: "Could not parse AI response. Try clearer images." }); }
             } else {
-                console.error("Gemini unparseable response:", text.slice(0, 300));
+                console.error("Groq unparseable response:", text.slice(0, 300));
                 return res.status(500).json({ error: "Could not parse AI response. Try clearer images." });
             }
         }
@@ -407,7 +419,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             return res.status(500).json({ error: "No questions found in images." });
         }
 
-        console.log("Extracted " + parsed.length + " questions via Gemini");
+        console.log("Extracted " + parsed.length + " questions via Groq");
         res.json({ questions: parsed });
 
     } catch (e) {
@@ -420,6 +432,6 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 app.listen(PORT, () => {
     console.log("Server running on port " + PORT);
     console.log("MONGO_URI:", process.env.MONGO_URI ? "set" : "MISSING");
-    console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "set" : "MISSING");
+    console.log("GROQ_API_KEY:", process.env.GROQ_API_KEY ? "set" : "MISSING");
     console.log("ADMIN_PASSCODE:", process.env.ADMIN_PASSCODE ? "set" : "using default");
 });
