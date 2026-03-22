@@ -335,7 +335,20 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     if (!questionImageBase64 || !answerImageBase64) return res.status(400).json({ error: "Both images required" });
     if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY not set on server" });
 
-    const prompt = "First image = physics MCQ questions. Second image = answer key.\nExtract ALL questions, match each answer, return ONLY a raw JSON array (no markdown, no backticks).\nFormat: [{\"question\":\"...\",\"options\":[\"A text\",\"B text\",\"C text\",\"D text\"],\"correctIndex\":0}]\nRules: correctIndex 0=A 1=B 2=C 3=D. If answer key uses 1/2/3/4 map to 0/1/2/3. Write equations in plain text. Include every question visible.";
+    // Detect actual mime type from base64 header bytes so PNG/JPG both work
+    function getMimeType(b64) {
+        const sig = b64.slice(0, 8);
+        if (sig.startsWith("/9j/")) return "image/jpeg";
+        if (sig.startsWith("iVBORw")) return "image/png";
+        if (sig.startsWith("R0lGOD")) return "image/gif";
+        if (sig.startsWith("UklGRi")) return "image/webp";
+        return "image/jpeg"; // fallback
+    }
+
+    const qMime = getMimeType(questionImageBase64);
+    const aMime = getMimeType(answerImageBase64);
+
+    const prompt = "First image = physics MCQ questions. Second image = answer key.\nExtract ALL questions, match each answer, return ONLY a raw JSON array (no markdown, no backticks).\nFormat: [{\"question\":\"...\",\"options\":[\"A text\",\"B text\",\"C text\",\"D text\"],\"correctIndex\":0}]\nRules: correctIndex 0=A 1=B 2=C 3=D. If answer key uses 1/2/3/4 map to 0/1/2/3. Write equations in plain text (e.g. v^2=u^2+2as). Include every question visible.";
 
     try {
         const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY;
@@ -343,14 +356,13 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         const body = {
             contents: [{
                 parts: [
-                    { inline_data: { mime_type: "image/jpeg", data: questionImageBase64 } },
-                    { inline_data: { mime_type: "image/jpeg", data: answerImageBase64 } },
+                    { inline_data: { mime_type: qMime, data: questionImageBase64 } },
+                    { inline_data: { mime_type: aMime, data: answerImageBase64 } },
                     { text: prompt }
                 ]
             }],
             generationConfig: { temperature: 0.1, maxOutputTokens: 4000 }
         };
-
         const r = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -405,4 +417,9 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 });
 
 /* ---- START ---- */
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log("Server running on port " + PORT);
+    console.log("MONGO_URI:", process.env.MONGO_URI ? "set" : "MISSING");
+    console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "set" : "MISSING");
+    console.log("ADMIN_PASSCODE:", process.env.ADMIN_PASSCODE ? "set" : "using default");
+});
