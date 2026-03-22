@@ -1,62 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grip Physics | Interactive Portal</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
-
 <body>
 
+    <!-- LOADER -->
     <div id="loader">
         <div class="loader-content">
-            <h1 class="loader-logo">GRIP PHYSICS</h1>
-            <div class="loader-line"></div>
-            <p id="quote">"Intelligence is the ability to adapt to change."</p>
+            <div class="loader-logo-wrap">
+                <span class="loader-icon">⚛</span>
+                <h1 class="loader-logo">GRIP PHYSICS</h1>
+            </div>
+            <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+            <p id="quote">"The important thing is not to stop questioning."</p>
         </div>
     </div>
 
     <div id="particles-js"></div>
 
     <main id="main-content" class="hidden">
-        <div id="login-page" class="container">
-            <h2>Grip Physics</h2>
-            <p class="subtitle">Student Enrollment Portal</p>
-            <form id="loginForm">
-                <input type="text" name="name" id="userName" placeholder="Full Name" required>
-                <input type="tel" name="mobile" id="userMobile" placeholder="Mobile No." pattern="[0-9]{10}"
-                    maxlength="10" inputmode="numeric" required>
-                <input type="text" name="place" id="userPlace" placeholder="Place / City" required>
-                <input type="text" name="class" id="userClass" placeholder="Class (e.g. 11th Science)" required>
-                <input id="lectureNumber" placeholder="Enter Lecture Number">
-                <button type="submit" id="submitBtn">Unlock Question</button>
+
+        <!-- STEP TRACKER -->
+        <div class="step-tracker" id="stepTracker">
+            <div class="step active" id="step1"><span class="step-num">1</span><span class="step-label">Register</span></div>
+            <div class="step-line"></div>
+            <div class="step" id="step2"><span class="step-num">2</span><span class="step-label">Answer</span></div>
+            <div class="step-line"></div>
+            <div class="step" id="step3"><span class="step-num">3</span><span class="step-label">Result</span></div>
+        </div>
+
+        <!-- LOGIN PAGE -->
+        <div id="login-page" class="container slide-in">
+            <div class="brand">
+                <span class="brand-icon">⚛</span>
+                <div>
+                    <h2>Grip Physics</h2>
+                    <p class="subtitle">Student Enrollment Portal</p>
+                </div>
+            </div>
+
+            <form id="loginForm" novalidate>
+                <div class="input-group">
+                    <span class="input-icon">👤</span>
+                    <input type="text" name="name" id="userName" placeholder="Full Name" required autocomplete="name">
+                </div>
+                <div class="input-group">
+                    <span class="input-icon">📞</span>
+                    <input type="tel" name="mobile" id="userMobile" placeholder="Mobile No." pattern="[0-9]{10}" maxlength="10" inputmode="numeric" required>
+                </div>
+                <div class="input-group">
+                    <span class="input-icon">📍</span>
+                    <input type="text" name="place" id="userPlace" placeholder="Place / City" required>
+                </div>
+                <div class="input-group">
+                    <span class="input-icon">🎓</span>
+                    <input type="text" name="class" id="userClass" placeholder="Class (e.g. 11th Science)" required>
+                </div>
+
+                <div class="select-group">
+                    <span class="input-icon">📚</span>
+                    <select id="chapterSelect" required>
+                        <option value="">Select Chapter</option>
+                    </select>
+                </div>
+
+                <div class="select-group" id="lectureWrap" style="opacity:0.4;pointer-events:none;">
+                    <span class="input-icon">🎬</span>
+                    <select id="lectureSelect" required>
+                        <option value="">Select Lecture</option>
+                    </select>
+                </div>
+
+                <button type="submit" id="submitBtn">
+                    <span id="submitBtnText">Unlock Question</span>
+                    <span class="btn-icon">→</span>
+                </button>
             </form>
         </div>
 
+        <!-- QUIZ PAGE -->
         <div id="quiz-page" class="container hidden">
-            <h2 class="accent-text">Challenge #1</h2>
-            <p id="question-text">Which law states that for every action, there is an equal and opposite reaction?</p>
+            <div class="quiz-header">
+                <div class="quiz-meta">
+                    <span id="quiz-chapter-label" class="badge">Chapter</span>
+                    <span id="quiz-lecture-label" class="badge accent">Lecture</span>
+                </div>
+                <div id="quiz-timer" class="timer">
+                    <span class="timer-icon">⏱</span>
+                    <span id="timer-display">2:00</span>
+                </div>
+            </div>
 
-            <div class="options-container">
-                <div class="option" onclick="selectAnswer(this, false)">Newton's 1st Law</div>
-                <div class="option" onclick="selectAnswer(this, false)">Newton's 2nd Law</div>
-                <div class="option" onclick="selectAnswer(this, true)">Newton's 3rd Law</div>
-                <div class="option" onclick="selectAnswer(this, false)">Law of Universal Gravitation</div>
+            <div id="question-progress" class="question-progress">
+                <span id="q-current">1</span> / <span id="q-total">1</span>
+            </div>
+
+            <p id="question-text" class="question-text">Loading question...</p>
+
+            <div class="options-container" id="options-container"></div>
+
+            <div id="quiz-nav" class="quiz-nav hidden">
+                <button id="prevBtn" class="nav-btn" onclick="prevQuestion()" disabled>← Prev</button>
+                <button id="nextBtn" class="nav-btn" onclick="nextQuestion()">Next →</button>
             </div>
 
             <div id="feedback"></div>
-            <button id="submitAnswerBtn" class="submit-answer-btn" onclick="submitAnswer()" disabled>Submit
-                Answer</button>
-            <p class="sync-text" id="sync-text" style="display:none;">Data is being synced with Grip Physics
-                Dashboard...</p>
+            <button id="submitAnswerBtn" class="submit-answer-btn" onclick="submitAnswer()" disabled>Submit All Answers</button>
+            <p class="sync-text" id="sync-text" style="display:none;">Syncing with Grip Physics Dashboard...</p>
         </div>
+
+        <!-- RESULT PAGE -->
+        <div id="result-page" class="container hidden">
+            <div id="result-icon" class="result-icon">🎉</div>
+            <h2 id="result-title" class="result-title">Well Done!</h2>
+            <div class="result-score">
+                <span id="result-correct" class="score-num">0</span>
+                <span class="score-sep">/</span>
+                <span id="result-total" class="score-den">0</span>
+            </div>
+            <p id="result-subtitle" class="result-subtitle">Keep up the great work!</p>
+
+            <div id="result-breakdown" class="result-breakdown"></div>
+
+            <div class="result-meta">
+                <span id="result-name" class="meta-chip">👤</span>
+                <span id="result-chapter" class="meta-chip">📚</span>
+                <span id="result-lecture-meta" class="meta-chip">🎬</span>
+            </div>
+
+            <button onclick="location.reload()" class="restart-btn">Try Another Lecture →</button>
+        </div>
+
     </main>
 
     <script src="script.js"></script>
 </body>
-
 </html>
