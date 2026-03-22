@@ -944,7 +944,13 @@
                         <div class="upload-icon">📸</div>
                         <p><strong>Click, drag &amp; drop, or paste</strong> the questions screenshot</p>
                     </div>
-                    <div id="qPreview" class="upload-preview"><img id="qPreviewImg" src=""></div>
+                    <div id="qPreview" class="upload-preview" style="display:none;position:relative">
+                        <img id="qPreviewImg" src=""
+                            style="width:100%;object-fit:contain;max-height:200px;border-radius:8px">
+                        <button onclick="removeImage('q')"
+                            style="position:absolute;top:8px;right:8px;background:rgba(231,76,60,0.85);border:none;border-radius:6px;color:white;padding:4px 10px;font-size:0.78rem;cursor:pointer;font-family:Outfit,sans-serif;font-weight:600">✕
+                            Remove</button>
+                    </div>
                 </div>
 
                 <div class="field">
@@ -957,7 +963,13 @@
                         <div class="upload-icon">🔑</div>
                         <p><strong>Click, drag &amp; drop, or paste</strong> the answer key screenshot</p>
                     </div>
-                    <div class="upload-preview" id="aPreview"><img id="aPreviewImg" src=""></div>
+                    <div id="aPreview" class="upload-preview" style="display:none;position:relative">
+                        <img id="aPreviewImg" src=""
+                            style="width:100%;object-fit:contain;max-height:200px;border-radius:8px">
+                        <button onclick="removeImage('a')"
+                            style="position:absolute;top:8px;right:8px;background:rgba(231,76,60,0.85);border:none;border-radius:6px;color:white;padding:4px 10px;font-size:0.78rem;cursor:pointer;font-family:Outfit,sans-serif;font-weight:600">✕
+                            Remove</button>
+                    </div>
                 </div>
 
                 <div class="extract-status" id="extractStatus"></div>
@@ -1344,6 +1356,27 @@
             if (el && img) { img.src = src; el.style.display = "block"; }
         }
 
+        function removeImage(type) {
+            if (type === 'q') {
+                qImageBase64 = null;
+                const el = document.getElementById("qPreview");
+                const img = document.getElementById("qPreviewImg");
+                const input = document.getElementById("qFileInput");
+                if (el) el.style.display = "none";
+                if (img) img.src = "";
+                if (input) input.value = "";
+            } else {
+                aImageBase64 = null;
+                const el = document.getElementById("aPreview");
+                const img = document.getElementById("aPreviewImg");
+                const input = document.getElementById("aFileInput");
+                if (el) el.style.display = "none";
+                if (img) img.src = "";
+                if (input) input.value = "";
+            }
+            checkExtractReady();
+        }
+
         async function handleQFileInput(input) {
             const file = input.files[0]; if (!file) return;
             qImageBase64 = await fileToBase64(file);
@@ -1579,6 +1612,168 @@
                 loadQuestionsAdmin();
             } catch (err) { status.innerHTML = `<div style="color:var(--error)">Error: ${err.message}</div>`; }
         }
+
+        /* ========== MANAGE QUESTIONS ========== */
+        async function loadQuestionsAdmin() {
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/questions`, { credentials: "include" });
+                if (res.status === 403) return;
+                allQuestions = await res.json();
+                renderQuestionList(allQuestions);
+            } catch (err) { console.error("loadQuestionsAdmin error:", err); }
+        }
+
+        function renderQuestionList(questions) {
+            const container = document.getElementById("questionList");
+            if (!container) return;
+            if (!questions || questions.length === 0) {
+                container.innerHTML = `<p style="color:var(--text-dim);text-align:center;padding:24px">No questions found.</p>`;
+                return;
+            }
+            container.innerHTML = questions.map(q => `
+                <div class="q-row">
+                    <div class="q-info">
+                        <div><strong>${q.chapter || "<em style='opacity:0.4'>No chapter</em>"}</strong> — Lecture ${q.lecture}</div>
+                        <div class="q-chapter">${(q.questions || []).length} question(s) · Updated: ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
+                    </div>
+                    <button class="btn btn-danger" style="padding:7px 14px;font-size:0.78rem"
+                        onclick="openDeleteModal('${(q.chapter || '_none_').replace(/'/g, "\\'")}','${q.lecture}')">🗑 Delete</button>
+                </div>
+            `).join("");
+        }
+
+        function filterQuestions(query) {
+            const q = query.toLowerCase();
+            const filtered = allQuestions.filter(q2 =>
+                (q2.chapter || "").toLowerCase().includes(q) ||
+                String(q2.lecture).includes(q)
+            );
+            renderQuestionList(filtered);
+        }
+
+        function openDeleteModal(chapter, lecture) {
+            pendingDeleteChapter = chapter;
+            pendingDeleteLecture = lecture;
+            document.getElementById("deleteModalText").textContent =
+                `Delete all questions for "${chapter === "_none_" ? "No chapter" : chapter} / Lecture ${lecture}"?`;
+            openModal("deleteModal");
+        }
+
+        async function confirmDelete() {
+            closeModal("deleteModal");
+            const ch = encodeURIComponent(pendingDeleteChapter || "_none_");
+            const lec = encodeURIComponent(pendingDeleteLecture);
+            const res = await fetch(`${API_BASE}/api/admin/question/${ch}/${lec}`, {
+                method: "DELETE", credentials: "include"
+            });
+            if (res.ok) {
+                openModal("successModal");
+                document.getElementById("successModalTitle").textContent = "Deleted";
+                document.getElementById("successModalText").textContent = "Question deleted successfully.";
+                loadQuestionsAdmin();
+            } else {
+                alert("Delete failed.");
+            }
+        }
+
+        /* ========== STUDENTS ========== */
+        function renderStudentTable(data) {
+            const tbody = document.getElementById("studentTableBody");
+            if (!tbody) return;
+            tbody.innerHTML = "";
+
+            // Show both students with answers (new) and old-format students
+            const withAnswers = data.filter(s =>
+                (s.answers && s.answers.length > 0) ||
+                typeof s.answer === "number"
+            );
+
+            if (withAnswers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;opacity:0.5;padding:20px">No student records yet.</td></tr>`;
+                return;
+            }
+
+            withAnswers.forEach(s => {
+                // Support both new format (correctCount/totalQuestions) and old (correct boolean)
+                let correct, total, pct;
+                if (typeof s.correctCount === "number") {
+                    correct = s.correctCount;
+                    total = s.totalQuestions || 1;
+                } else if (typeof s.correct === "boolean") {
+                    correct = s.correct ? 1 : 0;
+                    total = 1;
+                } else {
+                    correct = 0; total = 1;
+                }
+                pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+                tbody.insertAdjacentHTML("beforeend", `
+                    <tr>
+                        <td>${s.name || "—"}</td>
+                        <td><span style="font-family:'Space Mono',monospace;font-size:0.78rem">${s.mobile || "—"}</span></td>
+                        <td>${s.place || "—"}</td>
+                        <td>${s.className || "—"}</td>
+                        <td>${s.chapter || "—"}</td>
+                        <td>Lec ${s.lecture || "—"}</td>
+                        <td>${correct}/${total}</td>
+                        <td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct >= 50 ? "✅" : "❌"} ${pct}%</span></td>
+                    </tr>
+                `);
+            });
+        }
+
+        function filterStudents(query) {
+            const q = query.toLowerCase();
+            const filtered = allStudents.filter(s =>
+                (s.name || "").toLowerCase().includes(q) ||
+                (s.mobile || "").includes(q) ||
+                String(s.lecture || "").includes(q) ||
+                (s.chapter || "").toLowerCase().includes(q)
+            );
+            renderStudentTable(filtered);
+        }
+
+        /* ========== EXPORT CSV ========== */
+        function exportCSV() {
+            let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n";
+            allStudents.forEach(s => {
+                let correct, total;
+                if (typeof s.correctCount === "number") { correct = s.correctCount; total = s.totalQuestions || 1; }
+                else if (typeof s.correct === "boolean") { correct = s.correct ? 1 : 0; total = 1; }
+                else { correct = 0; total = 1; }
+                const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+                csv += `"${s.name || ""}","="${s.mobile || ""}","${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${correct},${total},${pct}%\n`;
+            });
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `GripPhysics_Report_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+        }
+
+        /* ========== MODALS ========== */
+        function openModal(id) { document.getElementById(id).style.display = "flex"; }
+        function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+        async function confirmReplace() {
+            closeModal("replaceModal");
+            const d = pendingReplaceData;
+            const res = await fetch(`${API_BASE}/api/admin/add-question`, {
+                method: "POST", credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, questions: d.questions, replace: true })
+            });
+            if (res.ok) {
+                openModal("successModal");
+                document.getElementById("successModalTitle").textContent = "Replaced!";
+                document.getElementById("successModalText").textContent = "Question replaced successfully.";
+                loadQuestionsAdmin(); loadChaptersAdmin();
+            } else {
+                alert("Replace failed.");
+            }
+        }
+
     </script>
 </body>
 
