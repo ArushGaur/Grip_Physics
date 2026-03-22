@@ -1478,6 +1478,37 @@
             document.getElementById("extractBtn").disabled = false;
         }
 
+        // Convert plain-text math notation to proper unicode superscripts/subscripts
+        function formatMath(text) {
+            if (!text) return text;
+
+            // Superscripts: x^2 → x², x^3 → x³, x^n → xⁿ etc
+            const supMap = {
+                '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+                'n': 'ⁿ', 'm': 'ᵐ', 'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'i': 'ⁱ', 'j': 'ʲ', 'k': 'ᵏ', 'p': 'ᵖ', 'r': 'ʳ',
+                's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
+            };
+            const subMap = {
+                '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+                'a': 'ₐ', 'e': 'ₑ', 'i': 'ᵢ', 'j': 'ⱼ', 'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ',
+                'u': 'ᵤ', 'v': 'ᵥ', 'x': 'ₓ', '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎'
+            };
+
+            // Handle multi-char exponents like x^{23} or x^(23)
+            text = text.replace(/\^\{([^}]+)\}/g, (_, exp) => exp.split('').map(c => supMap[c] || c).join(''));
+            text = text.replace(/\^\(([^)]+)\)/g, (_, exp) => exp.split('').map(c => supMap[c] || c).join(''));
+            // Single char exponents x^2
+            text = text.replace(/\^([a-zA-Z0-9+\-])/g, (_, c) => supMap[c] || ('^' + c));
+
+            // Handle multi-char subscripts like x_{23} or x_(23)
+            text = text.replace(/_\{([^}]+)\}/g, (_, sub) => sub.split('').map(c => subMap[c] || c).join(''));
+            text = text.replace(/_\(([^)]+)\)/g, (_, sub) => sub.split('').map(c => subMap[c] || c).join(''));
+            // Single char subscripts x_1
+            text = text.replace(/_([a-zA-Z0-9])/g, (_, c) => subMap[c] || ('_' + c));
+
+            return text;
+        }
+
         function renderExtractedQuestions(questions) {
             const container = document.getElementById("extractedQContainer");
             container.innerHTML = "";
@@ -1499,20 +1530,20 @@
                         <button class="btn btn-danger" style="padding:5px 10px;font-size:0.75rem" onclick="removeExtractedQ(${qi})">✕ Remove</button>
                     </div>
                     <div class="field">
-                        <textarea style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;resize:vertical;outline:none" rows="2" id="eq_q_${qi}">${q.question}</textarea>
+                        <textarea style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;resize:vertical;outline:none" rows="2" id="eq_q_${qi}">${formatMath(q.question)}</textarea>
                     </div>
                     <div class="extracted-q-opts">
                         ${q.options.map((opt, oi) => `
                             <div class="eq-opt ${oi === q.correctIndex ? 'correct' : ''}">
                                 <span style="font-family:'Space Mono',monospace;font-size:0.7rem;font-weight:700;flex-shrink:0">${letters[oi]}</span>
-                                <input value="${(opt || '').replace(/"/g, '&quot;')}" id="eq_opt_${qi}_${oi}"
+                                <input value="${formatMath((opt || '').replace(/"/g, '&quot;'))}" id="eq_opt_${qi}_${oi}"
                                     style="flex:1;background:transparent;border:none;color:white;font-size:0.82rem;outline:none;font-family:Outfit,sans-serif">
                             </div>`).join("")}
                     </div>
                     <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
                         <label style="font-size:0.78rem;color:var(--text-dim)">Correct Answer:</label>
-                        <select id="eq_correct_${qi}" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none">
-                            ${letters.map((l, i) => `<option value="${i}" ${i === q.correctIndex ? "selected" : ""}>${l}</option>`).join("")}
+                        <select id="eq_correct_${qi}" style="background:#1a1535;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none">
+                            ${letters.map((l, i) => `<option value="${i}" ${i === q.correctIndex ? "selected" : ""} style="background:#1a1535;color:white">${l} — ${q.options[i] || ""}</option>`).join("")}
                         </select>
                     </div>`;
                 container.appendChild(div);
@@ -1551,8 +1582,30 @@
             if (!lectures.length) { alert("No complete questions to save."); return; }
 
             console.log("Saving groups:", JSON.stringify(Object.keys(groups).map(l => ({ lecture: l, count: groups[l].length }))));
+
+            // Show progress overlay
+            const progressOverlay = document.createElement("div");
+            progressOverlay.id = "saveProgressOverlay";
+            progressOverlay.style.cssText = "position:fixed;inset:0;background:rgba(8,7,20,0.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px";
+            progressOverlay.innerHTML = `
+                <div style="font-size:2rem">💾</div>
+                <div style="font-size:1.1rem;font-weight:600;color:white" id="progressTitle">Saving Questions...</div>
+                <div style="width:280px;height:6px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden">
+                    <div id="progressBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 0.3s ease;width:0%"></div>
+                </div>
+                <div style="font-size:0.85rem;color:rgba(255,255,255,0.6)" id="progressText">0 / ${lectures.length} lectures</div>
+            `;
+            document.body.appendChild(progressOverlay);
+
             let saved = 0, failed = [];
             for (const lec of lectures) {
+                // Update progress
+                const pct = Math.round((saved / lectures.length) * 100);
+                const pb = document.getElementById("progressBar");
+                const pt = document.getElementById("progressText");
+                if (pb) pb.style.width = pct + "%";
+                if (pt) pt.textContent = saved + " / " + lectures.length + " lectures saved...";
+
                 console.log("Saving lecture", lec, "with", groups[lec].length, "question(s)");
                 const r = await fetch(`${API_BASE}/api/admin/add-question`, {
                     method: "POST", credentials: "include",
@@ -1572,6 +1625,10 @@
                     }
                 } else { failed.push(lec); }
             }
+            // Remove progress overlay
+            const ov = document.getElementById("saveProgressOverlay");
+            if (ov) ov.remove();
+
             openModal("successModal");
             document.getElementById("successModalTitle").textContent = saved > 0 ? "Saved!" : "Failed";
             document.getElementById("successModalText").textContent = failed.length === 0
