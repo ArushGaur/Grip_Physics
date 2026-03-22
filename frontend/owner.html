@@ -534,9 +534,8 @@
     <div class="section" id="section-importQuestion">
         <div class="page-header">
             <h1>Import from Screenshot</h1>
-            <p>Upload a PDF screenshot with questions + a separate answer key screenshot. AI will extract and parse everything.</p>
+            <p>AI detects all questions from a single screenshot. Multiple questions get auto-assigned lecture numbers starting from what you enter.</p>
         </div>
-
         <div class="panel">
             <div class="form-row">
                 <div class="field">
@@ -545,52 +544,72 @@
                     <datalist id="existingChapters2"></datalist>
                 </div>
                 <div class="field">
-                    <label>Lecture Number</label>
-                    <input id="imp-lecture" placeholder="e.g. 7">
+                    <label>Starting Lecture Number</label>
+                    <input id="imp-lecture" type="number" min="1" placeholder="e.g. 4">
+                    <div style="font-size:0.72rem;color:var(--text-dim);margin-top:5px">If image has 3 questions → lectures 4, 5, 6 assigned automatically</div>
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
-                <!-- Questions screenshot -->
-                <div>
-                    <div class="field"><label>📄 Questions Screenshot</label></div>
-                    <div class="upload-zone" id="qZone">
-                        <input type="file" accept="image/*" onchange="handleImageUpload(this, 'question')">
-                        <div class="upload-icon">📸</div>
-                        <p><strong>Click or drag</strong> to upload<br>questions image</p>
-                    </div>
-                    <div class="upload-preview" id="qPreview"><img id="qPreviewImg" src=""></div>
+            <div class="field" style="margin-top:8px">
+                <label>📄 Questions Screenshot
+                    <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste (Ctrl+V)</span>
+                </label>
+                <div class="upload-zone" id="qZone" tabindex="0">
+                    <input type="file" accept="image/*" id="qFileInput" onchange="handleQFileInput(this)">
+                    <div class="upload-icon">📸</div>
+                    <p><strong>Click, drag &amp; drop, or paste</strong> the questions screenshot</p>
                 </div>
+                <div id="qPreview" class="upload-preview"><img id="qPreviewImg" src=""></div>
+            </div>
 
-                <!-- Answer key screenshot -->
-                <div>
-                    <div class="field"><label>🔑 Answer Key Screenshot</label></div>
-                    <div class="upload-zone" id="aZone">
-                        <input type="file" accept="image/*" onchange="handleImageUpload(this, 'answer')">
-                        <div class="upload-icon">📸</div>
-                        <p><strong>Click or drag</strong> to upload<br>answer key image</p>
-                    </div>
-                    <div class="upload-preview" id="aPreview"><img id="aPreviewImg" src=""></div>
+            <div class="field">
+                <label>🔑 Answer Key Screenshot
+                    <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste (Ctrl+V)</span>
+                </label>
+                <div class="upload-zone" id="aZone" tabindex="0">
+                    <input type="file" accept="image/*" id="aFileInput" onchange="handleAFileInput(this)">
+                    <div class="upload-icon">🔑</div>
+                    <p><strong>Click, drag &amp; drop, or paste</strong> the answer key screenshot</p>
                 </div>
+                <div class="upload-preview" id="aPreview"><img id="aPreviewImg" src=""></div>
             </div>
 
             <div class="extract-status" id="extractStatus"></div>
-
             <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>
                 🤖 Extract Questions with AI
             </button>
         </div>
 
-        <!-- Extracted questions preview & edit -->
-        <div id="extractedList">
+        <div id="extractedList" style="display:none">
             <div class="panel">
-                <div class="panel-title">📋 Extracted Questions — Review & Edit</div>
+                <div class="panel-title">📋 Extracted Questions — Review &amp; Edit Lecture Assignments</div>
+                <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">Each question gets its own lecture number. Edit below before saving.</p>
                 <div id="extractedQContainer"></div>
                 <div class="flex-end mt-20">
                     <button class="btn btn-ghost" onclick="addExtractedQuestion()">+ Add Question</button>
                     <button class="btn btn-primary" onclick="saveExtractedQuestions()">💾 Save All to Database</button>
                 </div>
             </div>
+        </div>
+    </div>
+    <!-- FIX DB RECORDS -->
+    <div class="section" id="section-migrate">
+        <div class="page-header">
+            <h1>Fix DB Records</h1>
+            <p>Scan for and remove corrupted question records so those lecture numbers can be re-added cleanly.</p>
+        </div>
+        <div class="panel">
+            <div class="panel-title">🔍 Corrupted Record Scanner</div>
+            <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:20px">
+                Old MongoDB records with no question text or empty options block new questions from saving for those lectures.
+                <strong>Scan</strong> finds them. <strong>Delete Corrupted</strong> removes them permanently.
+            </p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button class="btn btn-ghost" onclick="scanCorrupted()">🔍 Scan for Corrupted Records</button>
+                <button class="btn btn-danger hidden" id="deleteCorruptedBtn" onclick="deleteCorrupted()">🗑 Delete Corrupted Records</button>
+            </div>
+            <div id="migrateStatus" style="margin-top:16px"></div>
+            <div id="migrateResults" style="margin-top:16px"></div>
         </div>
     </div>
 
@@ -680,27 +699,35 @@ let extractedQuestions = [];
 let manualQuestionCount = 0;
 
 /* ========== LOGIN ========== */
-async function login() {
-    const passcode = document.getElementById("passcode").value;
-    const errEl = document.getElementById("loginError");
-    errEl.style.display = "none";
+// Check if session is still active on page load — skips login screen if already logged in
+        (async function checkSession() {
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
+                if (res.ok) enterDashboard();
+            } catch(e) { /* stay on login */ }
+        })();
 
-    const res = await fetch(`${API_BASE}/api/admin/login`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passcode })
-    });
+        function enterDashboard() {
+            document.getElementById("loginOverlay").style.display = "none";
+            document.getElementById("sidebar").classList.remove("hidden");
+            document.getElementById("mainContent").classList.remove("hidden");
+            loadDashboard();
+            loadChaptersAdmin();
+            loadQuestionsAdmin();
+        }
 
-    if (!res.ok) { errEl.style.display = "block"; return; }
-
-    document.getElementById("loginOverlay").style.display = "none";
-    document.getElementById("sidebar").classList.remove("hidden");
-    document.getElementById("mainContent").classList.remove("hidden");
-
-    loadDashboard();
-    loadChaptersAdmin();
-    loadQuestionsAdmin();
-}
+        async function login() {
+            const passcode = document.getElementById("passcode").value;
+            const errEl = document.getElementById("loginError");
+            errEl.style.display = "none";
+            const res = await fetch(`${API_BASE}/api/admin/login`, {
+                method: "POST", credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ passcode })
+            });
+            if (!res.ok) { errEl.style.display = "block"; return; }
+            enterDashboard();
+        }
 
 async function logout() {
     await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" });
@@ -903,346 +930,255 @@ async function saveManualQuestions() {
 }
 
 /* ========== SCREENSHOT IMPORT ========== */
-function handleImageUpload(input, type) {
-    const file = input.files[0];
-    if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = e => {
-        const b64 = e.target.result.split(",")[1];
-        if (type === "question") {
-            qImageBase64 = b64;
-            document.getElementById("qPreviewImg").src = e.target.result;
-            document.getElementById("qPreview").style.display = "block";
-        } else {
-            aImageBase64 = b64;
-            document.getElementById("aPreviewImg").src = e.target.result;
-            document.getElementById("aPreview").style.display = "block";
+        function fileToBase64(file) {
+            return new Promise((res, rej) => {
+                const r = new FileReader();
+                r.onload = e => res(e.target.result.split(",")[1]);
+                r.onerror = rej;
+                r.readAsDataURL(file);
+            });
         }
-        checkExtractReady();
-    };
-    reader.readAsDataURL(file);
-}
 
-function checkExtractReady() {
-    document.getElementById("extractBtn").disabled = !(qImageBase64 && aImageBase64);
-}
+        function setImagePreview(previewId, imgId, src) {
+            const el = document.getElementById(previewId);
+            const img = document.getElementById(imgId);
+            if (el && img) { img.src = src; el.style.display = "block"; }
+        }
 
-async function extractWithAI() {
-    const chapter = document.getElementById("imp-chapter").value.trim();
-    const lecture = document.getElementById("imp-lecture").value.trim();
-    const status = document.getElementById("extractStatus");
+        async function handleQFileInput(input) {
+            const file = input.files[0]; if (!file) return;
+            qImageBase64 = await fileToBase64(file);
+            setImagePreview("qPreview", "qPreviewImg", URL.createObjectURL(file));
+            checkExtractReady();
+        }
 
-    if (!chapter || !lecture) { alert("Please enter chapter and lecture first."); return; }
-    if (!qImageBase64 || !aImageBase64) { alert("Please upload both screenshots."); return; }
+        async function handleAFileInput(input) {
+            const file = input.files[0]; if (!file) return;
+            aImageBase64 = await fileToBase64(file);
+            setImagePreview("aPreview", "aPreviewImg", URL.createObjectURL(file));
+            checkExtractReady();
+        }
 
-    status.className = "extract-status loading";
-    status.style.display = "block";
-    status.innerHTML = `<span class="spinner"></span> &nbsp; Sending to AI — this may take 15–30 seconds...`;
-    document.getElementById("extractBtn").disabled = true;
-    document.getElementById("extractedList").style.display = "none";
+        function checkExtractReady() {
+            document.getElementById("extractBtn").disabled = !(qImageBase64 && aImageBase64);
+        }
 
-    try {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model: "claude-sonnet-4-20250514",
-                max_tokens: 4000,
-                messages: [{
-                    role: "user",
-                    content: [
-                        {
-                            type: "image",
-                            source: { type: "base64", media_type: "image/jpeg", data: qImageBase64 }
-                        },
-                        {
-                            type: "image",
-                            source: { type: "base64", media_type: "image/jpeg", data: aImageBase64 }
-                        },
-                        {
-                            type: "text",
-                            text: `The first image contains physics multiple-choice questions. The second image is the answer key.
-
-Extract ALL questions from the first image, match them with the correct answers from the second image, and return a JSON array.
-
-CRITICAL: Return ONLY raw JSON, no markdown, no backticks, no preamble.
-
-Format:
-[
-  {
-    "question": "Full question text including any equation using plain text (e.g. F=ma, v^2=u^2+2as)",
-    "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
-    "correctIndex": 0
-  }
-]
-
-Rules:
-- correctIndex is 0 for A, 1 for B, 2 for C, 3 for D
-- Transcribe math/equations in plain readable text (e.g. "v² = u² + 2as")
-- Include all 4 options for every question
-- If the answer key uses numbers (1,2,3,4) map them to (0,1,2,3)
-- Include every question visible in the image`
-                        }
-                    ]
-                }]
-            })
+        // Paste support — Ctrl+V anywhere on the import page
+        document.addEventListener("paste", async function(e) {
+            if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return;
+            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+            if (!items) return;
+            for (const item of items) {
+                if (!item.type.startsWith("image/")) continue;
+                e.preventDefault();
+                const file = item.getAsFile();
+                const b64 = await fileToBase64(file);
+                const url = URL.createObjectURL(file);
+                // If Q image not set yet, paste into Q zone; otherwise paste into answer zone
+                if (!qImageBase64) {
+                    qImageBase64 = b64;
+                    setImagePreview("qPreview", "qPreviewImg", url);
+                } else {
+                    aImageBase64 = b64;
+                    setImagePreview("aPreview", "aPreviewImg", url);
+                }
+                checkExtractReady();
+                break;
+            }
         });
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || "API error");
+        // Drag & drop support
+        ["qZone", "aZone"].forEach(zoneId => {
+            const zone = document.getElementById(zoneId);
+            if (!zone) return;
+            zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("dragover"); });
+            zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+            zone.addEventListener("drop", async e => {
+                e.preventDefault(); zone.classList.remove("dragover");
+                const file = e.dataTransfer.files[0];
+                if (!file || !file.type.startsWith("image/")) return;
+                const b64 = await fileToBase64(file);
+                const url = URL.createObjectURL(file);
+                if (zoneId === "qZone") { qImageBase64 = b64; setImagePreview("qPreview", "qPreviewImg", url); }
+                else { aImageBase64 = b64; setImagePreview("aPreview", "aPreviewImg", url); }
+                checkExtractReady();
+            });
+        });
+
+        async function extractWithAI() {
+            const chapter = document.getElementById("imp-chapter").value.trim();
+            const startLecture = parseInt(document.getElementById("imp-lecture").value);
+            const status = document.getElementById("extractStatus");
+
+            if (!chapter) { alert("Please enter a chapter name."); return; }
+            if (!startLecture || startLecture < 1) { alert("Please enter a valid starting lecture number."); return; }
+            if (!qImageBase64 || !aImageBase64) { alert("Please upload both screenshots."); return; }
+
+            status.className = "extract-status loading";
+            status.style.display = "block";
+            status.innerHTML = '<span class="spinner"></span>&nbsp; Sending to AI — detecting all questions...';
+            document.getElementById("extractBtn").disabled = true;
+            document.getElementById("extractedList").style.display = "none";
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/extract`, {
+                    method: "POST", credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ questionImageBase64: qImageBase64, answerImageBase64: aImageBase64 })
+                });
+                if (!response.ok) { const e = await response.json(); throw new Error(e.error || "Server error"); }
+                const data = await response.json();
+                const parsed = data.questions;
+                if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("No questions found in image");
+
+                // Assign lecture numbers starting from startLecture, one per question
+                extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLecture + i }));
+
+                status.className = "extract-status success";
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — assigned lectures ${startLecture}–${startLecture + parsed.length - 1}. Review and edit below.`;
+                renderExtractedQuestions(extractedQuestions);
+                document.getElementById("extractedList").style.display = "block";
+
+            } catch (err) {
+                status.className = "extract-status error";
+                status.innerHTML = `❌ Extraction failed: ${err.message}`;
+            }
+            document.getElementById("extractBtn").disabled = false;
         }
 
-        const data = await response.json();
-        const text = data.content.map(c => c.text || "").join("").trim();
-
-        let parsed;
-        try {
-            parsed = JSON.parse(text);
-        } catch {
-            // Try to extract JSON array from response
-            const match = text.match(/\[[\s\S]*\]/);
-            if (match) parsed = JSON.parse(match[0]);
-            else throw new Error("Could not parse AI response as JSON");
-        }
-
-        if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("No questions extracted");
-
-        extractedQuestions = parsed;
-        status.className = "extract-status success";
-        status.innerHTML = `✅ Successfully extracted ${parsed.length} question${parsed.length > 1 ? "s" : ""}! Review and edit below.`;
-
-        renderExtractedQuestions(parsed);
-        document.getElementById("extractedList").style.display = "block";
-
-    } catch (err) {
-        console.error("Extraction error:", err);
-        status.className = "extract-status error";
-        status.innerHTML = `❌ Extraction failed: ${err.message}. Check your images and try again.`;
-    }
-
-    document.getElementById("extractBtn").disabled = false;
-}
-
-function renderExtractedQuestions(questions) {
-    const container = document.getElementById("extractedQContainer");
-    container.innerHTML = "";
-    const letters = ["A", "B", "C", "D"];
-
-    questions.forEach((q, qi) => {
-        const div = document.createElement("div");
-        div.className = "extracted-q-item"; div.id = `eq_${qi}`;
-
-        div.innerHTML = `
-            <div class="extracted-q-header">
-                <div class="extracted-q-text"><strong>Q${qi+1}.</strong> 
-                    <textarea style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;margin-top:6px;resize:vertical" rows="2" id="eq_q_${qi}">${q.question}</textarea>
-                </div>
-                <button class="btn btn-danger" style="padding:5px 10px;font-size:0.75rem;flex-shrink:0" onclick="removeExtractedQ(${qi})">✕</button>
-            </div>
-            <div class="extracted-q-opts">
-                ${q.options.map((opt, oi) => `
-                    <div class="eq-opt ${oi === q.correctIndex ? 'correct' : ''}">
-                        <span style="font-family:'Space Mono',monospace;font-size:0.7rem;opacity:0.7;flex-shrink:0">${letters[oi]}</span>
-                        <input value="${opt}" id="eq_opt_${qi}_${oi}" style="flex:1;background:transparent;border:none;color:white;font-size:0.82rem;outline:none;font-family:Outfit,sans-serif;">
+        function renderExtractedQuestions(questions) {
+            const container = document.getElementById("extractedQContainer");
+            container.innerHTML = "";
+            const letters = ["A","B","C","D"];
+            questions.forEach((q, qi) => {
+                const div = document.createElement("div");
+                div.className = "extracted-q-item"; div.id = `eq_${qi}`;
+                div.style.marginBottom = "20px";
+                div.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap">
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <strong style="font-size:0.88rem">Q${qi+1}</strong>
+                            <div style="display:flex;align-items:center;gap:8px;background:rgba(0,242,254,0.08);border:1px solid rgba(0,242,254,0.2);border-radius:8px;padding:4px 12px">
+                                <span style="font-size:0.75rem;opacity:0.7">Lecture</span>
+                                <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1"
+                                    style="width:54px;background:transparent;border:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:0.9rem;font-weight:700;outline:none;text-align:center">
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" style="padding:5px 10px;font-size:0.75rem" onclick="removeExtractedQ(${qi})">✕ Remove</button>
                     </div>
-                `).join("")}
-            </div>
-            <div class="field" style="margin-top:10px">
-                <label>Correct Answer</label>
-                <select id="eq_correct_${qi}" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none;width:auto">
-                    ${letters.map((l, i) => `<option value="${i}" ${i === q.correctIndex ? "selected" : ""}>${l}</option>`).join("")}
-                </select>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-}
-
-function removeExtractedQ(qi) {
-    document.getElementById(`eq_${qi}`)?.remove();
-}
-
-function addExtractedQuestion() {
-    const newQ = { question: "", options: ["", "", "", ""], correctIndex: 0 };
-    extractedQuestions.push(newQ);
-    renderExtractedQuestions(extractedQuestions);
-}
-
-async function saveExtractedQuestions() {
-    const chapter = document.getElementById("imp-chapter").value.trim();
-    const lecture = document.getElementById("imp-lecture").value.trim();
-
-    // Gather edited values
-    const qItems = document.querySelectorAll(".extracted-q-item");
-    const questions = [];
-
-    qItems.forEach((item, qi) => {
-        const qTextEl = item.querySelector(`[id^="eq_q_"]`);
-        const qText = qTextEl ? qTextEl.value.trim() : "";
-        const opts = [0,1,2,3].map(oi => {
-            const el = item.querySelector(`[id$="_${oi}"]`);
-            return el ? el.value.trim() : "";
-        });
-        const correctEl = item.querySelector(`[id^="eq_correct_"]`);
-        const correctIndex = correctEl ? parseInt(correctEl.value) : 0;
-
-        if (qText && opts.every(o => o)) {
-            questions.push({ question: qText, options: opts, correctIndex });
+                    <div class="field">
+                        <textarea style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;resize:vertical;outline:none" rows="2" id="eq_q_${qi}">${q.question}</textarea>
+                    </div>
+                    <div class="extracted-q-opts">
+                        ${q.options.map((opt, oi) => `
+                            <div class="eq-opt ${oi === q.correctIndex ? 'correct' : ''}">
+                                <span style="font-family:'Space Mono',monospace;font-size:0.7rem;font-weight:700;flex-shrink:0">${letters[oi]}</span>
+                                <input value="${(opt||'').replace(/"/g,'&quot;')}" id="eq_opt_${qi}_${oi}"
+                                    style="flex:1;background:transparent;border:none;color:white;font-size:0.82rem;outline:none;font-family:Outfit,sans-serif">
+                            </div>`).join("")}
+                    </div>
+                    <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+                        <label style="font-size:0.78rem;color:var(--text-dim)">Correct Answer:</label>
+                        <select id="eq_correct_${qi}" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none">
+                            ${letters.map((l,i) => `<option value="${i}" ${i===q.correctIndex?"selected":""}>${l}</option>`).join("")}
+                        </select>
+                    </div>`;
+                container.appendChild(div);
+            });
         }
-    });
 
-    if (questions.length === 0) { alert("No complete questions to save."); return; }
-    await submitQuestions(chapter, lecture, questions);
-}
+        function removeExtractedQ(qi) { document.getElementById(`eq_${qi}`)?.remove(); }
 
-/* ========== SHARED SUBMIT QUESTIONS ========== */
-async function submitQuestions(chapter, lecture, questions, replace = false) {
-    const res = await fetch(`${API_BASE}/api/admin/add-question`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapter, lecture, questions, replace })
-    });
+        function addExtractedQuestion() {
+            const startLecture = parseInt(document.getElementById("imp-lecture").value) || 1;
+            const count = document.querySelectorAll(".extracted-q-item").length;
+            extractedQuestions.push({ question:"", options:["","","",""], correctIndex:0, assignedLecture: startLecture + count });
+            renderExtractedQuestions(extractedQuestions);
+        }
 
-    if (res.status === 409) {
-        pendingReplaceData = { chapter, lecture, questions };
-        openModal("replaceModal");
-        return;
-    }
+        async function saveExtractedQuestions() {
+            const chapter = document.getElementById("imp-chapter").value.trim();
+            if (!chapter) { alert("Please enter a chapter name."); return; }
+            const qItems = document.querySelectorAll(".extracted-q-item");
+            if (!qItems.length) { alert("No questions to save."); return; }
 
-    if (res.ok) {
-        openModal("successModal");
-        document.getElementById("successModalTitle").textContent = "Questions Saved!";
-        document.getElementById("successModalText").textContent = `${questions.length} question(s) saved for ${chapter} / Lecture ${lecture}.`;
-        loadQuestionsAdmin();
-        loadChaptersAdmin();
-    } else {
-        alert("Failed to save. Make sure you are logged in.");
-    }
-}
+            // Group by lecture number
+            const groups = {};
+            let hasError = false;
+            qItems.forEach((item, qi) => {
+                const lec = item.querySelector(`[id^="eq_lec_"]`)?.value.trim();
+                const txt = item.querySelector(`[id^="eq_q_"]`)?.value.trim();
+                const opts = [0,1,2,3].map(oi => item.querySelector(`[id$="_${oi}"]`)?.value.trim()||"");
+                const ci = parseInt(item.querySelector(`[id^="eq_correct_"]`)?.value||0);
+                if (!lec || !txt || !opts.every(o=>o)) { hasError = true; return; }
+                if (!groups[lec]) groups[lec] = [];
+                groups[lec].push({ question:txt, options:opts, correctIndex:ci });
+            });
+            if (hasError) { alert("Some questions are incomplete. Fill in all fields and lecture numbers."); return; }
+            const lectures = Object.keys(groups);
+            if (!lectures.length) { alert("No complete questions to save."); return; }
 
-async function confirmReplace() {
-    closeModal("replaceModal");
-    await submitQuestions(pendingReplaceData.chapter, pendingReplaceData.lecture, pendingReplaceData.questions, true);
-}
+            let saved=0, failed=[];
+            for (const lec of lectures) {
+                const r = await fetch(`${API_BASE}/api/admin/add-question`, {
+                    method:"POST", credentials:"include",
+                    headers:{"Content-Type":"application/json"},
+                    body: JSON.stringify({ chapter, lecture:lec, questions:groups[lec], replace:false })
+                });
+                if (r.ok) { saved++; }
+                else if (r.status===409) {
+                    if (confirm(`Lecture ${lec} already exists. Replace it?`)) {
+                        const r2 = await fetch(`${API_BASE}/api/admin/add-question`, {
+                            method:"POST", credentials:"include",
+                            headers:{"Content-Type":"application/json"},
+                            body: JSON.stringify({ chapter, lecture:lec, questions:groups[lec], replace:true })
+                        });
+                        if (r2.ok) saved++; else failed.push(lec);
+                    }
+                } else { failed.push(lec); }
+            }
+            openModal("successModal");
+            document.getElementById("successModalTitle").textContent = saved>0 ? "Saved!" : "Failed";
+            document.getElementById("successModalText").textContent = failed.length===0
+                ? `${saved} lecture(s) saved for "${chapter}".`
+                : `Saved: ${saved}. Failed lectures: ${failed.join(", ")}.`;
+            loadQuestionsAdmin(); loadChaptersAdmin();
+        }
 
-/* ========== MANAGE QUESTIONS ========== */
-async function loadQuestionsAdmin() {
-    try {
-        const res = await fetch(`${API_BASE}/api/admin/questions`, { credentials: "include" });
-        allQuestions = await res.json();
-        renderQuestionList(allQuestions);
-    } catch (err) { console.error(err); }
-}
+        /* ========== FIX DB RECORDS ========== */
+        async function scanCorrupted() {
+            const status = document.getElementById("migrateStatus");
+            const results = document.getElementById("migrateResults");
+            status.innerHTML = '<span class="spinner"></span>&nbsp; Scanning database...';
+            results.innerHTML = "";
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/migrate`, { credentials:"include" });
+                if (res.status===404) { status.innerHTML='<div style="color:var(--error)">Endpoint not found — update server.js first.</div>'; return; }
+                const data = await res.json();
+                status.innerHTML = "";
+                if (data.corrupted===0) {
+                    results.innerHTML=`<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ No corrupted records found. Database is clean!</div>`;
+                    document.getElementById("deleteCorruptedBtn").classList.add("hidden");
+                } else {
+                    const rows = data.corruptedLectures.map(l=>`<tr><td>${l.chapter||"<em style='opacity:0.4'>none</em>"}</td><td>Lecture ${l.lecture}</td><td style="font-family:'Space Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join("");
+                    results.innerHTML=`<div style="padding:14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:10px;color:var(--error);margin-bottom:14px">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s) out of ${data.total} total.</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>Document ID</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+                    document.getElementById("deleteCorruptedBtn").classList.remove("hidden");
+                }
+            } catch(err) { status.innerHTML=`<div style="color:var(--error)">Error: ${err.message}</div>`; }
+        }
 
-function renderQuestionList(questions) {
-    const container = document.getElementById("questionList");
-    if (!container) return;
+        async function deleteCorrupted() {
+            if (!confirm("Permanently delete corrupted records? You will need to re-add those lectures manually.")) return;
+            const status = document.getElementById("migrateStatus");
+            status.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...';
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/migrate`, { method:"POST", credentials:"include" });
+                const data = await res.json();
+                status.innerHTML = "";
+                document.getElementById("migrateResults").innerHTML=`<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ ${data.message}</div>`;
+                document.getElementById("deleteCorruptedBtn").classList.add("hidden");
+                loadQuestionsAdmin();
+            } catch(err) { status.innerHTML=`<div style="color:var(--error)">Error: ${err.message}</div>`; }
+        }
 
-    if (!questions || questions.length === 0) {
-        container.innerHTML = `<p style="color:var(--text-dim);text-align:center;padding:20px">No questions found.</p>`;
-        return;
-    }
-
-    container.innerHTML = questions.map(q => `
-        <div class="q-row">
-            <div class="q-info">
-                <div><strong>${q.chapter}</strong> — Lecture ${q.lecture}</div>
-                <div class="q-chapter">${(q.questions || []).length} question(s) · Last updated: ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
-            </div>
-            <button class="btn btn-danger" style="padding:7px 14px;font-size:0.78rem" onclick="openDeleteModal('${q.chapter}','${q.lecture}')">🗑 Delete</button>
-        </div>
-    `).join("");
-}
-
-function filterQuestions(query) {
-    const q = query.toLowerCase();
-    const filtered = allQuestions.filter(q2 => 
-        q2.chapter?.toLowerCase().includes(q) || String(q2.lecture).includes(q)
-    );
-    renderQuestionList(filtered);
-}
-
-function openDeleteModal(chapter, lecture) {
-    pendingDeleteChapter = chapter;
-    pendingDeleteLecture = lecture;
-    document.getElementById("deleteModalText").textContent = `Delete all questions for "${chapter} / Lecture ${lecture}"?`;
-    openModal("deleteModal");
-}
-
-async function confirmDelete() {
-    closeModal("deleteModal");
-    const res = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, {
-        method: "DELETE", credentials: "include"
-    });
-    if (res.ok) {
-        openModal("successModal");
-        document.getElementById("successModalTitle").textContent = "Deleted";
-        document.getElementById("successModalText").textContent = "Question deleted successfully.";
-        loadQuestionsAdmin();
-    }
-}
-
-/* ========== STUDENTS ========== */
-function renderStudentTable(data) {
-    const tbody = document.getElementById("studentTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    const withAnswers = data.filter(s => s.answers && s.answers.length > 0);
-
-    if (withAnswers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;opacity:0.5;padding:20px">No student records yet.</td></tr>`;
-        return;
-    }
-
-    withAnswers.forEach(s => {
-        const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
-        tbody.insertAdjacentHTML("beforeend", `
-            <tr>
-                <td>${s.name || "—"}</td>
-                <td><span style="font-family:'Space Mono',monospace;font-size:0.78rem">${s.mobile}</span></td>
-                <td>${s.place || "—"}</td>
-                <td>${s.className || "—"}</td>
-                <td>${s.chapter || "—"}</td>
-                <td>Lec ${s.lecture || "—"}</td>
-                <td>${s.correctCount || 0}/${s.totalQuestions || 0}</td>
-                <td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct >= 50 ? "✅" : "❌"} ${pct}%</span></td>
-            </tr>
-        `);
-    });
-}
-
-function filterStudents(query) {
-    const q = query.toLowerCase();
-    const filtered = allStudents.filter(s =>
-        (s.name || "").toLowerCase().includes(q) ||
-        (s.mobile || "").includes(q) ||
-        String(s.lecture || "").includes(q) ||
-        (s.chapter || "").toLowerCase().includes(q)
-    );
-    renderStudentTable(filtered);
-}
-
-/* ========== EXPORT CSV ========== */
-function exportCSV() {
-    let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n";
-    allStudents.filter(s => s.answers?.length > 0).forEach(s => {
-        const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
-        csv += `"${s.name || ""}","="${s.mobile || ""}","${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${s.correctCount || 0},${s.totalQuestions || 0},${pct}%\n`;
-    });
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `GripPhysics_Report_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-}
-
-/* ========== MODALS ========== */
-function openModal(id) { document.getElementById(id).style.display = "flex"; }
-function closeModal(id) { document.getElementById(id).style.display = "none"; }
-</script>
-</body>
-</html>
