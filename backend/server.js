@@ -351,7 +351,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     const prompt = "First image = physics MCQ questions. Second image = answer key.\nExtract ALL questions, match each answer, return ONLY a raw JSON array (no markdown, no backticks).\nFormat: [{\"question\":\"...\",\"options\":[\"A text\",\"B text\",\"C text\",\"D text\"],\"correctIndex\":0}]\nRules: correctIndex 0=A 1=B 2=C 3=D. If answer key uses 1/2/3/4 map to 0/1/2/3. Write equations in plain text (e.g. v^2=u^2+2as). Include every question visible.";
 
     try {
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY;
+        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + process.env.GEMINI_API_KEY;
 
         const body = {
             contents: [{
