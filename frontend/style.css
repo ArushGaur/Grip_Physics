@@ -835,20 +835,98 @@ button[type="submit"]:hover,
     border-radius: 4px;
 }
 
-/* Responsive - student portal */
-@media (max-width:480px) {
+/* -------- RESPONSIVE — Student Portal -------- */
+
+/* Tablet */
+@media (max-width:600px) {
+    body {
+        padding: 12px 12px 32px;
+    }
+
     .container {
-        padding: 24px 18px;
-        border-radius: 18px;
+        padding: 28px 22px;
+        border-radius: 20px;
+        width: 100%;
+    }
+
+    .brand h2 {
+        font-size: 1.3rem;
+    }
+
+    .loader-logo {
+        font-size: 1.7rem;
+        letter-spacing: 4px;
+    }
+
+    .loader-icon {
+        font-size: 2rem;
+    }
+
+    .quiz-header {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .timer {
+        font-size: 0.9rem;
+        padding: 5px 10px;
+    }
+
+    .question-text {
+        font-size: 0.92rem;
+        line-height: 1.6;
+    }
+
+    .option {
+        padding: 11px 14px;
+        font-size: 0.88rem;
+    }
+
+    .result-title {
+        font-size: 1.5rem;
     }
 
     .score-num {
-        font-size: 2.5rem;
+        font-size: 3rem;
+    }
+
+    .step-line {
+        width: 32px;
+    }
+}
+
+/* Small mobile */
+@media (max-width:480px) {
+    body {
+        padding: 10px 10px 28px;
+    }
+
+    .container {
+        padding: 22px 16px;
+        border-radius: 18px;
+    }
+
+    .brand {
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .brand h2 {
+        font-size: 1.2rem;
+    }
+
+    .brand-icon {
+        font-size: 1.6rem;
     }
 
     .loader-logo {
         font-size: 1.5rem;
         letter-spacing: 3px;
+    }
+
+    .step-tracker {
+        margin-bottom: 16px;
     }
 
     .step-line {
@@ -859,35 +937,126 @@ button[type="submit"]:hover,
         font-size: 0.55rem;
     }
 
+    .step-num {
+        width: 28px;
+        height: 28px;
+        font-size: 0.72rem;
+    }
+
     .quiz-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 8px;
     }
 
     .timer {
-        font-size: 0.95rem;
+        font-size: 0.88rem;
         padding: 4px 10px;
     }
 
     .question-text {
-        font-size: 0.92rem;
+        font-size: 0.9rem;
     }
 
-    body {
-        padding: 12px 12px 32px;
+    .option {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        gap: 10px;
+    }
+
+    .option-letter {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+    }
+
+    .nav-btn {
+        padding: 9px;
+        font-size: 0.8rem;
+    }
+
+    .submit-answer-btn {
+        padding: 12px;
+        font-size: 0.85rem;
+    }
+
+    .result-icon {
+        font-size: 3rem;
     }
 
     .result-title {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
+    }
+
+    .score-num {
+        font-size: 2.5rem;
+    }
+
+    .score-sep {
+        font-size: 2rem;
+    }
+
+    .score-den {
+        font-size: 1.6rem;
+    }
+
+    .result-subtitle {
+        font-size: 0.82rem;
+    }
+
+    .meta-chip {
+        font-size: 0.72rem;
+        padding: 4px 10px;
+    }
+
+    .breakdown-item {
+        font-size: 0.78rem;
+        padding: 8px 10px;
+    }
+
+    .quiz-nav {
+        gap: 8px;
+    }
+
+    input,
+    select {
+        font-size: 0.88rem;
+    }
+
+    button[type="submit"] {
+        font-size: 0.88rem;
+        padding: 13px;
     }
 }
 
+/* Very small */
 @media (max-width:360px) {
     .container {
-        padding: 20px 14px;
+        padding: 18px 12px;
     }
 
     .step-line {
         width: 16px;
+    }
+
+    .step-label {
+        display: none;
+    }
+
+    .loader-logo {
+        font-size: 1.3rem;
+        letter-spacing: 2px;
+    }
+
+    .brand h2 {
+        font-size: 1.1rem;
+    }
+
+    .question-text {
+        font-size: 0.85rem;
+    }
+
+    .score-num {
+        font-size: 2rem;
     }
 }
