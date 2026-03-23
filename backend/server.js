@@ -9,7 +9,7 @@ app.set("trust proxy", 1);
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || "admin123";
 
 app.use(cors({ origin: ["https://grip-physics.onrender.com", "https://grip-physics.vercel.app"], credentials: true, methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization"] }));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "20mb" }));
 app.use(session({ secret: process.env.SESSION_SECRET || "grip_secret_key", resave: false, saveUninitialized: false, proxy: true, cookie: { secure: true, sameSite: "none", httpOnly: true, maxAge: 24 * 60 * 60 * 1000 } }));
 
 const rateLimitMap = new Map();
@@ -30,7 +30,12 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physic
 
 const QuestionSchema = new mongoose.Schema({
     chapter: { type: String, index: true }, lecture: { type: String, index: true },
-    questions: [{ question: String, options: [String], correctIndex: Number, correctIndexes: [Number], isMultiCorrect: Boolean }],
+    questions: [{
+        question: String, options: [String],
+        correctIndex: Number, correctIndexes: [Number], isMultiCorrect: Boolean,
+        questionImage: String,  // base64 image embedded in question
+        optionImages: [String]  // base64 images for options
+    }],
     question: String, options: [String], correctIndex: Number, updatedAt: { type: Number, default: Date.now }
 }, { strict: false });
 
@@ -113,6 +118,17 @@ async function findQuestion(chapter, lecture) {
     return null;
 }
 
+// Auto reload cache helper — called after any question change
+async function refreshCache(chapter, lecture) {
+    const updated = await Question.findOne(chapter ? { chapter, lecture } : { lecture }).lean();
+    if (updated) {
+        const n = normalizeQuestion(updated);
+        if (!n._corrupted) questionCache[`${chapter || ""}::${lecture}`] = n;
+    } else {
+        delete questionCache[`${chapter || ""}::${lecture}`];
+    }
+}
+
 function requireAdmin(req, res, next) { if (!req.session.admin) return res.status(403).json({ error: "Unauthorized" }); next(); }
 
 app.post("/api/admin/login", rateLimit(15 * 60 * 1000, 10), (req, res) => { if (req.body.passcode !== ADMIN_PASSCODE) return res.status(401).json({ error: "Invalid passcode" }); req.session.admin = true; res.json({ success: true }); });
@@ -151,9 +167,7 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
     const data = { chapter: chapter || null, lecture, questions, updatedAt: Date.now() };
     if (existing) { await Question.updateOne({ _id: existing._id }, { $set: data, $unset: { question: "", options: "", correctIndex: "" } }); }
     else { await Question.create(data); }
-    const updated = await Question.findOne(existing ? { _id: existing._id } : { lecture }).lean();
-    const n = normalizeQuestion(updated);
-    questionCache[`${chapter || ""}::${lecture}`] = n;
+    await refreshCache(chapter, lecture); // auto reload cache
     res.json({ success: true });
 });
 
@@ -162,6 +176,19 @@ app.delete("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, re
     await Question.deleteMany({ lecture, $or: [{ chapter }, { chapter: null }, { chapter: { $exists: false } }] });
     delete questionCache[`${chapter}::${lecture}`];
     res.json({ success: true });
+});
+
+// Mass delete endpoint
+app.post("/api/admin/mass-delete", requireAdmin, async (req, res) => {
+    const { items } = req.body; // [{chapter, lecture}]
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No items" });
+    let deleted = 0;
+    for (const { chapter, lecture } of items) {
+        await Question.deleteMany({ lecture, $or: [{ chapter }, { chapter: null }, { chapter: { $exists: false } }] });
+        delete questionCache[`${chapter || ""}::${lecture}`];
+        deleted++;
+    }
+    res.json({ success: true, deleted });
 });
 
 app.get("/api/admin/students", requireAdmin, async (req, res) => { try { const all = await Student.find({}).lean(); res.json(all.map(normalizeStudent)); } catch { res.status(500).json({ error: "Failed" }); } });
@@ -173,58 +200,80 @@ app.post("/api/admin/reload-cache", requireAdmin, async (req, res) => {
 });
 
 app.get("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const c = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())); res.json({ total: all.length, corrupted: c.length, corruptedLectures: c.map(q => ({ lecture: q.lecture, chapter: q.chapter || null, _id: q._id })) }); } catch (e) { res.status(500).json({ error: e.message }); } });
-app.post("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const ids = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(q => q._id); if (!ids.length) return res.json({ success: true, deleted: 0, message: "No corrupted records found." }); await Question.deleteMany({ _id: { $in: ids } }); questionCache = {}; await loadQuestions(); res.json({ success: true, deleted: ids.length, message: `Deleted ${ids.length} corrupted record(s).` }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const ids = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(q => q._id); if (!ids.length) return res.json({ success: true, deleted: 0, message: "No corrupted records found." }); await Question.deleteMany({ _id: { $in: ids } }); await loadQuestions(); res.json({ success: true, deleted: ids.length, message: `Deleted ${ids.length} corrupted record(s).` }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
+// Multi-screenshot extract endpoint
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
-    const { questionImageBase64, answerImageBase64 } = req.body;
-    if (!questionImageBase64 || !answerImageBase64) return res.status(400).json({ error: "Both images required" });
+    const { questionImages, answerImages, manualAnswerKey } = req.body;
+    // questionImages: array of base64 strings
+    // answerImages: array of base64 strings (optional if manualAnswerKey provided)
+    // manualAnswerKey: string like "1-C, 2-A, 3-B,D" (optional)
+    if (!questionImages || !Array.isArray(questionImages) || !questionImages.length)
+        return res.status(400).json({ error: "At least one question image required" });
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
+
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
-    const qMime = getMime(questionImageBase64), aMime = getMime(answerImageBase64);
 
-    const prompt = `You are a physics teacher extracting MCQ questions from an exam paper.
-First image = question paper. Second image = answer key.
+    // Build answer key description
+    let answerKeyDesc = "";
+    if (manualAnswerKey && manualAnswerKey.trim()) {
+        answerKeyDesc = `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).`;
+    } else if (answerImages && answerImages.length > 0) {
+        answerKeyDesc = `The last ${answerImages.length} image(s) are the answer key.`;
+    } else {
+        answerKeyDesc = "No answer key provided — do your best to identify correct answers from context.";
+    }
 
-TASK: Extract every question and match it to its answer. Output ONLY a raw JSON array.
+    const prompt = `You are a physics teacher extracting MCQ questions from exam paper images.
 
-For each question output:
+${answerKeyDesc}
+
+TASK: Extract EVERY question from ALL question images and match each to its answer.
+
+Output ONLY a raw JSON array, no markdown, no explanation.
+
+For each question:
 {
-  "question": "question text — use LaTeX in $...$ for ALL math",
-  "options": ["option A text", "option B text", "option C text", "option D text"],
+  "question": "text with LaTeX math in $...$",
+  "options": ["option A", "option B", "option C", "option D"],
   "correctIndexes": [0],
-  "isMultiCorrect": false
+  "isMultiCorrect": false,
+  "hasImage": false
 }
 
-MATH FORMATTING — This is critical. Use KaTeX LaTeX inside $...$:
-- Greek letters: epsilon→$\\varepsilon$, pi→$\\pi$, omega→$\\omega$, phi→$\\phi$, theta→$\\theta$
-- Superscripts: T^4→$T^4$, s^{-1}→$s^{-1}$, T_2^4-T_1^4→$T_2^4-T_1^4$
-- Subscripts: T_1→$T_1$, i_1→$i_1$, E_0→$E_0$
-- Trig functions: cos→$\\cos$, sin→$\\sin$
-- Complex: "emf = E_0[cos(100 pi s^-1)t]" → "$\\varepsilon = \\varepsilon_0[\\cos(100\\pi s^{-1})t]$"
-- Fractions: 1/2 mv^2 → $\\frac{1}{2}mv^2$
-- For options that are pure math like "T_2^4 - T_1^4" write as "$T_2^4 - T_1^4$"
+CRITICAL — LaTeX math rules (use KaTeX syntax in $...$):
+- Greek: pi→$\\pi$, omega→$\\omega$, epsilon→$\\varepsilon$, phi→$\\phi$
+- Powers: T^4→$T^4$, s^{-1}→$s^{-1}$  
+- Subscripts: T_1→$T_1$, E_0→$E_0$, i_1→$i_1$
+- Trig: cos→$\\cos$, sin→$\\sin$
+- Complex: "E_0 cos(100 pi s^-1 t)" → "$E_0\\cos(100\\pi s^{-1}t)$"
+- Fractions: "1/2 mv^2" → "$\\frac{1}{2}mv^2$"
+- Do NOT add trailing $ after the last word if the sentence ends in plain text
 
-ANSWER KEY:
-- Single letter A → correctIndexes:[0], isMultiCorrect:false
-- Multiple letters A,C → correctIndexes:[0,2], isMultiCorrect:true
-- Numbers 1/2/3/4 map to indexes 0/1/2/3
-
-Output ONLY the JSON array, nothing else, no markdown fences.`;
+IMPORTANT: 
+- Set "hasImage": true if a question contains a diagram/figure/graph that cannot be described in text
+- correctIndexes: 0=A, 1=B, 2=C, 3=D. Map numbers 1/2/3/4 to 0/1/2/3
+- If answer key shows "A,C" set correctIndexes:[0,2] and isMultiCorrect:true
+- Extract questions in order as they appear`;
 
     try {
+        // Build content array — all question images first, then answer key images
+        const contentParts = [];
+        for (const img of questionImages) {
+            contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
+        }
+        for (const img of (answerImages || [])) {
+            contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
+        }
+        contentParts.push({ type: "text", text: prompt });
+
         const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
             body: JSON.stringify({
                 model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                max_tokens: 4000, temperature: 0.1,
-                messages: [{
-                    role: "user", content: [
-                        { type: "image_url", image_url: { url: "data:" + qMime + ";base64," + questionImageBase64 } },
-                        { type: "image_url", image_url: { url: "data:" + aMime + ";base64," + answerImageBase64 } },
-                        { type: "text", text: prompt }
-                    ]
-                }]
+                max_tokens: 6000, temperature: 0.1,
+                messages: [{ role: "user", content: contentParts }]
             })
         });
         if (!r.ok) { const e = await r.json(); return res.status(502).json({ error: (e.error && e.error.message) || "Groq error" }); }
@@ -232,22 +281,34 @@ Output ONLY the JSON array, nothing else, no markdown fences.`;
         let raw = ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "").trim();
         console.log("Groq response (first 400):", raw.slice(0, 400));
         let text = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
+
+        // Fix common trailing $\$ issue — remove lone $ at end of question text
+        text = text.replace(/\s*\$\\\$\s*"/g, '"').replace(/\s*\$\\s\$\s*"/g, '"');
+
         const arrStart = text.indexOf("["), arrEnd = text.lastIndexOf("]");
-        if (arrStart === -1 || arrEnd === -1) return res.status(500).json({ error: "AI did not return valid JSON. Try a clearer screenshot." });
+        if (arrStart === -1 || arrEnd === -1) return res.status(500).json({ error: "AI did not return valid JSON." });
         text = text.slice(arrStart, arrEnd + 1);
+
         let parsed;
         try { parsed = JSON.parse(text); }
         catch (e) {
-            console.error("Parse error:", e.message, "text:", text.slice(0, 300));
-            return res.status(500).json({ error: "Could not parse AI response. Try a clearer screenshot." });
+            // Try to fix common JSON issues
+            text = text.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}");
+            try { parsed = JSON.parse(text); }
+            catch { return res.status(500).json({ error: "Could not parse AI response. Try clearer images." }); }
         }
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
+
         parsed = parsed.map(q => {
             if (!q.correctIndexes || !Array.isArray(q.correctIndexes) || !q.correctIndexes.length)
                 q.correctIndexes = [typeof q.correctIndex === "number" ? q.correctIndex : 0];
             q.isMultiCorrect = q.correctIndexes.length > 1;
+            // Clean up trailing $\$ artifacts
+            if (q.question) q.question = q.question.replace(/\s*\$\\\$\s*$/, "").replace(/\s*\$\\s\$\s*$/, "").trim();
+            q.options = (q.options || []).map(o => (o || "").replace(/\s*\$\\\$\s*$/, "").replace(/\s*\$\\s\$\s*$/, "").trim());
             return q;
         });
+
         res.json({ questions: parsed });
     } catch (e) { console.error("Extract error:", e); res.status(500).json({ error: "Server error: " + e.message }); }
 });
