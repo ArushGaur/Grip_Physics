@@ -793,7 +793,7 @@
 
             #sidebar {
                 width: 100% !important;
-                height: 60px;
+                height: 64px;
                 top: auto;
                 bottom: 0;
                 left: 0;
@@ -806,7 +806,9 @@
                 align-items: center;
                 overflow-x: auto;
                 gap: 0;
-                height: 64px;
+                background: #0f0c29 !important;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
             }
 
             .sidebar-brand,
@@ -1109,9 +1111,20 @@
             </div>
             <div id="extractedList" style="display:none">
                 <div class="panel">
-                    <div class="panel-title">📋 Extracted Questions — Review & Edit</div>
+                    <div
+                        style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+                        <div class="panel-title" style="margin-bottom:0">📋 Extracted Questions — Review &amp; Edit
+                        </div>
+                        <div style="display:flex;gap:8px">
+                            <button class="btn btn-ghost" id="undoBtn" onclick="undoAction()" disabled
+                                style="padding:7px 14px;font-size:0.82rem" title="Undo (Ctrl+Z)">↩ Undo</button>
+                            <button class="btn btn-ghost" id="redoBtn" onclick="redoAction()" disabled
+                                style="padding:7px 14px;font-size:0.82rem" title="Redo (Ctrl+Y)">↪ Redo</button>
+                        </div>
+                    </div>
                     <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">Each question has its own
-                        lecture number. Multi-correct questions show ✦. Edit anything before saving.</p>
+                        lecture number. Multi-correct questions show ✦. Use <strong>↩ Undo</strong> / <strong>↪
+                            Redo</strong> or Ctrl+Z / Ctrl+Y if you remove something by accident.</p>
                     <div id="extractedQContainer"></div>
                     <div class="flex-end mt-20">
                         <button class="btn btn-ghost" onclick="addExtractedQ()">+ Add Question</button>
@@ -1236,6 +1249,53 @@
         const API_BASE = "";
         let allStudents = [], allQuestions = [], pendingReplaceData = null, pendingDeleteChapter = null, pendingDeleteLecture = null;
         let qImageBase64 = null, aImageBase64 = null, extractedQuestions = [], manualQuestionCount = 0;
+        let undoStack = [], redoStack = [];
+
+        function pushUndo(snap) { undoStack.push(snap); redoStack = []; updateUndoRedoBtns(); }
+
+        function updateUndoRedoBtns() {
+            const u = document.getElementById("undoBtn"), r = document.getElementById("redoBtn");
+            if (u) u.disabled = undoStack.length === 0;
+            if (r) r.disabled = redoStack.length === 0;
+        }
+
+        function snapshotState() {
+            return {
+                questions: JSON.parse(JSON.stringify(extractedQuestions)),
+                qImageBase64: qImageBase64,
+                aImageBase64: aImageBase64,
+                qImgSrc: document.getElementById("qPreviewImg")?.src || "",
+                aImgSrc: document.getElementById("aPreviewImg")?.src || "",
+                qVisible: document.getElementById("qPreview")?.style.display !== "none",
+                aVisible: document.getElementById("aPreview")?.style.display !== "none",
+                listVisible: document.getElementById("extractedList")?.style.display !== "none"
+            };
+        }
+
+        function restoreSnapshot(snap) {
+            extractedQuestions = JSON.parse(JSON.stringify(snap.questions));
+            qImageBase64 = snap.qImageBase64; aImageBase64 = snap.aImageBase64;
+            const qp = document.getElementById("qPreview"), qi = document.getElementById("qPreviewImg");
+            const ap = document.getElementById("aPreview"), ai = document.getElementById("aPreviewImg");
+            if (qi) qi.src = snap.qImgSrc; if (qp) qp.style.display = snap.qVisible ? "block" : "none";
+            if (ai) ai.src = snap.aImgSrc; if (ap) ap.style.display = snap.aVisible ? "block" : "none";
+            const el = document.getElementById("extractedList");
+            if (el) el.style.display = snap.listVisible ? "block" : "none";
+            if (snap.questions.length > 0) renderExtractedQuestions(snap.questions);
+            checkExtractReady(); updateUndoRedoBtns();
+        }
+
+        function undoAction() {
+            if (!undoStack.length) return;
+            redoStack.push(snapshotState());
+            restoreSnapshot(undoStack.pop());
+        }
+
+        function redoAction() {
+            if (!redoStack.length) return;
+            undoStack.push(snapshotState());
+            restoreSnapshot(redoStack.pop());
+        }
         let editingChapter = null, editingLecture = null, editingQIndex = null;
         const LETTERS = ["A", "B", "C", "D"];
 
@@ -1404,9 +1464,14 @@
         /* ===== SCREENSHOT IMPORT ===== */
         function fileToBase64(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); }); }
         function showPreview(pid, imgId, src) { const el = document.getElementById(pid), img = document.getElementById(imgId); if (el && img) { img.src = src; el.style.display = "block"; } }
-        async function handleQFile(input) { const f = input.files[0]; if (!f) return; qImageBase64 = await fileToBase64(f); showPreview("qPreview", "qPreviewImg", URL.createObjectURL(f)); checkExtractReady(); }
-        async function handleAFile(input) { const f = input.files[0]; if (!f) return; aImageBase64 = await fileToBase64(f); showPreview("aPreview", "aPreviewImg", URL.createObjectURL(f)); checkExtractReady(); }
-        function removeImg(type) { if (type === "q") { qImageBase64 = null; document.getElementById("qPreview").style.display = "none"; document.getElementById("qPreviewImg").src = ""; document.getElementById("qFileInput").value = ""; } else { aImageBase64 = null; document.getElementById("aPreview").style.display = "none"; document.getElementById("aPreviewImg").src = ""; document.getElementById("aFileInput").value = ""; } checkExtractReady(); }
+        async function handleQFile(input) { const f = input.files[0]; if (!f) return; pushUndo(snapshotState()); qImageBase64 = await fileToBase64(f); showPreview("qPreview", "qPreviewImg", URL.createObjectURL(f)); checkExtractReady(); }
+        async function handleAFile(input) { const f = input.files[0]; if (!f) return; pushUndo(snapshotState()); aImageBase64 = await fileToBase64(f); showPreview("aPreview", "aPreviewImg", URL.createObjectURL(f)); checkExtractReady(); }
+        function removeImg(type) {
+            pushUndo(snapshotState());
+            if (type === "q") { qImageBase64 = null; document.getElementById("qPreview").style.display = "none"; document.getElementById("qPreviewImg").src = ""; document.getElementById("qFileInput").value = ""; }
+            else { aImageBase64 = null; document.getElementById("aPreview").style.display = "none"; document.getElementById("aPreviewImg").src = ""; document.getElementById("aFileInput").value = ""; }
+            checkExtractReady();
+        }
         function checkExtractReady() { document.getElementById("extractBtn").disabled = !(qImageBase64 && aImageBase64); }
 
         document.addEventListener("paste", async function (e) {
@@ -1432,6 +1497,7 @@
                 if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Server error"); }
                 const data = await r.json(); const parsed = data.questions;
                 if (!Array.isArray(parsed) || !parsed.length) throw new Error("No questions found");
+                pushUndo(snapshotState());
                 extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i }));
                 status.className = "extract-status success";
                 status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1} assigned. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct detected.`;
@@ -1479,14 +1545,15 @@
         }
 
         function removeExtractedQ(qi) {
+            pushUndo(snapshotState());
             document.getElementById(`eq_${qi}`)?.remove();
-            // Re-number remaining questions
             const startLec = parseInt(document.getElementById("imp-lecture").value) || 1;
             const items = document.querySelectorAll(".extracted-q-item");
             items.forEach((item, idx) => {
                 const label = item.querySelector("strong"); if (label) label.textContent = `Q${idx + 1}`;
                 const lecInput = item.querySelector('[id^="eq_lec_"]'); if (lecInput) lecInput.value = startLec + idx;
             });
+            updateUndoRedoBtns();
         }
 
         function addExtractedQ() {
@@ -1725,6 +1792,13 @@
         }
 
         /* ===== MODALS ===== */
+        document.addEventListener("keydown", function (e) {
+            if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return;
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === "z" || e.key === "Z") { e.preventDefault(); undoAction(); }
+                if (e.key === "y" || e.key === "Y") { e.preventDefault(); redoAction(); }
+            }
+        });
         function openModal(id) { document.getElementById(id).style.display = "flex"; }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
     </script>
