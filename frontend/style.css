@@ -309,7 +309,17 @@ select option {
 }
 
 input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.55);
+    font-style: italic;
+}
+
+select::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+textarea::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+    font-style: italic;
 }
 
 /* Buttons */
@@ -476,7 +486,6 @@ button[type="submit"]:hover,
 .option:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.25);
-    transform: translateX(3px);
 }
 
 .option.selected {
