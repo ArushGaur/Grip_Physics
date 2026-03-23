@@ -22,30 +22,31 @@
     <style>
         /* THEME TOKENS */
         :root {
-            --bg: #0b0f1a;
-            --bg-card: #131a2e;
-            --bg-input: #1a2140;
-            --bg-hover: #1f2750;
-            --bg-sidebar: #0f1426;
-
-            --border: rgba(255, 255, 255, 0.10);
-            --border-focus: #6366f1;
-
-            --accent: #6366f1;
+            --bg: #0b0d18;
+            --bg-card: #111425;
+            --bg-input: #191d32;
+            --bg-hover: #1e2340;
+            --bg-sidebar: #0e1020;
+            --border: rgba(255, 255, 255, 0.07);
+            --border-focus: #5b5fef;
+            --accent: #5b5fef;
             --accent-2: #8b5cf6;
-
-            --accent-glow: rgba(99, 102, 241, 0.25);
-
-            --success: #22c55e;
-            --error: #ef4444;
+            --accent-3: #06d6a0;
+            --accent-4: #f59e0b;
+            --accent-glow: rgba(91, 95, 239, 0.22);
+            --success: #06d6a0;
+            --error: #f25c5c;
             --warn: #f59e0b;
-
-            /* ✅ FIXED TEXT */
-            --text: #eef2ff;
-            --text-dim: rgba(238, 242, 255, 0.75);
-            --text-muted: rgba(238, 242, 255, 0.5);
-
-            --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.4);
+            --text: #e4e8ff;
+            --text-dim: rgba(228, 232, 255, 0.52);
+            --text-muted: rgba(228, 232, 255, 0.28);
+            --sidebar-w: 228px;
+            --radius: 14px;
+            --radius-sm: 9px;
+            --radius-xs: 6px;
+            --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
+            --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7);
         }
 
         [data-theme="light"] {
@@ -87,56 +88,6 @@
             color: var(--text);
             display: flex;
             transition: background 0.25s, color 0.25s;
-        }
-
-        /* subtle improvements without breaking layout */
-
-        /* Better page depth */
-        body {
-            background: radial-gradient(ellipse at top left,
-                    rgba(99, 102, 241, 0.08),
-                    transparent 60%), var(--bg);
-        }
-
-        /* Improve card visibility */
-        .panel,
-        .stat-card,
-        .chapter-card,
-        .lecture-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-        }
-
-        /* Slight hover lift */
-        .panel:hover,
-        .stat-card:hover,
-        .chapter-card:hover,
-        .lecture-card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(255, 255, 255, 0.18);
-        }
-
-        /* Sidebar fix */
-        #sidebar {
-            background: var(--bg-sidebar);
-        }
-
-        /* Fix nav active (keep original style but clearer) */
-        .nav-item.active {
-            color: #fff;
-        }
-
-        /* Inputs clearer */
-        input,
-        textarea,
-        select {
-            background: var(--bg-input);
-            color: var(--text);
-        }
-
-        /* Table readability */
-        td {
-            color: var(--text-dim);
         }
 
         [data-theme="dark"] body {
