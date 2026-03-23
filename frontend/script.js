@@ -115,7 +115,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
         document.getElementById("q-total").textContent = currentQuestionSet.length;
         if (currentQuestionSet.length > 1) document.getElementById("quiz-nav").classList.remove("hidden");
         renderQuestion(0);
-        startTimer(currentQuestionSet.length * 60);
     } catch (err) {
         console.error(err); shakeForm(); showFormError("Connection error. Please try again.");
         btnText.textContent = "Unlock Question";
@@ -209,17 +208,7 @@ function prevQuestion() { if (currentQuestionIndex > 0) { currentQuestionIndex--
 
 /* ---- TIMER ---- */
 function startTimer(seconds) {
-    timeLeft = seconds;
-    const display = document.getElementById("timer-display"), timerEl = document.getElementById("quiz-timer");
-    function update() {
-        const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
-        display.textContent = `${m}:${s.toString().padStart(2, "0")}`;
-        timerEl.classList.remove("warning", "danger");
-        if (timeLeft <= 30) timerEl.classList.add("danger");
-        else if (timeLeft <= 60) timerEl.classList.add("warning");
-    }
-    update();
-    timerInterval = setInterval(() => { timeLeft--; update(); if (timeLeft <= 0) { clearInterval(timerInterval); selectedAnswers = selectedAnswers.map((a, i) => currentQuestionSet[i].isMultiCorrect ? (a.length ? a : [-1]) : (a === null ? -1 : a)); submitAnswer(true); } }, 1000);
+    // Timer removed — students answer at their own pace
 }
 
 /* ---- SUBMIT ---- */
