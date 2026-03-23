@@ -175,6 +175,13 @@ app.delete("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, re
 app.get("/api/admin/students", requireAdmin, async (req, res) => { try { const all = await Student.find({}).lean(); res.json(all.map(normalizeStudent)); } catch { res.status(500).json({ error: "Failed" }); } });
 app.get("/api/admin/questions", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); res.json(all.map(normalizeQuestion)); } catch { res.status(500).json({ error: "Failed" }); } });
 
+app.post("/api/admin/reload-cache", requireAdmin, async (req, res) => {
+    try {
+        await loadQuestions();
+        res.json({ success: true, cached: Object.keys(questionCache).length });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const c = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())); res.json({ total: all.length, corrupted: c.length, corruptedLectures: c.map(q => ({ lecture: q.lecture, chapter: q.chapter || null, _id: q._id })) }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const ids = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(q => q._id); if (!ids.length) return res.json({ success: true, deleted: 0, message: "No corrupted records found." }); await Question.deleteMany({ _id: { $in: ids } }); questionCache = {}; await loadQuestions(); res.json({ success: true, deleted: ids.length, message: `Deleted ${ids.length} corrupted record(s).` }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
