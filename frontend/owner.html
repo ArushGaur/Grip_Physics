@@ -22,31 +22,33 @@
     <style>
         /* THEME TOKENS */
         :root {
-            --bg: #0b0d18;
-            --bg-card: #111425;
-            --bg-input: #191d32;
-            --bg-hover: #1e2340;
-            --bg-sidebar: #0e1020;
-            --border: rgba(255, 255, 255, 0.07);
-            --border-focus: #5b5fef;
-            --accent: #5b5fef;
+            --bg: #0a0f1f;
+            --bg-card: #121933;
+            --bg-input: #182044;
+            --bg-hover: #202a5c;
+            --bg-sidebar: #0b1224;
+
+            --border: rgba(255, 255, 255, 0.14);
+            --border-focus: #6366f1;
+
+            --accent: #6366f1;
             --accent-2: #8b5cf6;
-            --accent-3: #06d6a0;
+            --accent-3: #22c55e;
             --accent-4: #f59e0b;
-            --accent-glow: rgba(91, 95, 239, 0.22);
-            --success: #06d6a0;
-            --error: #f25c5c;
+
+            --accent-glow: rgba(99, 102, 241, 0.35);
+
+            --success: #22c55e;
+            --error: #ef4444;
             --warn: #f59e0b;
-            --text: #e4e8ff;
-            --text-dim: rgba(228, 232, 255, 0.52);
-            --text-muted: rgba(228, 232, 255, 0.28);
-            --sidebar-w: 228px;
-            --radius: 14px;
-            --radius-sm: 9px;
-            --radius-xs: 6px;
-            --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
-            --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7);
+
+            /* TEXT FIX (MOST IMPORTANT) */
+            --text: #ffffff;
+            --text-dim: #c7d2fe;
+            --text-muted: #94a3b8;
+
+            --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.6);
+            --shadow-modal: 0 30px 80px rgba(0, 0, 0, 0.8);
         }
 
         [data-theme="light"] {
@@ -88,6 +90,82 @@
             color: var(--text);
             display: flex;
             transition: background 0.25s, color 0.25s;
+        }
+
+        /* ===== UI UPGRADE PATCH ===== */
+
+        /* Better body background */
+        body {
+            background: radial-gradient(circle at 20% 0%, #1e293b 0%, #020617 60%) !important;
+        }
+
+        /* Cards feel premium */
+        .panel,
+        .stat-card,
+        .chapter-card,
+        .lecture-card,
+        .login-card {
+            background: linear-gradient(145deg, #121933, #0b1224) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        /* Stronger hover */
+        .panel:hover,
+        .stat-card:hover,
+        .chapter-card:hover,
+        .lecture-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Text clarity */
+        p,
+        span,
+        td {
+            color: var(--text-dim) !important;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: var(--text) !important;
+        }
+
+        /* Sidebar improvement */
+        #sidebar {
+            background: linear-gradient(180deg, #0f172a, #020617) !important;
+        }
+
+        /* Active nav fix */
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+            color: #fff !important;
+        }
+
+        /* Buttons pop */
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+        }
+
+        .btn-ghost {
+            color: var(--text-dim) !important;
+        }
+
+        /* Inputs clearer */
+        input,
+        textarea,
+        select {
+            background: #1a2245 !important;
+            color: #fff !important;
+        }
+
+        /* Table readability */
+        th {
+            color: var(--text-muted) !important;
+        }
+
+        tr:hover td {
+            background: rgba(99, 102, 241, 0.1) !important;
         }
 
         [data-theme="dark"] body {
