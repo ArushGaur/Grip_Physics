@@ -969,12 +969,13 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 18px 14px;
+            padding: 22px 14px 18px;
             cursor: pointer;
             transition: var(--transition);
             text-align: center;
             box-shadow: var(--shadow-card);
             position: relative;
+            overflow: hidden;
         }
 
         .lecture-card:hover {
@@ -987,15 +988,47 @@
             border-color: rgba(245, 158, 11, 0.35);
         }
 
+        .lecture-card::before {
+            content: "SINGLE";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+            padding: 4px 0;
+            color: #dbe5ff;
+            background: rgba(75, 83, 235, 0.55);
+        }
+
+        .lecture-card.has-multi::before {
+            content: "MULTI";
+            color: #fff6e5;
+            background: rgba(201, 107, 0, 0.72);
+        }
+
         [data-theme="light"] .lecture-card.has-multi {
             border: 1.5px solid rgba(201, 107, 0, 0.68);
             box-shadow: 0 0 0 1px rgba(201, 107, 0, 0.14);
-            background: linear-gradient(180deg, #fffdf7, #ffffff);
+            background: linear-gradient(180deg, #fff9eb, #ffffff);
         }
 
         [data-theme="light"] .lecture-card:not(.has-multi) {
             border: 1.5px solid rgba(75, 83, 235, 0.52);
             box-shadow: 0 0 0 1px rgba(75, 83, 235, 0.12);
+            background: linear-gradient(180deg, #f4f7ff, #ffffff);
+        }
+
+        [data-theme="light"] .lecture-card::before {
+            color: #1d2d85;
+            background: rgba(75, 83, 235, 0.2);
+        }
+
+        [data-theme="light"] .lecture-card.has-multi::before {
+            color: #8e4f00;
+            background: rgba(201, 107, 0, 0.22);
         }
 
         .lecture-card.selected-lec {
@@ -2358,7 +2391,7 @@
             document.getElementById("lec-mass-delete-bar").classList.remove("visible");
             const grid = document.getElementById("lectureCardsGrid");
             grid.className = "";
-            grid.innerHTML = lecs.map(q => { const qc = (q.questions || []).length, hm = (q.questions || []).some(x => x.isMultiCorrect); const gi = allQuestions.indexOf(q); const key = `${ch}::${q.lecture}`; const isSelected = selectedLectureKeys.has(key); return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSelected ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" onclick="handleLecCardClick(event,this)"><input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect('${ch.replace(/'/g, "\\'")}','${q.lecture}')" ${isSelected ? "checked" : ""}><div class="lecture-card-num">L${q.lecture}</div><div style="font-size:0.78rem;margin-bottom:3px">${qc} Q${hm ? ' <span style="color:var(--warn);font-size:0.7rem">✦</span>' : ""}</div><div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div></div>`; }).join("");
+            grid.innerHTML = lecs.map(q => { const qc = (q.questions || []).length, hm = (q.questions || []).some(x => x.isMultiCorrect); const gi = allQuestions.indexOf(q); const key = `${ch}::${q.lecture}`; const isSelected = selectedLectureKeys.has(key); return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSelected ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" onclick="handleLecCardClick(event,this)"><input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect('${ch.replace(/'/g, "\\'")}','${q.lecture}')" ${isSelected ? "checked" : ""}><div class="lecture-card-num">L${q.lecture}</div><div style="font-size:0.78rem;margin-bottom:3px">${qc} Q</div><div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div></div>`; }).join("");
         }
         function handleLecCardClick(e, el) {
             const ch = el.dataset.ch;
