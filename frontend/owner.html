@@ -2160,56 +2160,8 @@
         function switchAKTab(tab) { document.getElementById("ak-tab-screenshot").classList.toggle("active", tab === "screenshot"); document.getElementById("ak-tab-manual").classList.toggle("active", tab === "manual"); document.getElementById("ak-screenshot-panel").style.display = tab === "screenshot" ? "block" : "none"; document.getElementById("ak-manual-panel").style.display = tab === "manual" ? "block" : "none"; checkExtractReady(); }
         document.getElementById("manualAnswerKey").addEventListener("input", checkExtractReady);
 
-        document.addEventListener("paste", async function (e) { if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return; const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return; for (const item of items) { if (!item.type.startsWith("image/")) continue; e.preventDefault(); const f = item.getAsFile(); const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (document.getElementById("ak-tab-screenshot").classList.contains("active") && qImagesBase64.length > 0 && aImagesBase64.length === 0) { aImagesBase64.push(b64); } else { qImagesBase64.push(b64); } refreshPreviews(); break; } });
+        // Drag and drop for upload zones
         ["qZone", "aZone"].forEach(zid => { const z = document.getElementById(zid); if (!z) return; z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("dragover"); }); z.addEventListener("dragleave", () => z.classList.remove("dragover")); z.addEventListener("drop", async e => { e.preventDefault(); z.classList.remove("dragover"); for (const f of e.dataTransfer.files) { if (!f || !f.type.startsWith("image/")) continue; const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (zid === "qZone") qImagesBase64.push(b64); else aImagesBase64.push(b64); } refreshPreviews(); }); });
-
-        /* ─── IMAGE EXTRACTION FROM SCREENSHOTS ─── */
-        async function extractImagesForQuestions(questions, screenshotB64Array) {
-            if (!screenshotB64Array || !screenshotB64Array.length) return;
-            const imgQuestions = questions.filter(q => q.hasImage);
-            if (!imgQuestions.length) return;
-            const totalQs = questions.length;
-            const qsPerScreen = Math.max(1, Math.ceil(totalQs / screenshotB64Array.length));
-            for (let qi = 0; qi < questions.length; qi++) {
-                const q = questions[qi];
-                if (!q.hasImage) continue;
-                const screenIdx = Math.min(Math.floor(qi / qsPerScreen), screenshotB64Array.length - 1);
-                const b64 = screenshotB64Array[screenIdx];
-                try {
-                    // Use canvas to load and store the screenshot as the associated image
-                    const cropped = await getImageFromScreenshot(b64, qi, totalQs, screenshotB64Array.length);
-                    q.extractedImageB64 = cropped || null; // null = show manual upload prompt
-                } catch (e) { q.extractedImageB64 = null; }
-            }
-        }
-        async function getImageFromScreenshot(b64, qi, totalQs, totalScreens) {
-            return new Promise(resolve => {
-                const img = new Image();
-                const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
-                img.onload = () => {
-                    try {
-                        const canvas = document.createElement("canvas");
-                        const ctx = canvas.getContext("2d");
-                        const w = img.naturalWidth, h = img.naturalHeight;
-                        // If multiple questions per screenshot, try to crop the relevant portion
-                        if (totalQs > totalScreens) {
-                            const qsPerScreen = Math.ceil(totalQs / totalScreens);
-                            const localQi = qi % qsPerScreen;
-                            const sliceH = Math.floor(h / qsPerScreen);
-                            const startY = localQi * sliceH;
-                            canvas.width = w; canvas.height = sliceH;
-                            ctx.drawImage(img, 0, startY, w, sliceH, 0, 0, w, sliceH);
-                        } else {
-                            canvas.width = w; canvas.height = h;
-                            ctx.drawImage(img, 0, 0);
-                        }
-                        resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
-                    } catch (e) { resolve(null); }
-                };
-                img.onerror = () => resolve(null);
-                img.src = `data:${mime};base64,${b64}`;
-            });
-        }
 
         async function extractWithAI() {
             const chapter = document.getElementById("imp-chapter").value.trim(), startLec = parseInt(document.getElementById("imp-lecture").value);
@@ -2232,15 +2184,10 @@
                 const data = await r.json(); const parsed = data.questions;
                 if (!Array.isArray(parsed) || !parsed.length) throw new Error("No questions found");
                 pushUndo(snapshotState());
-                // Extract images for questions that have diagrams
                 const imgCount = parsed.filter(q => q.hasImage).length;
-                if (imgCount > 0) {
-                    status.innerHTML = '<span class="spinner"></span>&nbsp; Extracting diagram images from screenshots...';
-                    await extractImagesForQuestions(parsed, qImagesBase64);
-                }
                 extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i }));
                 status.className = "extract-status success";
-                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct. ${imgCount} with diagrams${imgCount > 0 ? ' (images extracted & shown below)' : ''}.`;
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${imgCount} question(s) flagged as having diagrams — upload images below.` : ''}`;
                 renderExtractedQuestions(extractedQuestions); document.getElementById("extractedList").style.display = "block";
             } catch (err) { status.className = "extract-status error"; status.innerHTML = `❌ ${err.message}`; }
             document.getElementById("extractBtn").disabled = false;
@@ -2251,12 +2198,11 @@
             questions.forEach((q, qi) => {
                 const div = document.createElement("div"); div.className = "extracted-q-item"; div.id = `eq_${qi}`;
                 const ci = q.correctIndexes || (typeof q.correctIndex === "number" ? [q.correctIndex] : [0]);
-                const mime = q.extractedImageB64 && q.extractedImageB64.startsWith("/9j/") ? "image/jpeg" : "image/png";
                 div.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <strong>Q${qi + 1}</strong>
         ${q.isMultiCorrect ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:20px;color:var(--warn)">✦ Multi</span>' : ""}
-        ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Image</span>' : ""}
+        ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Diagram</span>' : ""}
         <div style="display:flex;align-items:center;gap:5px;background:rgba(91,95,239,0.08);border:1px solid rgba(91,95,239,0.2);border-radius:7px;padding:3px 10px">
           <span style="font-size:0.7rem;opacity:0.6">Lecture</span>
           <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
@@ -2266,13 +2212,17 @@
     </div>
     <div class="field"><label>Question Text</label><textarea id="eq_q_${qi}" rows="2" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:0.87rem;resize:vertical;outline:none">${q.question}</textarea></div>
     <div class="eq-image-section" id="eq_img_section_${qi}">
-      ${q.extractedImageB64
-        ? `<div class="eq-image-preview" id="eq_img_preview_${qi}"><img src="data:${mime};base64,${q.extractedImageB64}" alt="Question diagram"><div class="eq-image-label">🖼 Extracted diagram — <button onclick="removeEqImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;font-family:inherit">✕ Remove</button></div></div>`
-        : q.hasImage
-          ? `<div class="eq-image-preview" style="background:rgba(245,158,11,0.05);border-color:rgba(245,158,11,0.3);padding:14px" id="eq_img_preview_${qi}"><div style="font-size:0.8rem;color:var(--warn);margin-bottom:10px">⚠️ AI could not crop the diagram. Please upload it manually:</div><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:8px 14px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--accent)">📁 Upload Diagram Image<input type="file" accept="image/*" style="display:none" onchange="handleEqManualImage(this,${qi})"></label></div>`
-          : `<div id="eq_img_preview_${qi}" style="display:none"></div>`
-      }
-      <div style="margin-top:6px"><label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;padding:6px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--text-dim)">🖼 ${q.extractedImageB64 ? "Replace" : "Add"} Image<input type="file" accept="image/*" style="display:none" onchange="handleEqManualImage(this,${qi})"></label></div>
+      <div id="eq_img_preview_${qi}" style="${q.extractedImageB64 ? '' : 'display:none'}">
+        ${q.extractedImageB64 ? `<div class="eq-image-preview"><img src="data:image/jpeg;base64,${q.extractedImageB64}" alt="Question diagram"><div class="eq-image-label">🖼 Diagram image — <button onclick="removeEqImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;font-family:inherit">✕ Remove</button></div></div>` : ''}
+      </div>
+      <div id="eq_img_dropzone_${qi}" class="eq-img-dropzone" style="margin-top:8px;border:2px dashed ${q.extractedImageB64 ? 'rgba(91,95,239,0.2)' : q.hasImage ? 'rgba(245,158,11,0.5)' : 'rgba(91,95,239,0.18)'};border-radius:10px;padding:14px 12px;text-align:center;cursor:pointer;background:${q.hasImage && !q.extractedImageB64 ? 'rgba(245,158,11,0.04)' : 'rgba(255,255,255,0.02)'};transition:border-color 0.2s,background 0.2s;position:relative" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='rgba(91,95,239,0.08)'" ondragleave="this.style.borderColor='';this.style.background=''" ondrop="handleEqDrop(event,${qi})">
+        <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" onchange="handleEqManualImage(this,${qi})">
+        <div style="font-size:1.1rem;margin-bottom:4px">${q.extractedImageB64 ? '🔄' : q.hasImage ? '⚠️' : '🖼'}</div>
+        <div style="font-size:0.78rem;color:${q.hasImage && !q.extractedImageB64 ? 'var(--warn)' : 'var(--text-dim)'}">
+          ${q.hasImage && !q.extractedImageB64 ? '<strong>AI detected a diagram</strong> — ' : ''}
+          <strong style="color:var(--accent)">Click</strong>, drag & drop, or <strong style="color:var(--accent)">paste (Ctrl+V)</strong> to ${q.extractedImageB64 ? 'replace' : 'upload'} the diagram image
+        </div>
+      </div>
     </div>
     <div class="extracted-q-opts">${q.options.map((opt, oi) => `<div class="eq-opt ${ci.includes(oi) ? "correct" : ""}"><span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:700">${LETTERS[oi]}</span><input value="${(opt || "").replace(/"/g, "&quot;")}" id="eq_opt_${qi}_${oi}" style="flex:1;background:transparent;border:none;color:var(--text);font-size:0.82rem;outline:none;font-family:'Outfit',sans-serif"></div>`).join("")}</div>
     <div style="margin-top:10px">${q.isMultiCorrect
@@ -2285,23 +2235,66 @@
         }
 
         /* ── EXTRACTED Q IMAGE HELPERS ── */
-        async function handleEqManualImage(input, qi) {
-            const file = input.files[0]; if (!file) return;
-            const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
+        function setEqImage(qi, b64) {
             if (extractedQuestions[qi]) { extractedQuestions[qi].manualImageB64 = b64; extractedQuestions[qi].extractedImageB64 = b64; }
+            const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
             const preview = document.getElementById(`eq_img_preview_${qi}`);
             if (preview) {
                 preview.style.display = '';
-                preview.className = 'eq-image-preview';
-                preview.style.background = ''; preview.style.borderColor = '';
-                preview.innerHTML = `<img src="data:image/jpeg;base64,${b64}" alt="Question diagram"><div class="eq-image-label">🖼 Manually uploaded — <button onclick="removeEqImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;font-family:inherit">✕ Remove</button></div>`;
+                preview.innerHTML = `<div class="eq-image-preview"><img src="data:${mime};base64,${b64}" alt="Question diagram"><div class="eq-image-label">🖼 Diagram image — <button onclick="removeEqImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;font-family:inherit">✕ Remove</button></div></div>`;
             }
+            const dz = document.getElementById(`eq_img_dropzone_${qi}`);
+            if (dz) { dz.style.borderColor = 'rgba(6,214,160,0.4)'; dz.style.background = 'rgba(6,214,160,0.04)'; const txt = dz.querySelector('div:last-child'); if (txt) txt.innerHTML = '<strong style="color:var(--accent)">Click</strong>, drag & drop, or <strong style="color:var(--accent)">paste (Ctrl+V)</strong> to <strong>replace</strong> the diagram image'; }
+        }
+        async function handleEqManualImage(input, qi) {
+            const file = input.files[0]; if (!file) return;
+            const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
+            setEqImage(qi, b64);
+        }
+        async function handleEqDrop(event, qi) {
+            event.preventDefault();
+            const dz = document.getElementById(`eq_img_dropzone_${qi}`); if (dz) { dz.style.borderColor = ''; dz.style.background = ''; }
+            const file = [...event.dataTransfer.files].find(f => f.type.startsWith("image/")); if (!file) return;
+            const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
+            setEqImage(qi, b64);
         }
         function removeEqImage(qi) {
             if (extractedQuestions[qi]) { extractedQuestions[qi].extractedImageB64 = null; extractedQuestions[qi].manualImageB64 = null; }
-            const preview = document.getElementById(`eq_img_preview_${qi}`);
-            if (preview) { preview.innerHTML = ''; preview.style.display = 'none'; }
+            const preview = document.getElementById(`eq_img_preview_${qi}`); if (preview) { preview.innerHTML = ''; preview.style.display = 'none'; }
+            const dz = document.getElementById(`eq_img_dropzone_${qi}`); if (dz) { dz.style.borderColor = ''; dz.style.background = ''; }
         }
+
+        // Paste handler for per-question image paste (Ctrl+V anywhere on the page when import section is active)
+        document.addEventListener("paste", async function(e) {
+            if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return;
+            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return;
+            for (const item of items) {
+                if (!item.type.startsWith("image/")) continue;
+                e.preventDefault();
+                const f = item.getAsFile();
+                const b64 = await fileToBase64(f);
+                // If extracted list is visible, try to find focused/hovered question dropzone
+                const container = document.getElementById("extractedQContainer");
+                if (container && document.getElementById("extractedList").style.display !== "none") {
+                    // Find the last focused dropzone or fallback to adding as question screenshot
+                    const focused = document.activeElement?.closest(".extracted-q-item");
+                    if (focused) {
+                        const qi = parseInt(focused.id.replace("eq_", ""));
+                        if (!isNaN(qi)) { setEqImage(qi, b64); return; }
+                    }
+                    // If no question focused, treat as question screenshot upload
+                    pushUndo(snapshotState()); qImagesBase64.push(b64); refreshPreviews(); return;
+                }
+                pushUndo(snapshotState());
+                if (document.getElementById("ak-tab-screenshot").classList.contains("active") && qImagesBase64.length > 0 && aImagesBase64.length === 0) {
+                    aImagesBase64.push(b64);
+                } else {
+                    qImagesBase64.push(b64);
+                }
+                refreshPreviews();
+                break;
+            }
+        });
 
         function removeExtractedQ(qi) { pushUndo(snapshotState()); document.getElementById(`eq_${qi}`)?.remove(); const startLec = parseInt(document.getElementById("imp-lecture").value) || 1; document.querySelectorAll(".extracted-q-item").forEach((item, idx) => { const lbl = item.querySelector("strong"); if (lbl) lbl.textContent = `Q${idx + 1}`; const li = item.querySelector('[id^="eq_lec_"]'); if (li) li.value = startLec + idx; }); updateUndoRedoBtns(); }
         function addExtractedQ() { const sl = parseInt(document.getElementById("imp-lecture").value) || 1, count = document.querySelectorAll(".extracted-q-item").length; extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndexes: [0], isMultiCorrect: false, assignedLecture: sl + count }); renderExtractedQuestions(extractedQuestions); }
