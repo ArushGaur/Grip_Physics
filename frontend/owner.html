@@ -1332,7 +1332,7 @@
             document.getElementById(`section-${name}`).classList.add("active");
             document.getElementById(`nav-${name}`).classList.add("active");
             if (name === "students") renderStudentTable(allStudents);
-            if (name === "manageQuestions") renderQuestionList(allQuestions);
+            if (name === "manageQuestions") { showChapterView(); renderChapterCards(allQuestions); }
         }
 
         /* ===== DASHBOARD ===== */
@@ -1633,47 +1633,141 @@
             try { const r = await fetch(`${API_BASE}/api/admin/questions`, { credentials: "include" }); if (r.status === 403) return; allQuestions = await r.json(); renderQuestionList(allQuestions); } catch (e) { console.error(e); }
         }
 
-        function renderQuestionList(questions) {
-            const container = document.getElementById("questionList"); if (!container) return;
-            if (!questions || !questions.length) { container.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:24px">No questions found.</p>'; return; }
-            container.innerHTML = questions.map((q, qi) => {
-                const qCount = (q.questions || []).length;
-                const hasMulti = (q.questions || []).some(x => x.isMultiCorrect);
-                return `<div class="q-row" onclick="toggleQExpand(${qi})">
-            <div class="q-info">
-                <div><strong>${q.chapter || "<em style='opacity:0.4'>No chapter</em>"}</strong> — Lecture ${q.lecture} <span style="font-size:0.72rem;color:var(--text-dim);margin-left:8px">${qCount} question(s)${hasMulti ? " · ✦ multi-correct" : ""}</span></div>
-                <div class="q-meta">Updated: ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
-            </div>
-            <div style="display:flex;gap:8px;flex-shrink:0">
-                <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.78rem" onclick="event.stopPropagation();openEditModal('${(q.chapter || "_none_").replace(/'/g, "\\'")}','${q.lecture}',${qi})">✏️ Edit</button>
-                <button class="btn btn-danger" style="padding:6px 12px;font-size:0.78rem" onclick="event.stopPropagation();openDeleteModal('${(q.chapter || "_none_").replace(/'/g, "\\'")}','${q.lecture}')">🗑</button>
-            </div>
-        </div>
-        <div class="q-expand" id="qexp_${qi}">
-            ${(q.questions || []).map((sub, si) => `
-                <div class="q-sub-item">
-                    <div style="font-size:0.82rem;font-weight:600;margin-bottom:6px">Q${si + 1}${sub.isMultiCorrect ? ' <span style="color:var(--warn);font-size:0.72rem">✦ Multi</span>' : ""}: ${sub.question}</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        ${(sub.options || []).map((opt, oi) => {
-                    const ci = sub.correctIndexes || [sub.correctIndex || 0];
-                    return `<span style="padding:3px 10px;border-radius:8px;font-size:0.78rem;${ci.includes(oi) ? "background:rgba(46,204,113,0.2);border:1px solid rgba(46,204,113,0.4)" : "background:rgba(255,255,255,0.06)"}">${LETTERS[oi]}: ${opt}</span>`;
-                }).join("")}
-                    </div>
-                </div>`).join("")}
+        /* ===== MANAGE QUESTIONS — CARD VIEW ===== */
+        const CHAPTER_ICONS = ["⚡", "🔥", "🌊", "🔭", "⚗️", "🧲", "🔬", "🌡️", "💡", "🔋", "🎯", "🌌", "⚛️", "🔩", "📡"];
+        let mqCurrentChapter = null, mqCurrentLectureIdx = null;
+
+        function renderQuestionList(questions) { renderChapterCards(questions); }
+
+        function renderChapterCards(questions) {
+            const grid = document.getElementById("chapterCardsGrid"); if (!grid) return;
+            const chapters = {};
+            (questions || []).forEach(q => { const ch = q.chapter || "(No Chapter)"; if (!chapters[ch]) chapters[ch] = []; chapters[ch].push(q); });
+            const names = Object.keys(chapters).sort();
+            if (!names.length) { grid.innerHTML = '<p style="color:var(--text-dim);padding:20px;grid-column:1/-1">No questions found.</p>'; return; }
+            grid.innerHTML = names.map((ch, i) => {
+                const qs = chapters[ch], lCount = qs.length, qCount = qs.reduce((s, q) => s + (q.questions || []).length, 0);
+                const hasMulti = qs.some(q => (q.questions || []).some(x => x.isMultiCorrect));
+                return `<div class="chapter-card" data-ch="${encodeURIComponent(ch)}" onclick="showLectureViewForChapter(decodeURIComponent(this.dataset.ch))">
+            <div class="chapter-card-icon">${CHAPTER_ICONS[i % CHAPTER_ICONS.length]}</div>
+            <div class="chapter-card-title">${ch}</div>
+            <div class="chapter-card-count">${lCount} lecture${lCount !== 1 ? "s" : ""} &middot; ${qCount} Q${hasMulti ? ' &middot; <span style="color:var(--warn)">&#10022;</span>' : ""}</div>
         </div>`;
             }).join("");
-            renderMath(container);
         }
 
-        function toggleQExpand(qi) {
-            const el = document.getElementById(`qexp_${qi}`);
-            if (el) el.classList.toggle("open");
+        function filterChapterCards(q) { const f = q.toLowerCase(); renderChapterCards(allQuestions.filter(x => (x.chapter || "").toLowerCase().includes(f) || String(x.lecture).includes(f))); }
+        function filterQuestions(q) { filterChapterCards(q); }
+
+        function showChapterView() {
+            document.getElementById("mq-chapter-view").style.display = "block";
+            document.getElementById("mq-lecture-view").style.display = "none";
+            document.getElementById("mq-question-view").style.display = "none";
+            mqCurrentChapter = null; mqCurrentLectureIdx = null;
         }
 
-        function filterQuestions(q) {
-            const f = q.toLowerCase();
-            renderQuestionList(allQuestions.filter(x => (x.chapter || "").toLowerCase().includes(f) || String(x.lecture).includes(f)));
+        function showLectureViewForChapter(chapter) {
+            mqCurrentChapter = chapter;
+            const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === chapter).sort((a, b) => Number(a.lecture) - Number(b.lecture));
+            document.getElementById("mq-chapter-view").style.display = "none";
+            document.getElementById("mq-lecture-view").style.display = "block";
+            document.getElementById("mq-question-view").style.display = "none";
+            document.getElementById("mq-chapter-title").textContent = chapter;
+            document.getElementById("mq-lecture-count").textContent = lecs.length + " lecture(s)";
+            const grid = document.getElementById("lectureCardsGrid");
+            grid.innerHTML = lecs.map((q) => {
+                const qCount = (q.questions || []).length, hasMulti = (q.questions || []).some(x => x.isMultiCorrect);
+                const globalIdx = allQuestions.indexOf(q);
+                return `<div class="lecture-card ${hasMulti ? "has-multi" : ""}" onclick="showQuestionView(${globalIdx})">
+            <div class="lecture-card-num">L${q.lecture}</div>
+            <div style="font-size:0.78rem;margin-bottom:4px">${qCount} Q${hasMulti ? ' <span style="color:var(--warn);font-size:0.7rem">✦</span>' : ""}</div>
+            <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
+        </div>`;
+            }).join("");
         }
+
+        function showLectureView() {
+            document.getElementById("mq-chapter-view").style.display = "none";
+            document.getElementById("mq-lecture-view").style.display = "block";
+            document.getElementById("mq-question-view").style.display = "none";
+            if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
+        }
+
+        function showQuestionView(globalIdx) {
+            mqCurrentLectureIdx = globalIdx;
+            const q = allQuestions[globalIdx]; if (!q) return;
+            document.getElementById("mq-lecture-view").style.display = "none";
+            document.getElementById("mq-question-view").style.display = "block";
+            document.getElementById("mq-question-title").textContent = q.chapter + " — Lecture " + q.lecture;
+            document.getElementById("mq-question-subtitle").textContent = (q.questions || []).length + " question(s) · Updated: " + (q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—");
+            const el = document.getElementById("mq-question-content");
+            el.innerHTML = `
+        <div class="form-row" style="margin-bottom:16px">
+            <div class="field"><label>Chapter</label><input id="iqe-chapter" value="${q.chapter || ""}" list="existingChapters" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 14px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;outline:none;width:100%"></div>
+            <div class="field"><label>Lecture</label><input id="iqe-lecture" type="number" min="1" value="${q.lecture}" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 14px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;outline:none;width:100%"></div>
+        </div>
+        <div id="iqe-questions-container">
+            ${(q.questions || []).map((sub, si) => {
+                const ci = sub.correctIndexes || [sub.correctIndex || 0];
+                return `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;margin-bottom:14px">
+                    <div style="font-size:0.78rem;color:var(--text-dim);font-weight:600;margin-bottom:10px">QUESTION ${si + 1}${sub.isMultiCorrect ? ' <span style="color:var(--warn)">✦ Multi-correct</span>' : ""}</div>
+                    <div class="field"><label>Question Text (use $math$ for equations)</label>
+                        <textarea id="iqe_qt_${si}" rows="3" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;resize:vertical;outline:none">${sub.question}</textarea>
+                    </div>
+                    <div class="options-grid">
+                        ${LETTERS.map((l, oi) => `<div class="field"><label>Option ${l}</label>
+                            <input id="iqe_opt_${si}_${oi}" value="${(sub.options && sub.options[oi] || "").replace(/"/g, "&quot;")}" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none;width:100%">
+                        </div>`).join("")}
+                    </div>
+                    <div style="margin-top:12px">
+                        <label style="font-size:0.78rem;color:var(--text-dim);display:block;margin-bottom:8px">Correct Answer(s):</label>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap">
+                            ${LETTERS.map((l, oi) => `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;padding:7px 14px;border-radius:8px;background:${ci.includes(oi) ? "rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.4)" : "rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)"}">
+                                <input type="checkbox" class="iqe_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""} style="width:auto;cursor:pointer"> ${l}
+                            </label>`).join("")}
+                        </div>
+                    </div>
+                </div>`;
+            }).join("")}
+        </div>`;
+            renderMath(el);
+        }
+
+        async function saveInlineEdit() {
+            const chapter = document.getElementById("iqe-chapter")?.value.trim(), lecture = document.getElementById("iqe-lecture")?.value.trim();
+            if (!chapter || !lecture) { alert("Chapter and lecture required."); return; }
+            const containers = document.querySelectorAll("#iqe-questions-container > div");
+            const questions = [];
+            containers.forEach((c, si) => {
+                const text = document.getElementById(`iqe_qt_${si}`)?.value.trim();
+                const opts = LETTERS.map((_, oi) => document.getElementById(`iqe_opt_${si}_${oi}`)?.value.trim() || "");
+                const checked = [...c.querySelectorAll(`[class*="iqe_correct_"]:checked`)].map(x => parseInt(x.value));
+                const correctIndexes = checked.length ? checked : [0];
+                if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes, isMultiCorrect: correctIndexes.length > 1 });
+            });
+            if (!questions.length) { alert("No complete questions."); return; }
+            const q = allQuestions[mqCurrentLectureIdx];
+            const oldCh = q?.chapter || "_none_", oldLec = q?.lecture;
+            if (oldCh !== chapter || String(oldLec) !== String(lecture)) {
+                await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(oldCh)}/${encodeURIComponent(oldLec)}`, { method: "DELETE", credentials: "include" });
+            }
+            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace: true }) });
+            if (r.ok) {
+                openModal("successModal"); document.getElementById("successModalTitle").textContent = "Saved!"; document.getElementById("successModalText").textContent = "Lecture " + lecture + " updated.";
+                await loadQuestionsAdmin(); loadChaptersAdmin();
+                const newIdx = allQuestions.findIndex(x => x.chapter === chapter && String(x.lecture) === String(lecture));
+                if (newIdx !== -1) showQuestionView(newIdx); else showLectureView();
+            } else alert("Save failed.");
+        }
+
+        async function deleteCurrentQuestion() {
+            const q = allQuestions[mqCurrentLectureIdx]; if (!q) return;
+            if (!confirm(`Delete all questions for "${q.chapter} / Lecture ${q.lecture}"? Cannot be undone.`)) return;
+            const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(q.chapter || "_none_")}/${encodeURIComponent(q.lecture)}`, { method: "DELETE", credentials: "include" });
+            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = "Question deleted."; await loadQuestionsAdmin(); showLectureView(); }
+            else alert("Delete failed.");
+        }
+
 
         /* ===== EDIT MODAL ===== */
         function openEditModal(chapter, lecture, qi) {
