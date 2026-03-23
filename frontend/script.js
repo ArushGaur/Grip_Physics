@@ -26,8 +26,11 @@ function renderMath(el) {
 }
 
 function setMathText(el, text) {
+    // Use textContent to safely insert the text (preserves $ signs)
+    // then run KaTeX auto-render to process $...$ delimiters
     el.textContent = text;
     renderMath(el);
+    // If KaTeX didn't render (no $ found), textContent is fine as-is
 }
 
 /* ---- PARTICLES ---- */
@@ -163,8 +166,8 @@ function renderQuestion(index) {
         container.appendChild(div);
     });
 
-    // Render math in options
-    container.querySelectorAll("span:last-child").forEach(renderMath);
+    // Render math in question and all options after DOM is fully built
+    renderMath(container);
 
     document.getElementById("prevBtn").disabled = index === 0;
     document.getElementById("nextBtn").disabled = index === currentQuestionSet.length - 1;
