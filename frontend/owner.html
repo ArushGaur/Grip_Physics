@@ -1226,60 +1226,154 @@
             }
         }
 
+        /* ── BTN-WARN LIGHT MODE FIX ── */
+        [data-theme="light"] .btn-warn {
+            background: rgba(180, 90, 0, 0.12);
+            border-color: rgba(180, 90, 0, 0.4);
+            color: #7c3a00;
+        }
+
+        [data-theme="light"] .btn-warn:hover {
+            background: rgba(180, 90, 0, 0.2);
+        }
+
+        /* ── MOBILE HAMBURGER ── */
+        #mobileMenuBtn {
+            display: none;
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            z-index: 300;
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 5px;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition);
+        }
+
+        #mobileMenuBtn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: var(--text);
+            border-radius: 2px;
+            transition: var(--transition);
+        }
+
+        #mobileMenuBtn:hover {
+            border-color: var(--accent);
+        }
+
+        #mobileDrawerOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            backdrop-filter: blur(3px);
+        }
+
+        #mobileDrawerOverlay.open {
+            display: block;
+        }
+
+        #mobileDrawer {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 260px;
+            height: 100vh;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            z-index: 250;
+            padding: 70px 12px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+        }
+
+        #mobileDrawer.open {
+            left: 0;
+        }
+
+        .drawer-group-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 10px;
+            margin: 14px 0 4px;
+        }
+
+        .drawer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            transition: var(--transition);
+            border: 1px solid transparent;
+        }
+
+        .drawer-item:hover,
+        .drawer-item.active {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+
+        .drawer-item.active {
+            background: linear-gradient(135deg, rgba(91, 95, 239, 0.14), rgba(139, 92, 246, 0.08));
+            color: var(--accent);
+            border-color: rgba(91, 95, 239, 0.2);
+            font-weight: 600;
+        }
+
+        .drawer-item.danger {
+            color: #fca5a5;
+        }
+
+        [data-theme="light"] .drawer-item.danger {
+            color: #b91c1c;
+        }
+
+        .drawer-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 10px 4px;
+        }
+
         @media(max-width:680px) {
             body {
-                padding-bottom: 68px;
+                padding-bottom: 0;
+                padding-top: 0;
+            }
+
+            #mobileMenuBtn {
+                display: flex;
             }
 
             #sidebar {
-                width: 100% !important;
-                height: 64px;
-                top: auto;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                flex-direction: row;
-                padding: 0 6px;
-                border-right: none;
-                border-top: 1px solid var(--border);
-                justify-content: space-around;
-                align-items: center;
-                overflow-x: auto;
-                gap: 0;
-            }
-
-            .sidebar-logo,
-            .sidebar-footer,
-            .nav-group-label,
-            .theme-toggle {
-                display: none;
-            }
-
-            .nav-item {
-                flex-direction: column;
-                padding: 5px 8px;
-                gap: 2px;
-                min-width: 48px;
-                align-items: center;
-                font-size: 0.58rem;
-                margin-bottom: 0;
-                border-radius: var(--radius-sm);
-                border: none;
-            }
-
-            .nav-icon {
-                font-size: 1.1rem;
-                width: auto;
-            }
-
-            .nav-label {
-                display: block !important;
-                font-size: 0.58rem;
+                display: none !important;
             }
 
             #mainContent {
                 margin-left: 0 !important;
-                padding: 16px 14px 80px;
+                padding: 68px 14px 32px;
                 width: 100%;
             }
 
@@ -1321,6 +1415,14 @@
                 grid-template-columns: 1fr;
             }
 
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .extracted-q-opts {
+                grid-template-columns: 1fr;
+            }
+
             .modal-box,
             .edit-modal-box {
                 width: calc(100% - 16px);
@@ -1329,6 +1431,12 @@
 
             .modal-actions {
                 flex-direction: column;
+            }
+        }
+
+        @media(max-width:380px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
             }
         }
 
@@ -1356,6 +1464,47 @@
 </head>
 
 <body>
+
+    <!-- MOBILE HAMBURGER BUTTON -->
+    <button id="mobileMenuBtn" onclick="toggleMobileDrawer()" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+
+    <!-- MOBILE DRAWER OVERLAY -->
+    <div id="mobileDrawerOverlay" onclick="closeMobileDrawer()"></div>
+
+    <!-- MOBILE DRAWER -->
+    <div id="mobileDrawer">
+        <div class="drawer-group-label">Overview</div>
+        <div class="drawer-item active" id="drawer-dashboard" onclick="drawerNav('dashboard')">
+            <span>📊</span> Dashboard
+        </div>
+        <div class="drawer-group-label">Content</div>
+        <div class="drawer-item" id="drawer-addQuestion" onclick="drawerNav('addQuestion')">
+            <span>➕</span> Add Question
+        </div>
+        <div class="drawer-item" id="drawer-importQuestion" onclick="drawerNav('importQuestion')">
+            <span>📷</span> Import Screenshot
+        </div>
+        <div class="drawer-item" id="drawer-manageQuestions" onclick="drawerNav('manageQuestions')">
+            <span>📋</span> Manage
+        </div>
+        <div class="drawer-group-label">Data</div>
+        <div class="drawer-item" id="drawer-students" onclick="drawerNav('students')">
+            <span>👥</span> Students
+        </div>
+        <div class="drawer-item" id="drawer-migrate" onclick="drawerNav('migrate')">
+            <span>🔧</span> Fix DB
+        </div>
+        <div class="drawer-divider"></div>
+        <div class="drawer-item" onclick="toggleTheme(); closeMobileDrawer()">
+            <span id="drawerThemeIcon">☀️</span>
+            <span id="drawerThemeLabel">Light Mode</span>
+        </div>
+        <div class="drawer-item danger" onclick="confirmLogout()">
+            <span>🚪</span> Logout
+        </div>
+    </div>
 
     <!-- LOGIN -->
     <div id="loginOverlay">
@@ -1393,7 +1542,7 @@
             <span class="nav-icon" id="themeIconMobile">☀️</span>
             <span class="nav-label">Theme</span>
         </div>
-        <div class="nav-item mobile-only-nav" onclick="logout()" style="color:#fca5a5">
+        <div class="nav-item mobile-only-nav" onclick="confirmLogout()" style="color:#fca5a5">
             <span class="nav-icon">🚪</span>
             <span class="nav-label">Logout</span>
         </div>
@@ -1430,7 +1579,7 @@
                 <span class="theme-icon" id="themeIcon">☀️</span>
                 <span id="themeLabel">Light Mode</span>
             </div>
-            <div class="nav-item" onclick="logout()" style="color:#fca5a5"><span class="nav-icon">🚪</span><span
+            <div class="nav-item" onclick="confirmLogout()" style="color:#fca5a5"><span class="nav-icon">🚪</span><span
                     class="nav-label">Logout</span></div>
         </div>
     </nav>
@@ -1732,6 +1881,17 @@
             <div class="modal-actions"><button class="btn btn-danger" onclick="confirmReplace()">Replace</button><button
                     class="btn btn-ghost" onclick="closeModal('replaceModal')">Cancel</button></div>
         </div>
+        <div class="modal-overlay" id="logoutModal">
+            <div class="modal-box">
+                <div style="font-size:2rem;margin-bottom:10px">🚪</div>
+                <h3>Logout?</h3>
+                <p>Are you sure you want to logout from the admin panel?</p>
+                <div class="modal-actions">
+                    <button class="btn btn-danger" onclick="doLogout()">Yes, Logout</button>
+                    <button class="btn btn-ghost" onclick="closeModal('logoutModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="modal-overlay" id="successModal">
         <div class="modal-box">
@@ -1790,12 +1950,34 @@
             const icon = document.getElementById('themeIcon');
             const lbl = document.getElementById('themeLabel');
             const iconM = document.getElementById('themeIconMobile');
+            const iconD = document.getElementById('drawerThemeIcon');
+            const lblD = document.getElementById('drawerThemeLabel');
             if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
             if (lbl) lbl.textContent = t === 'dark' ? 'Light Mode' : 'Dark Mode';
             if (iconM) iconM.textContent = t === 'dark' ? '☀️' : '🌙';
+            if (iconD) iconD.textContent = t === 'dark' ? '☀️' : '🌙';
+            if (lblD) lblD.textContent = t === 'dark' ? 'Light Mode' : 'Dark Mode';
             const mc = document.getElementById('themeColorMeta');
             if (mc) mc.setAttribute('content', t === 'dark' ? '#0b0d18' : '#f0f2fc');
         } initTheme();
+
+        /* ── MOBILE DRAWER ── */
+        function toggleMobileDrawer() {
+            document.getElementById('mobileDrawer').classList.toggle('open');
+            document.getElementById('mobileDrawerOverlay').classList.toggle('open');
+        }
+        function closeMobileDrawer() {
+            document.getElementById('mobileDrawer').classList.remove('open');
+            document.getElementById('mobileDrawerOverlay').classList.remove('open');
+        }
+        function drawerNav(name) {
+            showSection(name);
+            // sync active state in drawer
+            document.querySelectorAll('.drawer-item[id^="drawer-"]').forEach(el => el.classList.remove('active'));
+            const el = document.getElementById(`drawer-${name}`);
+            if (el) el.classList.add('active');
+            closeMobileDrawer();
+        }
 
         /* ── MATH ── */
         function renderMath(el) { if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }], throwOnError: false }); }
@@ -1804,8 +1986,8 @@
         (async function checkSession() { try { const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" }); if (r.ok) enterDashboard(); } catch (e) { } })();
         function enterDashboard() { document.getElementById("loginOverlay").style.display = "none"; document.getElementById("sidebar").classList.remove("hidden"); document.getElementById("mainContent").classList.remove("hidden"); loadDashboard(); loadChaptersAdmin(); loadQuestionsAdmin(); history.replaceState({ type: "section", name: "dashboard" }, "", ""); }
         async function login() { const p = document.getElementById("passcode").value, e = document.getElementById("loginError"); e.style.display = "none"; const r = await fetch(`${API_BASE}/api/admin/login`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: p }) }); if (!r.ok) { e.style.display = "block"; return; } enterDashboard(); }
-        async function logout() { await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" }); location.reload(); }
-
+        function confirmLogout() { closeMobileDrawer(); openModal('logoutModal'); }
+        async function doLogout() { closeModal('logoutModal'); await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" }); location.reload(); }
         /* ── NAV ── */
         function showSection(name, push = true) { document.querySelectorAll(".section").forEach(s => s.classList.remove("active")); document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active")); document.getElementById(`section-${name}`).classList.add("active"); document.getElementById(`nav-${name}`).classList.add("active"); if (name === "students") renderStudentTable(allStudents); if (name === "manageQuestions") { showChapterView(); renderChapterCards(allQuestions); } if (push) history.pushState({ type: "section", name }, "", ""); }
         function showChapterViewH() { showChapterView(); history.pushState({ type: "mqChapter" }, "", ""); }
@@ -2025,10 +2207,19 @@
            LECTURE-LEVEL MASS DELETE (NEW)
         ══════════════════════════════════════ */
         function toggleLectureSelectMode() {
-            lecSelectModeOn = !lecSelectModeOn; selectedLectureKeys.clear();
-            document.getElementById("lecSelectModeBtn").textContent = lecSelectModeOn ? "✓ Done" : "☐ Select Lectures";
+            lecSelectModeOn = !lecSelectModeOn;
+            selectedLectureKeys.clear();
+            const btn = document.getElementById("lecSelectModeBtn");
+            btn.textContent = lecSelectModeOn ? "✓ Done" : "☐ Select Lectures";
             document.getElementById("lec-mass-delete-bar").classList.remove("visible");
-            if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
+
+            // Re-render the grid to show/hide checkboxes WITHOUT resetting lecSelectModeOn
+            const grid = document.getElementById("lectureCardsGrid");
+            if (lecSelectModeOn) {
+                grid.classList.add("lec-select-mode");
+            } else {
+                grid.classList.remove("lec-select-mode");
+            }
         }
         function toggleLectureSelect(chapter, lecture) {
             const key = `${chapter}::${lecture}`;
