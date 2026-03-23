@@ -95,7 +95,12 @@ document.getElementById("loginForm").addEventListener("submit",async(e)=>{
         if(!attemptData.allowed){showAlreadyAttempted();btnText.textContent="Unlock Question";return;}
         await fetch(`${API_BASE}/api/student-register`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,mobile,place,className,chapter,lecture})});
         currentChapter=chapter;currentLecture=lecture;
-        currentQuestionSet=questionData.questions;
+        // Normalize questions — ensure options always exists as an array
+        currentQuestionSet=(questionData.questions||[]).map(q=>({
+            ...q,
+            options:Array.isArray(q.options)?q.options:[],
+            correctIndexes:Array.isArray(q.correctIndexes)?q.correctIndexes:[q.correctIndex??0],
+        }));
         currentQuestionIndex=0;
         selectedAnswers=currentQuestionSet.map(q=>q.isMultiCorrect?[]:null);
         setStep(2);
@@ -139,21 +144,29 @@ function renderQuestion(index){
     // Options
     const container=document.getElementById("options-container");
     container.innerHTML="";
-    q.options.forEach((opt,i)=>{
-        const div=document.createElement("div");
-        div.className="option";
-        if(q.isMultiCorrect){if((selectedAnswers[index]||[]).includes(i)) div.classList.add("selected");}
-        else{if(selectedAnswers[index]===i) div.classList.add("selected");}
-        const letterSpan=document.createElement("span");
-        letterSpan.className="option-letter";
-        letterSpan.textContent=letters[i];
-        const textSpan=document.createElement("span");
-        textSpan.style.flex="1";
-        textSpan.textContent=opt;
-        div.appendChild(letterSpan);div.appendChild(textSpan);
-        div.onclick=()=>selectAnswer(div,i,index);
-        container.appendChild(div);
-    });
+    const opts=Array.isArray(q.options)?q.options:[];
+    if(!opts.length){
+        const msg=document.createElement("div");
+        msg.style.cssText="padding:14px 16px;border-radius:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;font-size:0.85rem;text-align:center;";
+        msg.textContent="⚠️ Options not found for this question. Please contact your teacher.";
+        container.appendChild(msg);
+    } else {
+        opts.forEach((opt,i)=>{
+            const div=document.createElement("div");
+            div.className="option";
+            if(q.isMultiCorrect){if((selectedAnswers[index]||[]).includes(i)) div.classList.add("selected");}
+            else{if(selectedAnswers[index]===i) div.classList.add("selected");}
+            const letterSpan=document.createElement("span");
+            letterSpan.className="option-letter";
+            letterSpan.textContent=letters[i];
+            const textSpan=document.createElement("span");
+            textSpan.style.flex="1";
+            textSpan.textContent=opt||"";
+            div.appendChild(letterSpan);div.appendChild(textSpan);
+            div.onclick=()=>selectAnswer(div,i,index);
+            container.appendChild(div);
+        });
+    }
     renderMath(container);
     document.getElementById("prevBtn").disabled=index===0;
     document.getElementById("nextBtn").disabled=index===currentQuestionSet.length-1;
