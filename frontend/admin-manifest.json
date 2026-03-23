@@ -1,0 +1,49 @@
+{
+  "name": "Grip Physics Admin",
+  "short_name": "GP Admin",
+  "description": "Grip Physics Admin Panel — manage questions, students and statistics",
+  "start_url": "/owner.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080714",
+  "theme_color": "#080714",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23080714'/%3E%3Ccircle cx='256' cy='180' r='80' fill='none' stroke='%2300f2fe' stroke-width='20'/%3E%3Ccircle cx='256' cy='180' r='16' fill='%2300f2fe'/%3E%3Cline x1='256' y1='100' x2='256' y2='164' stroke='%2300f2fe' stroke-width='14' stroke-linecap='round'/%3E%3Cline x1='256' y1='196' x2='256' y2='260' stroke='%2300f2fe' stroke-width='14' stroke-linecap='round'/%3E%3Cline x1='176' y1='180' x2='240' y2='180' stroke='%2300f2fe' stroke-width='14' stroke-linecap='round'/%3E%3Cline x1='272' y1='180' x2='336' y2='180' stroke='%2300f2fe' stroke-width='14' stroke-linecap='round'/%3E%3Ctext x='256' y='380' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='72' fill='%2300f2fe'%3EAdmin%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/owner.html#dashboard",
+      "description": "View student statistics"
+    },
+    {
+      "name": "Add Question",
+      "url": "/owner.html#addQuestion",
+      "description": "Add a new question"
+    },
+    {
+      "name": "Import Screenshot",
+      "url": "/owner.html#importQuestion",
+      "description": "Import questions from screenshot"
+    }
+  ]
+}
