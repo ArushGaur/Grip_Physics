@@ -22,24 +22,24 @@
     <style>
         /* THEME TOKENS */
         :root {
-            --bg: #111525;
-            --bg-card: #171c30;
-            --bg-input: #1f2640;
-            --bg-hover: #252d4a;
-            --bg-sidebar: #151a2c;
-            --border: rgba(202, 214, 255, 0.14);
-            --border-focus: #7b85f7;
-            --accent: #7a84ff;
-            --accent-2: #9b7df5;
-            --accent-3: #26c59d;
-            --accent-4: #e9b55b;
-            --accent-glow: rgba(122, 132, 255, 0.2);
-            --success: #26c59d;
-            --error: #ef7373;
-            --warn: #e9b55b;
-            --text: #e7edff;
-            --text-dim: rgba(231, 237, 255, 0.82);
-            --text-muted: rgba(231, 237, 255, 0.68);
+            --bg: #171b2b;
+            --bg-card: #1d2337;
+            --bg-input: #252d44;
+            --bg-hover: #2b3450;
+            --bg-sidebar: #1b2234;
+            --border: rgba(203, 214, 255, 0.13);
+            --border-focus: #8790f6;
+            --accent: #8891ff;
+            --accent-2: #a68af3;
+            --accent-3: #39c8a5;
+            --accent-4: #e5bc72;
+            --accent-glow: rgba(136, 145, 255, 0.16);
+            --success: #39c8a5;
+            --error: #ec7c7c;
+            --warn: #e5bc72;
+            --text: #e3e9ff;
+            --text-dim: rgba(227, 233, 255, 0.8);
+            --text-muted: rgba(227, 233, 255, 0.66);
             --sidebar-w: 228px;
             --radius: 14px;
             --radius-sm: 9px;
@@ -993,6 +993,11 @@
             background: linear-gradient(180deg, #fffdf7, #ffffff);
         }
 
+        [data-theme="light"] .lecture-card:not(.has-multi) {
+            border: 1.5px solid rgba(75, 83, 235, 0.52);
+            box-shadow: 0 0 0 1px rgba(75, 83, 235, 0.12);
+        }
+
         .lecture-card.selected-lec {
             border-color: var(--accent);
             background: rgba(91, 95, 239, 0.08);
@@ -1874,7 +1879,7 @@
                     <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
                         onclick="clearLectureSelection()">✕ Cancel</button>
                 </div>
-                <div style="margin-bottom:14px">
+                <div style="margin-bottom:14px;display:flex;justify-content:flex-end">
                     <button class="btn btn-warn" style="padding:8px 14px;font-size:0.82rem" id="lecSelectModeBtn"
                         onclick="toggleLectureSelectMode()">☐ Select Lectures</button>
                 </div>
