@@ -97,11 +97,20 @@ async function findQuestion(chapter, lecture) {
     const key = `${chapter || ""}::${lecture}`;
     const cached = questionCache[key];
     if (cached && !cached._corrupted && cached.questions && cached.questions.length > 0) return cached;
-    let doc = chapter ? await Question.findOne({ chapter, lecture }).lean() : null;
-    if (!doc) doc = await Question.findOne({ lecture }).lean();
+
+    let doc = null;
+    if (chapter) {
+        // Strict: only match this exact chapter+lecture
+        doc = await Question.findOne({ chapter, lecture }).lean();
+    }
+    // Only fall back to lecture-only for old records that truly have no chapter set
+    if (!doc) {
+        doc = await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] }).lean();
+    }
     if (!doc) return null;
+
     const n = normalizeQuestion(doc);
-    if (!n._corrupted) { questionCache[key] = n; questionCache[`::${lecture}`] = n; return n; }
+    if (!n._corrupted) { questionCache[key] = n; return n; }
     return null;
 }
 
