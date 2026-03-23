@@ -88,13 +88,10 @@ function isCorrect(qItem, ans) {
 let questionCache = {};
 async function loadQuestions() {
     const all = await Question.find().lean();
-    questionCache = {}; // clear before reload
+    questionCache = {};
     all.forEach(q => {
         const n = normalizeQuestion(q);
-        if (!n._corrupted) {
-            // Key by chapter+lecture only — never by lecture alone to prevent cross-chapter contamination
-            questionCache[`${q.chapter || ""}::${q.lecture}`] = n;
-        }
+        if (!n._corrupted) questionCache[`${q.chapter || ""}::${q.lecture}`] = n;
     });
     console.log(`Cached ${all.length} questions`);
 }
@@ -104,18 +101,13 @@ async function findQuestion(chapter, lecture) {
     const key = `${chapter || ""}::${lecture}`;
     const cached = questionCache[key];
     if (cached && !cached._corrupted && cached.questions && cached.questions.length > 0) return cached;
-
     let doc = null;
     if (chapter) {
-        // Strict match: chapter + lecture must both match exactly
         doc = await Question.findOne({ chapter, lecture }).lean();
-        // Do NOT fall back to other chapters if not found
     } else {
-        // No chapter provided — only match records without a chapter
         doc = await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] }).lean();
     }
     if (!doc) return null;
-
     const n = normalizeQuestion(doc);
     if (!n._corrupted) { questionCache[key] = n; return n; }
     return null;
@@ -161,14 +153,14 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
     else { await Question.create(data); }
     const updated = await Question.findOne(existing ? { _id: existing._id } : { lecture }).lean();
     const n = normalizeQuestion(updated);
-    questionCache[`${chapter || ""}::${lecture}`] = n; questionCache[`::${lecture}`] = n;
+    questionCache[`${chapter || ""}::${lecture}`] = n;
     res.json({ success: true });
 });
 
 app.delete("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, res) => {
     const chapter = decodeURIComponent(req.params.chapter), lecture = decodeURIComponent(req.params.lecture);
     await Question.deleteMany({ lecture, $or: [{ chapter }, { chapter: null }, { chapter: { $exists: false } }] });
-    delete questionCache[`${chapter}::${lecture}`]; delete questionCache[`::${lecture}`];
+    delete questionCache[`${chapter}::${lecture}`];
     res.json({ success: true });
 });
 
@@ -176,10 +168,8 @@ app.get("/api/admin/students", requireAdmin, async (req, res) => { try { const a
 app.get("/api/admin/questions", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); res.json(all.map(normalizeQuestion)); } catch { res.status(500).json({ error: "Failed" }); } });
 
 app.post("/api/admin/reload-cache", requireAdmin, async (req, res) => {
-    try {
-        await loadQuestions();
-        res.json({ success: true, cached: Object.keys(questionCache).length });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    try { await loadQuestions(); res.json({ success: true, cached: Object.keys(questionCache).length }); }
+    catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const c = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())); res.json({ total: all.length, corrupted: c.length, corruptedLectures: c.map(q => ({ lecture: q.lecture, chapter: q.chapter || null, _id: q._id })) }); } catch (e) { res.status(500).json({ error: e.message }); } });
@@ -189,38 +179,37 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     const { questionImageBase64, answerImageBase64 } = req.body;
     if (!questionImageBase64 || !answerImageBase64) return res.status(400).json({ error: "Both images required" });
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
-
-    function getMime(b64) {
-        if (b64.startsWith("/9j/")) return "image/jpeg";
-        if (b64.startsWith("iVBORw")) return "image/png";
-        return "image/jpeg";
-    }
-
+    function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     const qMime = getMime(questionImageBase64), aMime = getMime(answerImageBase64);
 
-    // Simple, clear prompt — complex LaTeX instructions cause parse failures
-    const prompt = [
-        "Look at these two images carefully.",
-        "Image 1 contains multiple-choice physics questions.",
-        "Image 2 contains the answer key.",
-        "",
-        "Your task: extract every question from Image 1 and match each with its answer from Image 2.",
-        "",
-        "Output format: a JSON array. Each element must have these exact fields:",
-        '  "question": the full question text',
-        '  "options": array of exactly 4 strings [option A, option B, option C, option D]',
-        '  "correctIndexes": array of correct answer indices (0=A, 1=B, 2=C, 3=D)',
-        '  "isMultiCorrect": true if more than one answer is correct, otherwise false',
-        "",
-        "Rules:",
-        "- If the answer key shows a single letter like A, correctIndexes is [0]",
-        "- If answer key shows multiple like A,C then correctIndexes is [0,2] and isMultiCorrect is true",
-        "- For math, write it naturally using ^ for powers and _ for subscripts, e.g. T^3, v_0, pi, omega",
-        "- Output ONLY the JSON array. No explanation, no markdown, no code blocks.",
-        "",
-        "Example output:",
-        '[{"question":"A body moves with velocity v. Its kinetic energy is","options":["mv","(1/2)mv^2","mv^2","2mv^2"],"correctIndexes":[1],"isMultiCorrect":false}]'
-    ].join("\n");
+    const prompt = `You are a physics teacher extracting MCQ questions from an exam paper.
+First image = question paper. Second image = answer key.
+
+TASK: Extract every question and match it to its answer. Output ONLY a raw JSON array.
+
+For each question output:
+{
+  "question": "question text — use LaTeX in $...$ for ALL math",
+  "options": ["option A text", "option B text", "option C text", "option D text"],
+  "correctIndexes": [0],
+  "isMultiCorrect": false
+}
+
+MATH FORMATTING — This is critical. Use KaTeX LaTeX inside $...$:
+- Greek letters: epsilon→$\\varepsilon$, pi→$\\pi$, omega→$\\omega$, phi→$\\phi$, theta→$\\theta$
+- Superscripts: T^4→$T^4$, s^{-1}→$s^{-1}$, T_2^4-T_1^4→$T_2^4-T_1^4$
+- Subscripts: T_1→$T_1$, i_1→$i_1$, E_0→$E_0$
+- Trig functions: cos→$\\cos$, sin→$\\sin$
+- Complex: "emf = E_0[cos(100 pi s^-1)t]" → "$\\varepsilon = \\varepsilon_0[\\cos(100\\pi s^{-1})t]$"
+- Fractions: 1/2 mv^2 → $\\frac{1}{2}mv^2$
+- For options that are pure math like "T_2^4 - T_1^4" write as "$T_2^4 - T_1^4$"
+
+ANSWER KEY:
+- Single letter A → correctIndexes:[0], isMultiCorrect:false
+- Multiple letters A,C → correctIndexes:[0,2], isMultiCorrect:true
+- Numbers 1/2/3/4 map to indexes 0/1/2/3
+
+Output ONLY the JSON array, nothing else, no markdown fences.`;
 
     try {
         const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -228,11 +217,9 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
             body: JSON.stringify({
                 model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                max_tokens: 4000,
-                temperature: 0.1,
+                max_tokens: 4000, temperature: 0.1,
                 messages: [{
-                    role: "user",
-                    content: [
+                    role: "user", content: [
                         { type: "image_url", image_url: { url: "data:" + qMime + ";base64," + questionImageBase64 } },
                         { type: "image_url", image_url: { url: "data:" + aMime + ";base64," + answerImageBase64 } },
                         { type: "text", text: prompt }
@@ -240,73 +227,29 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
                 }]
             })
         });
-
-        if (!r.ok) {
-            const e = await r.json();
-            console.error("Groq HTTP error:", r.status, e);
-            return res.status(502).json({ error: (e.error && e.error.message) || "Groq API error" });
-        }
-
+        if (!r.ok) { const e = await r.json(); return res.status(502).json({ error: (e.error && e.error.message) || "Groq error" }); }
         const data = await r.json();
-        let raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "";
-        console.log("Groq raw response (first 500 chars):", raw.slice(0, 500));
-
-        // Aggressive cleanup
-        let text = raw.trim();
-        // Remove markdown code fences
-        text = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
-        // If response has text before the JSON array, strip it
-        const arrStart = text.indexOf("[");
-        const arrEnd = text.lastIndexOf("]");
-        if (arrStart === -1 || arrEnd === -1) {
-            console.error("No JSON array found in response:", text.slice(0, 300));
-            return res.status(500).json({ error: "AI did not return a JSON array. Try clearer images or simpler questions." });
-        }
+        let raw = ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "").trim();
+        console.log("Groq response (first 400):", raw.slice(0, 400));
+        let text = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
+        const arrStart = text.indexOf("["), arrEnd = text.lastIndexOf("]");
+        if (arrStart === -1 || arrEnd === -1) return res.status(500).json({ error: "AI did not return valid JSON. Try a clearer screenshot." });
         text = text.slice(arrStart, arrEnd + 1);
-
         let parsed;
-        try {
-            parsed = JSON.parse(text);
-        } catch (parseErr) {
-            console.error("JSON parse error:", parseErr.message);
-            console.error("Text that failed to parse:", text.slice(0, 400));
-            return res.status(500).json({ error: "AI response could not be parsed. The image may be too complex — try a clearer screenshot." });
+        try { parsed = JSON.parse(text); }
+        catch (e) {
+            console.error("Parse error:", e.message, "text:", text.slice(0, 300));
+            return res.status(500).json({ error: "Could not parse AI response. Try a clearer screenshot." });
         }
-
-        if (!Array.isArray(parsed) || !parsed.length) {
-            return res.status(500).json({ error: "No questions found in the images." });
-        }
-
-        // Normalize correctIndexes
+        if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
         parsed = parsed.map(q => {
-            if (!q.correctIndexes || !Array.isArray(q.correctIndexes) || !q.correctIndexes.length) {
+            if (!q.correctIndexes || !Array.isArray(q.correctIndexes) || !q.correctIndexes.length)
                 q.correctIndexes = [typeof q.correctIndex === "number" ? q.correctIndex : 0];
-            }
             q.isMultiCorrect = q.correctIndexes.length > 1;
-            // Convert math notation: wrap expressions with ^ or _ in $ signs for KaTeX
-            function wrapMath(text) {
-                if (!text) return text;
-                // Already has $ signs — don't double-wrap
-                if (text.includes("$")) return text;
-                // If it contains math symbols, wrap the whole thing
-                if (/[\^_]|\b(pi|omega|alpha|beta|gamma|theta|epsilon|varepsilon|sigma|mu|lambda|delta)\b/.test(text)) {
-                    return "$" + text + "$";
-                }
-                return text;
-            }
-            q.question = wrapMath(q.question);
-            q.options = (q.options || []).map(wrapMath);
             return q;
         });
-
-        console.log("Extracted " + parsed.length + " questions via Groq");
         res.json({ questions: parsed });
-
-    } catch (e) {
-        console.error("Extract error:", e);
-        res.status(500).json({ error: "Server error during extraction: " + e.message });
-    }
+    } catch (e) { console.error("Extract error:", e); res.status(500).json({ error: "Server error: " + e.message }); }
 });
-
 
 app.listen(PORT, () => { console.log("Server on port " + PORT); console.log("GROQ_API_KEY:", process.env.GROQ_API_KEY ? "set" : "MISSING"); });
