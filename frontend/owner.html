@@ -1341,6 +1341,17 @@
                 grid-template-columns: 1fr 1fr;
             }
         }
+
+        /* Show theme/logout in mobile nav bar */
+        .mobile-only-nav {
+            display: none;
+        }
+
+        @media(max-width:680px) {
+            .mobile-only-nav {
+                display: flex;
+            }
+        }
     </style>
 </head>
 
@@ -1376,6 +1387,16 @@
 
     <!-- SIDEBAR -->
     <nav id="sidebar" class="hidden">
+
+        <!-- MOBILE-ONLY: theme toggle and logout as nav items -->
+        <div class="nav-item mobile-only-nav" onclick="toggleTheme()" id="nav-theme-mobile">
+            <span class="nav-icon" id="themeIconMobile">☀️</span>
+            <span class="nav-label">Theme</span>
+        </div>
+        <div class="nav-item mobile-only-nav" onclick="logout()" style="color:#fca5a5">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-label">Logout</span>
+        </div>
         <div class="sidebar-logo">
             <div class="sidebar-logo-icon"><svg width="20" height="20" viewBox="0 0 100 100" fill="none">
                     <circle cx="50" cy="50" r="8" fill="white" />
@@ -1765,8 +1786,16 @@
         /* ── THEME ── */
         function initTheme() { const saved = localStorage.getItem('gpTheme') || 'dark'; document.documentElement.setAttribute('data-theme', saved); updateThemeUI(saved); }
         function toggleTheme() { const cur = document.documentElement.getAttribute('data-theme'); const next = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); localStorage.setItem('gpTheme', next); updateThemeUI(next); if (_chartData) buildChart(_chartData); }
-        function updateThemeUI(t) { const icon = document.getElementById('themeIcon'); const lbl = document.getElementById('themeLabel'); if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙'; if (lbl) lbl.textContent = t === 'dark' ? 'Light Mode' : 'Dark Mode'; const mc = document.getElementById('themeColorMeta'); if (mc) mc.setAttribute('content', t === 'dark' ? '#0b0d18' : '#f0f2fc'); }
-        initTheme();
+        function updateThemeUI(t) {
+            const icon = document.getElementById('themeIcon');
+            const lbl = document.getElementById('themeLabel');
+            const iconM = document.getElementById('themeIconMobile');
+            if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
+            if (lbl) lbl.textContent = t === 'dark' ? 'Light Mode' : 'Dark Mode';
+            if (iconM) iconM.textContent = t === 'dark' ? '☀️' : '🌙';
+            const mc = document.getElementById('themeColorMeta');
+            if (mc) mc.setAttribute('content', t === 'dark' ? '#0b0d18' : '#f0f2fc');
+        } initTheme();
 
         /* ── MATH ── */
         function renderMath(el) { if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }], throwOnError: false }); }
@@ -2032,10 +2061,15 @@
             document.getElementById("lec-mass-delete-bar").classList.remove("visible");
             const grid = document.getElementById("lectureCardsGrid");
             grid.className = "";
-            grid.innerHTML = lecs.map(q => { const qc = (q.questions || []).length, hm = (q.questions || []).some(x => x.isMultiCorrect); const gi = allQuestions.indexOf(q); const key = `${ch}::${q.lecture}`; const isSelected = selectedLectureKeys.has(key); return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSelected ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" onclick="handleLecCardClick(event,'${ch.replace(/'/g, "\\'")}',${gi},'${q.lecture}')"><input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect('${ch.replace(/'/g, "\\'")}','${q.lecture}')" ${isSelected ? "checked" : ""}><div class="lecture-card-num">L${q.lecture}</div><div style="font-size:0.78rem;margin-bottom:3px">${qc} Q${hm ? ' <span style="color:var(--warn);font-size:0.7rem">✦</span>' : ""}</div><div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div></div>`; }).join("");
+            grid.innerHTML = lecs.map(q => { const qc = (q.questions || []).length, hm = (q.questions || []).some(x => x.isMultiCorrect); const gi = allQuestions.indexOf(q); const key = `${ch}::${q.lecture}`; const isSelected = selectedLectureKeys.has(key); return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSelected ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" onclick="handleLecCardClick(event,this)"><input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect('${ch.replace(/'/g, "\\'")}','${q.lecture}')" ${isSelected ? "checked" : ""}><div class="lecture-card-num">L${q.lecture}</div><div style="font-size:0.78rem;margin-bottom:3px">${qc} Q${hm ? ' <span style="color:var(--warn);font-size:0.7rem">✦</span>' : ""}</div><div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div></div>`; }).join("");
         }
-        function handleLecCardClick(e, ch, gi, lec) { if (lecSelectModeOn) { toggleLectureSelect(ch, lec); return; } showQuestionViewH(gi); }
-        function showLectureView() { document.getElementById("mq-chapter-view").style.display = "none"; document.getElementById("mq-lecture-view").style.display = "block"; document.getElementById("mq-question-view").style.display = "none"; if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); }
+        function handleLecCardClick(e, el) {
+            const ch = el.dataset.ch;
+            const lec = el.dataset.lec;
+            const gi = parseInt(el.dataset.gi);
+            if (lecSelectModeOn) { toggleLectureSelect(ch, lec); return; }
+            showQuestionViewH(gi);
+        } function showLectureView() { document.getElementById("mq-chapter-view").style.display = "none"; document.getElementById("mq-lecture-view").style.display = "block"; document.getElementById("mq-question-view").style.display = "none"; if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); }
 
         /* ── QUESTION VIEW with rendered math options ── */
         function showQuestionView(gi) {
