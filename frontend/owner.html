@@ -316,6 +316,22 @@
             transition: 0.2s;
         }
 
+        .field input::placeholder,
+        .field textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+        }
+
+        .table-search::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+        }
+
+        .login-input-wrap input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+        }
+
         .field input:focus,
         .field textarea:focus,
         .field select:focus {
@@ -1228,7 +1244,7 @@
             <!-- LECTURE CARDS -->
             <div id="mq-lecture-view" style="display:none">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-                    <button class="btn btn-ghost" onclick="showChapterView()"
+                    <button class="btn btn-ghost" onclick="showChapterViewH()"
                         style="padding:7px 14px;font-size:0.85rem">← Back</button>
                     <div>
                         <h2 id="mq-chapter-title" style="font-size:1.1rem;font-weight:700;margin:0"></h2>
@@ -1242,8 +1258,8 @@
             <!-- QUESTION DETAIL / EDITOR -->
             <div id="mq-question-view" style="display:none">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-                    <button class="btn btn-ghost" onclick="showLectureView()"
-                        style="padding:7px 14px;font-size:0.85rem">← Back</button>
+                    <button class="btn btn-ghost" onclick="history.back()" style="padding:7px 14px;font-size:0.85rem">←
+                        Back</button>
                     <div style="flex:1">
                         <h2 id="mq-question-title" style="font-size:1.1rem;font-weight:700;margin:0"></h2>
                         <p style="font-size:0.78rem;color:var(--text-dim);margin:2px 0 0" id="mq-question-subtitle"></p>
@@ -1427,6 +1443,7 @@
             document.getElementById("sidebar").classList.remove("hidden");
             document.getElementById("mainContent").classList.remove("hidden");
             loadDashboard(); loadChaptersAdmin(); loadQuestionsAdmin();
+            history.replaceState({ type: "section", name: "dashboard" }, "", "");
         }
 
         async function login() {
@@ -1439,14 +1456,28 @@
         async function logout() { await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" }); location.reload(); }
 
         /* ===== NAVIGATION ===== */
-        function showSection(name) {
+        function showSection(name, pushHistory = true) {
             document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
             document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
             document.getElementById(`section-${name}`).classList.add("active");
             document.getElementById(`nav-${name}`).classList.add("active");
             if (name === "students") renderStudentTable(allStudents);
             if (name === "manageQuestions") { showChapterView(); renderChapterCards(allQuestions); }
+            if (pushHistory) history.pushState({ type: "section", name }, "", "");
         }
+
+        function showChapterViewH() { showChapterView(); history.pushState({ type: "mqChapter" }, "", ""); }
+        function showLectureViewH(chapter) { showLectureViewForChapter(chapter); history.pushState({ type: "mqLecture", chapter }, "", ""); }
+        function showQuestionViewH(idx) { showQuestionView(idx); history.pushState({ type: "mqQuestion", idx }, "", ""); }
+
+        window.addEventListener("popstate", function (e) {
+            const s = e.state;
+            if (!s) { return; }
+            if (s.type === "section") { showSection(s.name, false); return; }
+            if (s.type === "mqChapter") { showChapterView(); return; }
+            if (s.type === "mqLecture") { if (s.chapter) showLectureViewForChapter(s.chapter); else showChapterView(); return; }
+            if (s.type === "mqQuestion") { if (typeof s.idx === "number") showQuestionView(s.idx); else showLectureView(); return; }
+        });
 
         /* ===== DASHBOARD ===== */
         async function loadDashboard() {
@@ -1761,7 +1792,7 @@
             grid.innerHTML = names.map((ch, i) => {
                 const qs = chapters[ch], lCount = qs.length, qCount = qs.reduce((s, q) => s + (q.questions || []).length, 0);
                 const hasMulti = qs.some(q => (q.questions || []).some(x => x.isMultiCorrect));
-                return `<div class="chapter-card" data-ch="${encodeURIComponent(ch)}" onclick="showLectureViewForChapter(decodeURIComponent(this.dataset.ch))">
+                return `<div class="chapter-card" data-ch="${encodeURIComponent(ch)}" onclick="showLectureViewH(decodeURIComponent(this.dataset.ch))">
             <div class="chapter-card-icon">${CHAPTER_ICONS[i % CHAPTER_ICONS.length]}</div>
             <div class="chapter-card-title">${ch}</div>
             <div class="chapter-card-count">${lCount} lecture${lCount !== 1 ? "s" : ""} &middot; ${qCount} Q${hasMulti ? ' &middot; <span style="color:var(--warn)">&#10022;</span>' : ""}</div>
@@ -1779,7 +1810,7 @@
             mqCurrentChapter = null; mqCurrentLectureIdx = null;
         }
 
-        function showLectureViewForChapter(chapter) {
+        function showLectureViewForChapter(chapter, pushHistory = false) {
             mqCurrentChapter = chapter;
             const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === chapter).sort((a, b) => Number(a.lecture) - Number(b.lecture));
             document.getElementById("mq-chapter-view").style.display = "none";
@@ -1791,7 +1822,7 @@
             grid.innerHTML = lecs.map((q) => {
                 const qCount = (q.questions || []).length, hasMulti = (q.questions || []).some(x => x.isMultiCorrect);
                 const globalIdx = allQuestions.indexOf(q);
-                return `<div class="lecture-card ${hasMulti ? "has-multi" : ""}" onclick="showQuestionView(${globalIdx})">
+                return `<div class="lecture-card ${hasMulti ? "has-multi" : ""}" onclick="showQuestionViewH(${globalIdx})">
             <div class="lecture-card-num">L${q.lecture}</div>
             <div style="font-size:0.78rem;margin-bottom:4px">${qCount} Q${hasMulti ? ' <span style="color:var(--warn);font-size:0.7rem">✦</span>' : ""}</div>
             <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
