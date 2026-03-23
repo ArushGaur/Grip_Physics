@@ -224,37 +224,43 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         answerKeyDesc = "No answer key provided — do your best to identify correct answers from context.";
     }
 
-    const prompt = `You are a physics teacher extracting MCQ questions from exam paper images.
+    const prompt = `You are a physics teacher extracting MCQ questions from Indian exam papers (JEE/NEET/HC Verma style).
 
 ${answerKeyDesc}
 
 TASK: Extract EVERY question from ALL question images and match each to its answer.
+Output ONLY a raw JSON array. No markdown, no explanation.
 
-Output ONLY a raw JSON array, no markdown, no explanation.
+MOST CRITICAL RULE — SEPARATING QUESTION FROM OPTIONS:
+Indian exam papers have TWO styles of writing options:
 
-For each question:
-{
-  "question": "text with LaTeX math in $...$",
-  "options": ["option A", "option B", "option C", "option D"],
-  "correctIndexes": [0],
-  "isMultiCorrect": false,
-  "hasImage": false
-}
+STYLE 1 — Options listed BELOW the question separately:
+  Q: "Which law states F=ma?"
+  (A) Newton's 1st  (B) Newton's 2nd  (C) Newton's 3rd  (D) Kepler's
+  → question = "Which law states F=ma?"
+  → options = ["Newton's 1st", "Newton's 2nd", "Newton's 3rd", "Kepler's"]
 
-CRITICAL — LaTeX math rules (use KaTeX syntax in $...$):
-- Greek: pi→$\\pi$, omega→$\\omega$, epsilon→$\\varepsilon$, phi→$\\phi$
-- Powers: T^4→$T^4$, s^{-1}→$s^{-1}$  
-- Subscripts: T_1→$T_1$, E_0→$E_0$, i_1→$i_1$
-- Trig: cos→$\\cos$, sin→$\\sin$
-- Complex: "E_0 cos(100 pi s^-1 t)" → "$E_0\\cos(100\\pi s^{-1}t)$"
-- Fractions: "1/2 mv^2" → "$\\frac{1}{2}mv^2$"
-- Do NOT add trailing $ after the last word if the sentence ends in plain text
+STYLE 2 — Options EMBEDDED inside question text as (a)(b)(c)(d):
+  "In a semiconductor (a) no free electrons at 0K (b) more electrons than conductor (c) free electrons increase with temp (d) it is an insulator"
+  → question = "In a semiconductor"  [STEM ONLY — stop before the first (a)]
+  → options = ["no free electrons at 0K", "more electrons than conductor", "free electrons increase with temp", "it is an insulator"]
 
-IMPORTANT: 
-- Set "hasImage": true if a question contains a diagram/figure/graph that cannot be described in text
-- correctIndexes: 0=A, 1=B, 2=C, 3=D. Map numbers 1/2/3/4 to 0/1/2/3
-- If answer key shows "A,C" set correctIndexes:[0,2] and isMultiCorrect:true
-- Extract questions in order as they appear`;
+RULE: The "question" field must ONLY contain the question stem. Strip out ALL (a)(b)(c)(d) or (A)(B)(C)(D) sub-items and put them into the "options" array WITHOUT the letter prefix.
+
+JSON format per question:
+{"question":"stem only","options":["A text","B text","C text","D text"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}
+
+LaTeX math (KaTeX in $...$):
+- pi→$\\pi$, omega→$\\omega$, epsilon→$\\varepsilon$, T^4→$T^4$, T_1→$T_1$
+- cos→$\\cos$, sin→$\\sin$, 1/2 mv^2→$\\frac{1}{2}mv^2$
+- s^{-1}→$s^{-1}$, E_0 cos(100 pi t)→$E_0\\cos(100\\pi t)$
+- Do NOT add trailing $ at end of plain text sentences
+
+OTHER RULES:
+- hasImage:true if question has a diagram/figure/graph
+- correctIndexes: 0=A,1=B,2=C,3=D. Numbers 1/2/3/4 → 0/1/2/3
+- A,C in answer key → correctIndexes:[0,2], isMultiCorrect:true
+- Extract all questions in the order they appear`;
 
     try {
         // Build content array — all question images first, then answer key images
