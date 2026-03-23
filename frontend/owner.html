@@ -1139,12 +1139,49 @@
         <div class="section" id="section-manageQuestions">
             <div class="page-header">
                 <h1>Manage Questions</h1>
-                <p>Click any question to view, edit, or delete</p>
+                <p>Browse by chapter → lecture → question</p>
             </div>
-            <div class="panel">
-                <input class="table-search" placeholder="🔍 Search by chapter or lecture..."
-                    oninput="filterQuestions(this.value)">
-                <div id="questionList"></div>
+
+            <!-- CHAPTER CARDS -->
+            <div id="mq-chapter-view">
+                <input class="table-search" placeholder="🔍 Search chapters..."
+                    oninput="filterChapterCards(this.value)">
+                <div id="chapterCardsGrid"
+                    style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:8px">
+                </div>
+            </div>
+
+            <!-- LECTURE CARDS -->
+            <div id="mq-lecture-view" style="display:none">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+                    <button class="btn btn-ghost" onclick="showChapterView()"
+                        style="padding:7px 14px;font-size:0.85rem">← Back</button>
+                    <div>
+                        <h2 id="mq-chapter-title" style="font-size:1.1rem;font-weight:700;margin:0"></h2>
+                        <p style="font-size:0.78rem;color:var(--text-dim);margin:2px 0 0" id="mq-lecture-count"></p>
+                    </div>
+                </div>
+                <div id="lectureCardsGrid"
+                    style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px"></div>
+            </div>
+
+            <!-- QUESTION DETAIL / EDITOR -->
+            <div id="mq-question-view" style="display:none">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+                    <button class="btn btn-ghost" onclick="showLectureView()"
+                        style="padding:7px 14px;font-size:0.85rem">← Back</button>
+                    <div style="flex:1">
+                        <h2 id="mq-question-title" style="font-size:1.1rem;font-weight:700;margin:0"></h2>
+                        <p style="font-size:0.78rem;color:var(--text-dim);margin:2px 0 0" id="mq-question-subtitle"></p>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="btn btn-primary" onclick="saveInlineEdit()"
+                            style="padding:8px 16px;font-size:0.85rem">💾 Save Changes</button>
+                        <button class="btn btn-danger" onclick="deleteCurrentQuestion()"
+                            style="padding:8px 16px;font-size:0.85rem">🗑 Delete</button>
+                    </div>
+                </div>
+                <div id="mq-question-content" class="panel"></div>
             </div>
         </div>
 
