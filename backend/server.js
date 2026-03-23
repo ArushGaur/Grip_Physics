@@ -88,7 +88,14 @@ function isCorrect(qItem, ans) {
 let questionCache = {};
 async function loadQuestions() {
     const all = await Question.find().lean();
-    all.forEach(q => { const n = normalizeQuestion(q); if (!n._corrupted) { questionCache[`${q.chapter || ""}::${q.lecture}`] = n; if (!questionCache[`::${q.lecture}`]) questionCache[`::${q.lecture}`] = n; } });
+    questionCache = {}; // clear before reload
+    all.forEach(q => {
+        const n = normalizeQuestion(q);
+        if (!n._corrupted) {
+            // Key by chapter+lecture only — never by lecture alone to prevent cross-chapter contamination
+            questionCache[`${q.chapter || ""}::${q.lecture}`] = n;
+        }
+    });
     console.log(`Cached ${all.length} questions`);
 }
 mongoose.connection.once("open", loadQuestions);
@@ -100,11 +107,11 @@ async function findQuestion(chapter, lecture) {
 
     let doc = null;
     if (chapter) {
-        // Strict: only match this exact chapter+lecture
+        // Strict match: chapter + lecture must both match exactly
         doc = await Question.findOne({ chapter, lecture }).lean();
-    }
-    // Only fall back to lecture-only for old records that truly have no chapter set
-    if (!doc) {
+        // Do NOT fall back to other chapters if not found
+    } else {
+        // No chapter provided — only match records without a chapter
         doc = await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] }).lean();
     }
     if (!doc) return null;
