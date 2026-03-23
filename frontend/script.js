@@ -110,6 +110,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
         document.getElementById("login-page").classList.add("hidden");
         document.getElementById("quiz-page").classList.remove("hidden");
         document.getElementById("quiz-page").classList.add("slide-in");
+        history.pushState({ step: "quiz" }, "", "");
         document.getElementById("quiz-chapter-label").textContent = chapter;
         document.getElementById("quiz-lecture-label").textContent = `Lecture ${lecture}`;
         document.getElementById("q-total").textContent = currentQuestionSet.length;
@@ -237,6 +238,7 @@ function showResults(correctCount, totalQuestions) {
     document.getElementById("quiz-page").classList.add("hidden");
     const rp = document.getElementById("result-page");
     rp.classList.remove("hidden"); rp.classList.add("slide-in");
+    history.pushState({ step: "result" }, "", "");
     const pct = totalQuestions > 0 ? correctCount / totalQuestions : 0;
     const name = document.getElementById("userName").value.trim();
     let icon, title, subtitle;
@@ -272,6 +274,29 @@ function showResults(correctCount, totalQuestions) {
     });
     renderMath(breakdown);
 }
+
+// Browser back button — go back one step instead of leaving the page
+window.addEventListener("popstate", function (e) {
+    const s = e.state;
+    if (!s) return;
+    if (s.step === "quiz") {
+        // Back from result → quiz: just reload to start fresh (results already submitted)
+        const rp = document.getElementById("result-page");
+        const qp = document.getElementById("quiz-page");
+        if (rp && !rp.classList.contains("hidden")) {
+            // On result page — go back to login
+            rp.classList.add("hidden");
+            document.getElementById("login-page").classList.remove("hidden");
+            setStep(1);
+        }
+    }
+    if (s.step === "result") {
+        // Nothing to do — stay on result
+    }
+});
+
+// Push initial state so first back press triggers popstate not page exit
+history.replaceState({ step: "login" }, "", "");
 
 function fireConfetti(intensity = 1) { confetti({ particleCount: Math.floor(150 * intensity), spread: 80, origin: { y: 0.6 }, colors: ["#00f2fe", "#4facfe", "#a78bfa", "#2ecc71"] }); }
 function setStep(n) { document.querySelectorAll(".step").forEach((el, i) => { el.classList.remove("active", "done"); if (i + 1 < n) el.classList.add("done"); if (i + 1 === n) el.classList.add("active"); }); }
