@@ -761,6 +761,80 @@
             }
         }
 
+        .chapter-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px 20px;
+            cursor: pointer;
+            transition: 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chapter-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            border-color: rgba(0, 242, 254, 0.5);
+            background: var(--surface-hover);
+        }
+
+        .chapter-card-icon {
+            font-size: 2.2rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .chapter-card-title {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        .chapter-card-count {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+        }
+
+        .lecture-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 16px;
+            cursor: pointer;
+            transition: 0.25s;
+            text-align: center;
+        }
+
+        .lecture-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            border-color: rgba(79, 172, 254, 0.5);
+            background: var(--surface-hover);
+        }
+
+        .lecture-card-num {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 6px;
+        }
+
+        .lecture-card-meta {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .lecture-card.has-multi {
+            border-color: rgba(243, 156, 18, 0.35);
+        }
+
         /* Responsive */
         @media(max-width:900px) {
             .stats-grid {
@@ -1228,6 +1302,8 @@
                     <button class="btn btn-ghost" onclick="scanCorrupted()">🔍 Scan</button>
                     <button class="btn btn-danger hidden" id="deleteCorruptedBtn" onclick="deleteCorrupted()">🗑 Delete
                         Corrupted</button>
+                    <button class="btn btn-ghost" onclick="reloadCache()" title="Fixes wrong chapter questions">🔄
+                        Reload Cache</button>
                 </div>
                 <div id="migrateStatus" style="margin-top:16px"></div>
                 <div id="migrateResults" style="margin-top:16px"></div>
@@ -1799,10 +1875,11 @@
 
         async function deleteCurrentQuestion() {
             const q = allQuestions[mqCurrentLectureIdx]; if (!q) return;
-            if (!confirm(`Delete all questions for "${q.chapter} / Lecture ${q.lecture}"? Cannot be undone.`)) return;
-            const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(q.chapter || "_none_")}/${encodeURIComponent(q.lecture)}`, { method: "DELETE", credentials: "include" });
-            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = "Question deleted."; await loadQuestionsAdmin(); showLectureView(); }
-            else alert("Delete failed.");
+            pendingDeleteChapter = q.chapter || "_none_";
+            pendingDeleteLecture = q.lecture;
+            document.getElementById("deleteModalText").textContent = `Delete all questions for "${q.chapter || "No chapter"} / Lecture ${q.lecture}"? This cannot be undone.`;
+            window._deleteFromInline = true;
+            openModal("deleteModal");
         }
 
 
@@ -1865,8 +1942,13 @@
         async function confirmDelete() {
             closeModal("deleteModal");
             const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, { method: "DELETE", credentials: "include" });
-            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = "Question deleted."; loadQuestionsAdmin(); }
-            else alert("Delete failed.");
+            if (r.ok) {
+                openModal("successModal");
+                document.getElementById("successModalTitle").textContent = "Deleted";
+                document.getElementById("successModalText").textContent = "Question deleted.";
+                await loadQuestionsAdmin();
+                if (window._deleteFromInline) { window._deleteFromInline = false; showLectureView(); }
+            } else alert("Delete failed.");
         }
 
         /* ===== STUDENTS ===== */
@@ -1896,6 +1978,16 @@
         }
 
         /* ===== FIX DB ===== */
+        async function reloadCache() {
+            const st = document.getElementById("migrateStatus");
+            st.innerHTML = '<span class="spinner"></span>&nbsp; Reloading server cache...';
+            try {
+                const r = await fetch(`${API_BASE}/api/admin/reload-cache`, { method: "POST", credentials: "include" });
+                const data = await r.json();
+                st.innerHTML = `<div style="padding:14px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ Cache reloaded — ${data.cached} question(s) cached. Wrong-chapter bug should be fixed.</div>`;
+            } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; }
+        }
+
         async function scanCorrupted() {
             const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults");
             st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = "";
