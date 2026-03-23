@@ -601,13 +601,14 @@
         }
 
         .btn-danger {
-            background: rgba(242, 92, 92, 0.13);
-            border: 1px solid rgba(242, 92, 92, 0.3);
-            color: #fca5a5;
+            background: rgba(220, 38, 38, 0.16);
+            border: 1px solid rgba(220, 38, 38, 0.42);
+            color: var(--error);
+            font-weight: 700;
         }
 
         .btn-danger:hover {
-            background: rgba(242, 92, 92, 0.22);
+            background: rgba(220, 38, 38, 0.26);
         }
 
         .btn-ghost {
@@ -634,7 +635,7 @@
         .btn-success {
             background: rgba(6, 214, 160, 0.12);
             border: 1px solid rgba(6, 214, 160, 0.3);
-            color: #6ee7b7;
+            color: var(--success);
         }
 
         .btn-full {
@@ -757,13 +758,13 @@
         .extract-status.success {
             background: rgba(6, 214, 160, 0.08);
             border: 1px solid rgba(6, 214, 160, 0.25);
-            color: #6ee7b7;
+            color: var(--success);
         }
 
         .extract-status.error {
             background: rgba(242, 92, 92, 0.08);
             border: 1px solid rgba(242, 92, 92, 0.25);
-            color: #fca5a5;
+            color: var(--error);
         }
 
         /* EXTRACTED Q ITEMS */
@@ -872,13 +873,13 @@
 
         .badge-pill.ok {
             background: rgba(6, 214, 160, 0.12);
-            color: #6ee7b7;
+            color: var(--success);
             border: 1px solid rgba(6, 214, 160, 0.25);
         }
 
         .badge-pill.wrong {
             background: rgba(242, 92, 92, 0.12);
-            color: #fca5a5;
+            color: var(--error);
             border: 1px solid rgba(242, 92, 92, 0.25);
         }
 
@@ -984,6 +985,12 @@
 
         .lecture-card.has-multi {
             border-color: rgba(245, 158, 11, 0.35);
+        }
+
+        [data-theme="light"] .lecture-card.has-multi {
+            border: 2px solid rgba(201, 107, 0, 0.82);
+            box-shadow: 0 0 0 2px rgba(201, 107, 0, 0.16);
+            background: linear-gradient(180deg, #fffdf7, #ffffff);
         }
 
         .lecture-card.selected-lec {
@@ -1421,7 +1428,7 @@
         }
 
         .drawer-item.danger {
-            color: #fca5a5;
+            color: var(--error);
         }
 
         [data-theme="light"] .drawer-item.danger {
@@ -1606,7 +1613,8 @@
                     placeholder="Admin passcode" onkeydown="if(event.key==='Enter') login()"></div>
             <button class="btn btn-primary btn-full" onclick="login()" style="margin-top:4px">Login to
                 Dashboard</button>
-            <p id="loginError" style="color:#fca5a5;font-size:0.8rem;margin-top:12px;display:none">Invalid passcode. Try
+            <p id="loginError" style="color:var(--error);font-size:0.8rem;margin-top:12px;display:none">Invalid
+                passcode. Try
                 again.</p>
         </div>
     </div>
@@ -1619,7 +1627,7 @@
             <span class="nav-icon" id="themeIconMobile">☀️</span>
             <span class="nav-label">Theme</span>
         </div>
-        <div class="nav-item mobile-only-nav" onclick="confirmLogout()" style="color:#fca5a5">
+        <div class="nav-item mobile-only-nav" onclick="confirmLogout()" style="color:var(--error)">
             <span class="nav-icon">🚪</span>
             <span class="nav-label">Logout</span>
         </div>
@@ -1656,8 +1664,8 @@
                 <span class="theme-icon" id="themeIcon">☀️</span>
                 <span id="themeLabel">Light Mode</span>
             </div>
-            <div class="nav-item" onclick="confirmLogout()" style="color:#fca5a5"><span class="nav-icon">🚪</span><span
-                    class="nav-label">Logout</span></div>
+            <div class="nav-item" onclick="confirmLogout()" style="color:var(--error)"><span
+                    class="nav-icon">🚪</span><span class="nav-label">Logout</span></div>
         </div>
     </nav>
 
@@ -1837,7 +1845,7 @@
                     <input class="table-search" style="margin:0;flex:1;min-width:180px"
                         placeholder="🔍 Search chapters..." oninput="filterChapterCards(this.value)">
                     <div id="mass-delete-bar" class="mass-delete-bar">
-                        <span id="mass-delete-count" style="font-size:0.82rem;color:#fca5a5"></span>
+                        <span id="mass-delete-count" style="font-size:0.82rem;color:var(--error)"></span>
                         <button class="btn btn-danger" style="padding:7px 14px;font-size:0.82rem"
                             onclick="massDelete()">🗑 Delete Selected</button>
                         <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
@@ -1860,7 +1868,7 @@
                 </div>
                 <!-- LECTURE MASS DELETE BAR -->
                 <div id="lec-mass-delete-bar" class="mass-delete-bar">
-                    <span id="lec-mass-delete-count" style="font-size:0.82rem;color:#fca5a5"></span>
+                    <span id="lec-mass-delete-count" style="font-size:0.82rem;color:var(--error)"></span>
                     <button class="btn btn-danger" style="padding:7px 14px;font-size:0.82rem"
                         onclick="massDeleteLectures()">🗑 Delete Selected Lectures</button>
                     <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
@@ -1961,15 +1969,15 @@
             <div class="modal-actions"><button class="btn btn-danger" onclick="confirmReplace()">Replace</button><button
                     class="btn btn-ghost" onclick="closeModal('replaceModal')">Cancel</button></div>
         </div>
-        <div class="modal-overlay" id="logoutModal">
-            <div class="modal-box">
-                <div style="font-size:2rem;margin-bottom:10px">🚪</div>
-                <h3>Logout?</h3>
-                <p>Are you sure you want to logout from the admin panel?</p>
-                <div class="modal-actions">
-                    <button class="btn btn-danger" onclick="doLogout()">Yes, Logout</button>
-                    <button class="btn btn-ghost" onclick="closeModal('logoutModal')">Cancel</button>
-                </div>
+    </div>
+    <div class="modal-overlay" id="logoutModal">
+        <div class="modal-box">
+            <div style="font-size:2rem;margin-bottom:10px">🚪</div>
+            <h3>Logout?</h3>
+            <p>Are you sure you want to logout from the admin panel?</p>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="doLogout()">Yes, Logout</button>
+                <button class="btn btn-ghost" onclick="closeModal('logoutModal')">Cancel</button>
             </div>
         </div>
     </div>
@@ -2010,6 +2018,17 @@
                     onclick="closeModal('lecMassDeleteModal')">Cancel</button></div>
         </div>
     </div>
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-box">
+            <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
+            <h3 id="confirmModalTitle">Please Confirm</h3>
+            <p id="confirmModalText">Are you sure?</p>
+            <div class="modal-actions">
+                <button class="btn btn-danger" id="confirmModalOkBtn" onclick="confirmPromptAction()">Confirm</button>
+                <button class="btn btn-ghost" onclick="cancelPromptAction()">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const API_BASE = "";
@@ -2022,6 +2041,8 @@
         let selectModeOn = false, selectedLectures = new Set();
         let lecSelectModeOn = false, selectedLectureKeys = new Set();
         let _chartData = null;
+        let _pendingConfirmAction = null;
+        let _pendingConfirmResolver = null;
 
         /* ── THEME ── */
         function initTheme() { const saved = localStorage.getItem('gpTheme') || 'dark'; document.documentElement.setAttribute('data-theme', saved); updateThemeUI(saved); }
@@ -2088,7 +2109,7 @@
         /* ── MANUAL ADD ── */
         function addManualQuestion(data) { manualQuestionCount++; const id = `mq_${manualQuestionCount}`; const container = document.getElementById("aqQuestionsContainer"); const div = document.createElement("div"); div.className = "panel"; div.id = id; div.style.cssText = "background:var(--bg-input);margin-bottom:12px;"; const isMulti = data && data.isMultiCorrect; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><strong style="font-size:0.88rem">Question ${container.children.length + 1}</strong><div style="display:flex;gap:8px;align-items:center"><label style="font-size:0.8rem;color:var(--text-dim);display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mq-multi" ${isMulti ? "checked" : ""} style="width:auto;padding:0"> Multi-correct</label><button class="btn btn-danger" style="padding:5px 10px;font-size:0.76rem" onclick="this.closest('.panel').remove()">Remove</button></div></div><div class="field"><label>Question Text ($math$ for equations)</label><textarea class="mq-text" placeholder="Enter question..." rows="2">${data ? data.question : ""}</textarea></div><div class="options-grid">${LETTERS.map((l, i) => `<div class="field"><label>Option ${l}</label><input class="mq-opt" data-idx="${i}" placeholder="Option ${l}" value="${data && data.options ? data.options[i] || "" : ""}"></div>`).join("")}</div><div class="field" id="${id}_cw"><label class="single-lbl">Correct Answer</label><select class="mq-correct admin-select">${LETTERS.map((l, i) => `<option value="${i}" ${data && !isMulti && (data.correctIndexes ? data.correctIndexes[0] === i : data.correctIndex === i) ? "selected" : ""}>${l}</option>`).join("")}</select><div class="multi-lbl" style="display:none"><label style="font-size:0.78rem;color:var(--text-dim)">Correct Answers (check all):</label><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="mq-multi-correct" value="${i}" ${data && isMulti && data.correctIndexes && data.correctIndexes.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}</div></div></div>`; container.appendChild(div); div.querySelector(".mq-multi").addEventListener("change", function () { const w = div.querySelector(`#${id}_cw`); w.querySelector(".single-lbl").style.display = this.checked ? "none" : "block"; w.querySelector("select.mq-correct").style.display = this.checked ? "none" : "block"; w.querySelector(".multi-lbl").style.display = this.checked ? "block" : "none"; }); if (isMulti) div.querySelector(".mq-multi").dispatchEvent(new Event("change")); }
         addManualQuestion();
-        async function saveManualQuestions() { const chapter = document.getElementById("aq-chapter").value.trim(), lecture = document.getElementById("aq-lecture").value.trim(); if (!chapter || !lecture) { alert("Please enter chapter and lecture."); return; } const questions = []; document.querySelectorAll("#aqQuestionsContainer .panel").forEach(b => { const text = b.querySelector(".mq-text").value.trim(); const opts = [...b.querySelectorAll(".mq-opt")].map(i => i.value.trim()); const isMulti = b.querySelector(".mq-multi").checked; let ci; if (isMulti) { ci = [...b.querySelectorAll(".mq-multi-correct:checked")].map(c => parseInt(c.value)); } else { ci = [parseInt(b.querySelector(".mq-correct").value)]; } if (text && opts.every(o => o) && ci.length) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: isMulti }); }); if (!questions.length) { alert("Please fill at least one complete question."); return; } await submitQuestions(chapter, lecture, questions); }
+        async function saveManualQuestions() { const chapter = document.getElementById("aq-chapter").value.trim(), lecture = document.getElementById("aq-lecture").value.trim(); if (!chapter || !lecture) { showErrorModal("Please enter chapter and lecture.", "Missing fields"); return; } const questions = []; document.querySelectorAll("#aqQuestionsContainer .panel").forEach(b => { const text = b.querySelector(".mq-text").value.trim(); const opts = [...b.querySelectorAll(".mq-opt")].map(i => i.value.trim()); const isMulti = b.querySelector(".mq-multi").checked; let ci; if (isMulti) { ci = [...b.querySelectorAll(".mq-multi-correct:checked")].map(c => parseInt(c.value)); } else { ci = [parseInt(b.querySelector(".mq-correct").value)]; } if (text && opts.every(o => o) && ci.length) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: isMulti }); }); if (!questions.length) { showErrorModal("Please fill at least one complete question.", "Incomplete data"); return; } await submitQuestions(chapter, lecture, questions); }
 
         /* ── SCREENSHOT IMPORT ── */
         function fileToBase64(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); }); }
@@ -2155,12 +2176,12 @@
         async function extractWithAI() {
             const chapter = document.getElementById("imp-chapter").value.trim(), startLec = parseInt(document.getElementById("imp-lecture").value);
             const status = document.getElementById("extractStatus");
-            if (!chapter) { alert("Please enter a chapter name."); return; }
-            if (!startLec || startLec < 1) { alert("Please enter a starting lecture number."); return; }
-            if (!qImagesBase64.length) { alert("Please upload at least one question screenshot."); return; }
+            if (!chapter) { showErrorModal("Please enter a chapter name.", "Missing fields"); return; }
+            if (!startLec || startLec < 1) { showErrorModal("Please enter a starting lecture number.", "Invalid lecture"); return; }
+            if (!qImagesBase64.length) { showErrorModal("Please upload at least one question screenshot.", "Missing screenshots"); return; }
             const manualAK = document.getElementById("manualAnswerKey").value.trim();
             const useManual = document.getElementById("ak-tab-manual").classList.contains("active") && manualAK;
-            if (!useManual && !aImagesBase64.length) { alert("Please upload an answer key screenshot or switch to manual entry."); return; }
+            if (!useManual && !aImagesBase64.length) { showErrorModal("Please upload an answer key screenshot or switch to manual entry.", "Missing answer key"); return; }
             status.className = "extract-status loading"; status.style.display = "block";
             status.innerHTML = '<span class="spinner"></span>&nbsp; Sending to AI — detecting questions, equations, and diagrams...';
             document.getElementById("extractBtn").disabled = true; document.getElementById("extractedList").style.display = "none";
@@ -2221,8 +2242,8 @@
         function addExtractedQ() { const sl = parseInt(document.getElementById("imp-lecture").value) || 1, count = document.querySelectorAll(".extracted-q-item").length; extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndexes: [0], isMultiCorrect: false, assignedLecture: sl + count }); renderExtractedQuestions(extractedQuestions); }
 
         async function saveExtractedQuestions() {
-            const chapter = document.getElementById("imp-chapter").value.trim(); if (!chapter) { alert("Please enter a chapter."); return; }
-            const items = document.querySelectorAll(".extracted-q-item"); if (!items.length) { alert("No questions."); return; }
+            const chapter = document.getElementById("imp-chapter").value.trim(); if (!chapter) { showErrorModal("Please enter a chapter.", "Missing fields"); return; }
+            const items = document.querySelectorAll(".extracted-q-item"); if (!items.length) { showErrorModal("No questions to save.", "Nothing to save"); return; }
             const groups = {}; let hasError = false;
             items.forEach((item, localIdx) => {
                 const lec = item.querySelector('[id^="eq_lec_"]')?.value.trim();
@@ -2236,21 +2257,21 @@
                 const origQ = extractedQuestions[isNaN(qi) ? localIdx : qi] || {};
                 groups[lec].push({ question: txt, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1, hasImage: origQ.hasImage || false, extractedImageB64: origQ.extractedImageB64 || null });
             });
-            if (hasError) { alert("Some questions are incomplete."); return; }
-            const lectures = Object.keys(groups); if (!lectures.length) { alert("No complete questions."); return; }
+            if (hasError) { showErrorModal("Some questions are incomplete.", "Incomplete data"); return; }
+            const lectures = Object.keys(groups); if (!lectures.length) { showErrorModal("No complete questions.", "Nothing to save"); return; }
             const ov = document.createElement("div"); ov.id = "saveProgressOverlay"; ov.style.cssText = "position:fixed;inset:0;background:rgba(11,13,24,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px";
             ov.innerHTML = `<div style="font-size:2.2rem">💾</div><div style="font-size:1rem;font-weight:700;color:var(--text)">Saving Questions...</div><div style="width:260px;height:5px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 0.3s;width:0%"></div></div><div style="font-size:0.82rem;color:var(--text-dim)" id="progText">0 / ${lectures.length}</div>`;
             document.body.appendChild(ov);
             let saved = 0, failed = [];
-            for (const lec of lectures) { document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%"; document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved...`; const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false }) }); if (r.ok) { saved++; } else if (r.status === 409) { if (confirm(`Lecture ${lec} already exists. Replace?`)) { const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true }) }); if (r2.ok) saved++; else failed.push(lec); } else failed.push(lec); } else failed.push(lec); }
+            for (const lec of lectures) { document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%"; document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved...`; const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false }) }); if (r.ok) { saved++; } else if (r.status === 409) { const shouldReplace = await askConfirmModalPromise({ title: "Lecture exists", text: `Lecture ${lec} already exists. Replace it?`, confirmText: "Replace" }); if (shouldReplace) { const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true }) }); if (r2.ok) saved++; else failed.push(lec); } else failed.push(lec); } else failed.push(lec); }
             document.getElementById("saveProgressOverlay")?.remove();
             openModal("successModal"); document.getElementById("successModalTitle").textContent = saved > 0 ? "Saved!" : "Failed"; document.getElementById("successModalText").textContent = failed.length === 0 ? `${saved} lecture(s) saved for "${chapter}".` : `Saved: ${saved}. Failed: ${failed.join(", ")}.`;
             await loadQuestionsAdmin(); loadChaptersAdmin();
         }
 
         /* ── SHARED SUBMIT ── */
-        async function submitQuestions(chapter, lecture, questions, replace = false) { const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace }) }); if (r.status === 409) { pendingReplaceData = { chapter, lecture, questions }; openModal("replaceModal"); return; } if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Saved!"; document.getElementById("successModalText").textContent = `${questions.length} question(s) for Lecture ${lecture}.`; await loadQuestionsAdmin(); loadChaptersAdmin(); } else alert("Failed to save."); }
-        async function confirmReplace() { closeModal("replaceModal"); const d = pendingReplaceData; const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, questions: d.questions, replace: true }) }); if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Replaced!"; document.getElementById("successModalText").textContent = "Replaced."; await loadQuestionsAdmin(); loadChaptersAdmin(); } else alert("Replace failed."); }
+        async function submitQuestions(chapter, lecture, questions, replace = false) { const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace }) }); if (r.status === 409) { pendingReplaceData = { chapter, lecture, questions }; openModal("replaceModal"); return; } if (r.ok) { showSuccessModal("Saved!", `${questions.length} question(s) for Lecture ${lecture}.`); await loadQuestionsAdmin(); loadChaptersAdmin(); } else { showErrorModal(await extractErrorMessage(r, "Failed to save questions."), "Save failed"); } }
+        async function confirmReplace() { closeModal("replaceModal"); const d = pendingReplaceData; const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, questions: d.questions, replace: true }) }); if (r.ok) { showSuccessModal("Replaced!", "Lecture questions were replaced."); await loadQuestionsAdmin(); loadChaptersAdmin(); } else { showErrorModal(await extractErrorMessage(r, "Replace failed."), "Replace failed"); } }
 
         /* ── UNDO/REDO ── */
         function pushUndo(snap) { undoStack.push(snap); redoStack = []; updateUndoRedoBtns(); }
@@ -2280,7 +2301,7 @@
         function clearSelection() { selectModeOn = false; selectedLectures.clear(); document.getElementById("selectModeBtn").textContent = "☐ Select"; document.getElementById("mass-delete-bar").classList.remove("visible"); renderChapterCards(allQuestions); }
         function updateMassDeleteBar() { const bar = document.getElementById("mass-delete-bar"); const count = document.getElementById("mass-delete-count"); bar.classList.toggle("visible", selectedLectures.size > 0); count.textContent = `${selectedLectures.size} lecture(s) selected`; }
         function massDelete() { if (!selectedLectures.size) return; document.getElementById("massDeleteModalText").textContent = `Delete ${selectedLectures.size} selected lecture(s)? This cannot be undone.`; openModal("massDeleteModal"); }
-        async function confirmMassDelete() { closeModal("massDeleteModal"); const items = [...selectedLectures].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; }); const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) }); if (r.ok) { const d = await r.json(); openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = `Deleted ${d.deleted} lecture(s).`; clearSelection(); await loadQuestionsAdmin(); } else alert("Mass delete failed."); }
+        async function confirmMassDelete() { closeModal("massDeleteModal"); const items = [...selectedLectures].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; }); const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) }); if (r.ok) { const d = await r.json(); showSuccessModal("Deleted", `Deleted ${d.deleted} lecture(s).`); clearSelection(); await loadQuestionsAdmin(); } else { showErrorModal(await extractErrorMessage(r, "Mass delete failed."), "Delete failed"); } }
         function filterChapterCards(q) { const f = q.toLowerCase(); renderChapterCards(allQuestions.filter(x => (x.chapter || "").toLowerCase().includes(f) || String(x.lecture).includes(f))); }
 
         /* ══════════════════════════════════════
@@ -2316,7 +2337,7 @@
         function updateLecMassDeleteBar() { const bar = document.getElementById("lec-mass-delete-bar"); const count = document.getElementById("lec-mass-delete-count"); bar.classList.toggle("visible", selectedLectureKeys.size > 0); count.textContent = `${selectedLectureKeys.size} lecture(s) selected`; }
         function clearLectureSelection() { lecSelectModeOn = false; selectedLectureKeys.clear(); document.getElementById("lecSelectModeBtn").textContent = "☐ Select Lectures"; document.getElementById("lec-mass-delete-bar").classList.remove("visible"); const grid = document.getElementById("lectureCardsGrid"); if (grid) grid.classList.remove("lec-select-mode"); if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); }
         function massDeleteLectures() { if (!selectedLectureKeys.size) return; document.getElementById("lecMassDeleteModalText").textContent = `Delete ${selectedLectureKeys.size} selected lecture(s) from "${mqCurrentChapter}"? This cannot be undone.`; openModal("lecMassDeleteModal"); }
-        async function confirmLecMassDelete() { closeModal("lecMassDeleteModal"); const items = [...selectedLectureKeys].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; }); const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) }); if (r.ok) { const d = await r.json(); openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = `Deleted ${d.deleted} lecture(s).`; clearLectureSelection(); await loadQuestionsAdmin(); if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); } else alert("Mass delete failed."); }
+        async function confirmLecMassDelete() { closeModal("lecMassDeleteModal"); const items = [...selectedLectureKeys].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; }); const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) }); if (r.ok) { const d = await r.json(); showSuccessModal("Deleted", `Deleted ${d.deleted} lecture(s).`); clearLectureSelection(); await loadQuestionsAdmin(); if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); } else { showErrorModal(await extractErrorMessage(r, "Mass delete failed."), "Delete failed"); } }
 
         /* ── VIEW FUNCTIONS ── */
         function showChapterView() { document.getElementById("mq-chapter-view").style.display = "block"; document.getElementById("mq-lecture-view").style.display = "none"; document.getElementById("mq-question-view").style.display = "none"; mqCurrentChapter = null; mqCurrentLectureIdx = null; }
@@ -2393,20 +2414,23 @@
 
         async function saveInlineEdit() {
             const chapter = document.getElementById("iqe-chapter")?.value.trim(), lecture = document.getElementById("iqe-lecture")?.value.trim();
-            if (!chapter || !lecture) { alert("Chapter and lecture required."); return; }
+            if (!chapter || !lecture) { showErrorModal("Chapter and lecture are required.", "Missing fields"); return; }
             const containers = document.querySelectorAll("#iqe-questions-container > div");
             const questions = [];
             containers.forEach((c, si) => { const text = document.getElementById(`iqe_qt_${si}`)?.value.trim(); const opts = LETTERS.map((_, oi) => document.getElementById(`iqe_opt_${si}_${oi}`)?.value.trim() || ""); const checked = [...c.querySelectorAll(`[class*="iqe_correct_"]:checked`)].map(x => parseInt(x.value)); const ci = checked.length ? checked : [0]; if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1 }); });
-            if (!questions.length) { alert("No complete questions."); return; }
+            if (!questions.length) { showErrorModal("No complete questions found to save.", "Incomplete data"); return; }
             const q = allQuestions[mqCurrentLectureIdx]; const oldCh = q?.chapter || "_none_", oldLec = q?.lecture;
-            if (oldCh !== chapter || String(oldLec) !== String(lecture)) { await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(oldCh)}/${encodeURIComponent(oldLec)}`, { method: "DELETE", credentials: "include" }); }
             const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace: true }) });
-            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Saved!"; document.getElementById("successModalText").textContent = `Lecture ${lecture} updated.`; await loadQuestionsAdmin(); loadChaptersAdmin(); const ni = allQuestions.findIndex(x => x.chapter === chapter && String(x.lecture) === String(lecture)); if (ni !== -1) showQuestionView(ni); else showLectureView(); }
-            else alert("Save failed.");
+            if (!r.ok) { showErrorModal(await extractErrorMessage(r, "Save failed for this lecture."), "Save failed"); return; }
+            if (oldCh !== chapter || String(oldLec) !== String(lecture)) {
+                await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(oldCh)}/${encodeURIComponent(oldLec)}`, { method: "DELETE", credentials: "include" });
+            }
+            showSuccessModal("Saved!", `Lecture ${lecture} updated.`);
+            await loadQuestionsAdmin(); loadChaptersAdmin(); const ni = allQuestions.findIndex(x => x.chapter === chapter && String(x.lecture) === String(lecture)); if (ni !== -1) showQuestionView(ni); else showLectureView();
         }
 
         function deleteCurrentQuestion() { const q = allQuestions[mqCurrentLectureIdx]; if (!q) return; pendingDeleteChapter = q.chapter || "_none_"; pendingDeleteLecture = q.lecture; document.getElementById("deleteModalText").textContent = `Delete all questions for "${q.chapter || "No chapter"} / Lecture ${q.lecture}"?`; window._deleteFromInline = true; openModal("deleteModal"); }
-        async function confirmDelete() { closeModal("deleteModal"); const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, { method: "DELETE", credentials: "include" }); if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = "Question deleted."; await loadQuestionsAdmin(); if (window._deleteFromInline) { window._deleteFromInline = false; showLectureView(); } } else alert("Delete failed."); }
+        async function confirmDelete() { closeModal("deleteModal"); const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, { method: "DELETE", credentials: "include" }); if (r.ok) { showSuccessModal("Deleted", "Question deleted."); await loadQuestionsAdmin(); if (window._deleteFromInline) { window._deleteFromInline = false; showLectureView(); } } else { showErrorModal(await extractErrorMessage(r, "Delete failed."), "Delete failed"); } }
 
         /* ── STUDENTS ── */
         function renderStudentTable(data) { const tbody = document.getElementById("studentTableBody"); if (!tbody) return; tbody.innerHTML = ""; const wa = data.filter(s => (s.answers && s.answers.length > 0) || typeof s.answer === "number"); if (!wa.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;opacity:0.4;padding:20px">No student records yet.</td></tr>'; return; } wa.forEach(s => { let correct, total; if (typeof s.correctCount === "number") { correct = s.correctCount; total = s.totalQuestions || 1; } else { correct = s.correct ? 1 : 0; total = 1; } const pct = total > 0 ? Math.round((correct / total) * 100) : 0; tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${s.mobile || "—"}</td><td>${s.place || "—"}</td><td>${s.className || "—"}</td><td>${s.chapter || "—"}</td><td>L${s.lecture || "—"}</td><td>${correct}/${total}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`); }); }
@@ -2416,13 +2440,20 @@
         function exportCSV() { let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n"; allStudents.filter(s => (s.answers && s.answers.length > 0) || typeof s.answer === "number").forEach(s => { const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0; const mobile = s.mobile ? `="${s.mobile}"` : ""; csv += `"${s.name || ""}",${mobile},"${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${s.correctCount || 0},${s.totalQuestions || 0},${pct}%\n`; }); const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }), url = URL.createObjectURL(blob), link = document.createElement("a"); link.href = url; link.download = `GripPhysics_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
         /* ── FIX DB ── */
-        async function reloadCache() { const st = document.getElementById("cacheStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Reloading...'; try { const r = await fetch(`${API_BASE}/api/admin/reload-cache`, { method: "POST", credentials: "include" }); const d = await r.json(); st.innerHTML = `<div style="padding:12px 14px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem;margin-top:4px">✅ Cache reloaded — ${d.cached} question(s) cached.</div>`; } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; } }
-        async function scanCorrupted() { const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults"); st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = ""; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = ""; if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); } else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);color:#fca5a5;margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); } } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; } }
-        async function deleteCorrupted() { if (!confirm("Permanently delete corrupted records?")) return; const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; } }
+        async function reloadCache() { const st = document.getElementById("cacheStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Reloading...'; try { const r = await fetch(`${API_BASE}/api/admin/reload-cache`, { method: "POST", credentials: "include" }); const d = await r.json(); st.innerHTML = `<div style="padding:12px 14px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:var(--success);font-size:0.82rem;margin-top:4px">✅ Cache reloaded — ${d.cached} question(s) cached.</div>`; } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } }
+        async function scanCorrupted() { const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults"); st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = ""; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = ""; if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:var(--success);font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); } else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);color:var(--error);margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); } } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } }
+        async function deleteCorrupted() { askConfirmModal({ title: "Delete corrupted records?", text: "Permanently delete corrupted records? This cannot be undone.", confirmText: "Delete", onConfirm: async () => { const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#057a55;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } } }); }
 
         /* ── MODALS ── */
         function openModal(id) { document.getElementById(id).style.display = "flex"; }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
+        function showSuccessModal(title, text) { document.getElementById("successModalTitle").textContent = title || "Success"; document.getElementById("successModalText").textContent = text || "Done."; openModal("successModal"); }
+        function showErrorModal(text, title = "Something went wrong") { showSuccessModal(title, text); }
+        async function extractErrorMessage(res, fallback = "Request failed.") { try { const data = await res.json(); return data?.error || data?.message || fallback; } catch (e) { return fallback; } }
+        function askConfirmModal({ title = "Please Confirm", text = "Are you sure?", confirmText = "Confirm", onConfirm = null } = {}) { document.getElementById("confirmModalTitle").textContent = title; document.getElementById("confirmModalText").textContent = text; document.getElementById("confirmModalOkBtn").textContent = confirmText; _pendingConfirmAction = onConfirm; openModal("confirmModal"); }
+        function askConfirmModalPromise(opts = {}) { return new Promise(resolve => { _pendingConfirmResolver = resolve; askConfirmModal(opts); }); }
+        async function confirmPromptAction() { closeModal("confirmModal"); if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(true); _pendingConfirmResolver = null; } if (typeof _pendingConfirmAction === "function") { const fn = _pendingConfirmAction; _pendingConfirmAction = null; await fn(); } }
+        function cancelPromptAction() { if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(false); _pendingConfirmResolver = null; } _pendingConfirmAction = null; closeModal("confirmModal"); }
 
         /* ── PWA ── */
         if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("/admin-sw.js").then(r => console.log("SW:", r.scope)).catch(e => console.warn("SW failed:", e)); }); }
