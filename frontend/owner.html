@@ -8,7 +8,10 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         :root {
             --bg: #080714;
@@ -41,7 +44,7 @@
             display: flex;
         }
 
-        /* ===== LOGIN OVERLAY ===== */
+        /* Login */
         #loginOverlay {
             position: fixed;
             inset: 0;
@@ -50,6 +53,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
 
         .login-card {
@@ -59,6 +63,7 @@
             border-radius: 20px;
             padding: 44px 40px;
             width: 380px;
+            max-width: 100%;
             text-align: center;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         }
@@ -107,7 +112,7 @@
             outline: none;
         }
 
-        /* ===== SIDEBAR ===== */
+        /* Sidebar */
         #sidebar {
             width: var(--sidebar-w);
             background: rgba(255, 255, 255, 0.04);
@@ -120,6 +125,7 @@
             left: 0;
             height: 100vh;
             z-index: 100;
+            overflow-y: auto;
         }
 
         .sidebar-brand {
@@ -162,6 +168,7 @@
             font-weight: 500;
             color: var(--text-dim);
             margin-bottom: 4px;
+            border: 1px solid transparent;
         }
 
         .nav-item:hover {
@@ -172,10 +179,10 @@
         .nav-item.active {
             background: rgba(0, 242, 254, 0.12);
             color: var(--accent);
-            border: 1px solid rgba(0, 242, 254, 0.2);
+            border-color: rgba(0, 242, 254, 0.2);
         }
 
-        .nav-item .nav-icon {
+        .nav-icon {
             font-size: 1.1rem;
             width: 20px;
             text-align: center;
@@ -187,7 +194,7 @@
             border-top: 1px solid var(--border);
         }
 
-        /* ===== MAIN CONTENT ===== */
+        /* Main */
         #mainContent {
             margin-left: var(--sidebar-w);
             flex: 1;
@@ -211,7 +218,7 @@
             margin-top: 4px;
         }
 
-        /* ===== STAT CARDS ===== */
+        /* Stats */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -226,6 +233,7 @@
             padding: 20px;
             text-align: center;
             transition: 0.2s;
+            cursor: default;
         }
 
         .stat-card:hover {
@@ -233,12 +241,12 @@
             transform: translateY(-2px);
         }
 
-        .stat-card .stat-icon {
+        .stat-icon {
             font-size: 1.8rem;
             margin-bottom: 8px;
         }
 
-        .stat-card .stat-num {
+        .stat-num {
             font-size: 2rem;
             font-weight: 700;
             font-family: 'Space Mono', monospace;
@@ -248,7 +256,7 @@
             background-clip: text;
         }
 
-        .stat-card .stat-label {
+        .stat-label {
             font-size: 0.72rem;
             color: var(--text-dim);
             text-transform: uppercase;
@@ -256,7 +264,7 @@
             margin-top: 4px;
         }
 
-        /* ===== SECTION PANELS ===== */
+        /* Panel */
         .panel {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -274,7 +282,7 @@
             gap: 8px;
         }
 
-        /* ===== FORM ELEMENTS ===== */
+        /* Form */
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -316,7 +324,7 @@
         }
 
         .field textarea {
-            height: 90px;
+            height: 80px;
             resize: vertical;
         }
 
@@ -330,7 +338,7 @@
             gap: 10px;
         }
 
-        /* ===== BUTTONS ===== */
+        /* Buttons */
         .btn {
             padding: 11px 22px;
             border: none;
@@ -375,16 +383,30 @@
             background: rgba(255, 255, 255, 0.15);
         }
 
+        .btn-warn {
+            background: rgba(243, 156, 18, 0.2);
+            border: 1px solid rgba(243, 156, 18, 0.4);
+            color: var(--warn);
+        }
+
         .btn-full {
             width: 100%;
             justify-content: center;
         }
 
-        /* ===== UPLOAD ZONES ===== */
+        .flex-end {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* Upload */
         .upload-zone {
             border: 2px dashed rgba(255, 255, 255, 0.2);
             border-radius: var(--radius);
-            padding: 28px;
+            padding: 24px;
             text-align: center;
             cursor: pointer;
             transition: 0.2s;
@@ -402,11 +424,13 @@
             inset: 0;
             opacity: 0;
             cursor: pointer;
+            width: 100%;
+            height: 100%;
         }
 
-        .upload-zone .upload-icon {
-            font-size: 2rem;
-            margin-bottom: 8px;
+        .upload-icon {
+            font-size: 1.8rem;
+            margin-bottom: 6px;
         }
 
         .upload-zone p {
@@ -419,20 +443,36 @@
         }
 
         .upload-preview {
-            margin-top: 12px;
+            margin-top: 10px;
             border-radius: 10px;
             overflow: hidden;
-            max-height: 200px;
             display: none;
+            position: relative;
         }
 
         .upload-preview img {
             width: 100%;
             object-fit: contain;
             max-height: 200px;
+            border-radius: 8px;
         }
 
-        /* ===== AI EXTRACT STATUS ===== */
+        .upload-preview .remove-img-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(231, 76, 60, 0.85);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 4px 10px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        /* Extract status */
         .extract-status {
             padding: 12px 16px;
             border-radius: 10px;
@@ -459,81 +499,26 @@
             color: var(--error);
         }
 
-        /* ===== QUESTION PREVIEW ===== */
-        #questionPreview {
-            display: none;
-            margin-top: 16px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 18px;
-        }
-
-        .preview-q {
-            font-weight: 600;
-            margin-bottom: 12px;
-            font-size: 0.92rem;
-        }
-
-        .preview-opt {
-            padding: 8px 14px;
-            margin: 6px 0;
-            background: rgba(255, 255, 255, 0.06);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            display: flex;
-            gap: 10px;
-        }
-
-        .preview-opt.correct-opt {
-            background: rgba(46, 204, 113, 0.15);
-            border: 1px solid rgba(46, 204, 113, 0.3);
-        }
-
-        .preview-opt .opt-letter {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.75rem;
-            opacity: 0.7;
-        }
-
-        /* ===== EXTRACTED QUESTIONS LIST ===== */
-        #extractedList {
-            display: none;
-            margin-top: 20px;
-        }
-
+        /* Extracted questions */
         .extracted-q-item {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
             padding: 16px;
-            margin-bottom: 12px;
-        }
-
-        .extracted-q-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-        }
-
-        .extracted-q-text {
-            font-weight: 600;
-            font-size: 0.88rem;
-            flex: 1;
-            margin-right: 12px;
+            margin-bottom: 16px;
         }
 
         .extracted-q-opts {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            gap: 8px;
+            margin-top: 10px;
         }
 
         .eq-opt {
-            padding: 6px 10px;
+            padding: 8px 12px;
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             background: rgba(255, 255, 255, 0.06);
             display: flex;
             gap: 8px;
@@ -542,9 +527,10 @@
 
         .eq-opt.correct {
             background: rgba(46, 204, 113, 0.2);
+            border: 1px solid rgba(46, 204, 113, 0.3);
         }
 
-        /* ===== TABLES ===== */
+        /* Tables */
         .table-search {
             width: 100%;
             background: rgba(255, 255, 255, 0.07);
@@ -560,11 +546,13 @@
 
         .table-wrap {
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 500px;
         }
 
         th {
@@ -610,19 +598,33 @@
             border: 1px solid rgba(231, 76, 60, 0.3);
         }
 
-        /* ===== CHARTS ===== */
+        .badge-pill.multi {
+            background: rgba(243, 156, 18, 0.15);
+            color: var(--warn);
+            border: 1px solid rgba(243, 156, 18, 0.3);
+        }
+
+        /* Chart */
         .chart-wrap {
             position: relative;
             height: 280px;
         }
 
-        /* ===== QUESTION MANAGER TABLE ===== */
+        /* Question manager */
         .q-row {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 0;
+            padding: 14px 0;
             border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .q-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+            padding-left: 6px;
+            border-radius: 8px;
         }
 
         .q-info {
@@ -630,13 +632,35 @@
             font-size: 0.85rem;
         }
 
-        .q-chapter {
+        .q-meta {
             font-size: 0.72rem;
             color: var(--text-dim);
-            margin-top: 2px;
+            margin-top: 3px;
         }
 
-        /* ===== MODALS ===== */
+        .q-expand {
+            display: none;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            margin-top: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .q-expand.open {
+            display: block;
+        }
+
+        .q-sub-item {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .q-sub-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Modals */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -646,13 +670,15 @@
             justify-content: center;
             z-index: 500;
             display: none;
+            padding: 20px;
         }
 
         .modal-box {
             background: #1a1535;
             border-radius: 16px;
             padding: 32px;
-            width: 380px;
+            width: 400px;
+            max-width: 100%;
             text-align: center;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
             border: 1px solid var(--border);
@@ -679,7 +705,21 @@
             justify-content: center;
         }
 
-        /* ===== MISC ===== */
+        /* Edit modal */
+        .edit-modal-box {
+            background: #1a1535;
+            border-radius: 16px;
+            padding: 28px;
+            width: 580px;
+            max-width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--border);
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: left;
+        }
+
+        /* Misc */
         .hidden {
             display: none !important;
         }
@@ -700,13 +740,6 @@
             margin-top: 20px;
         }
 
-        .flex-end {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 16px;
-        }
-
         .spinner {
             display: inline-block;
             width: 14px;
@@ -717,27 +750,21 @@
             animation: spin 0.7s linear infinite;
         }
 
+        .katex {
+            font-size: 1em !important;
+            color: inherit;
+        }
+
         @keyframes spin {
             to {
-                transform: rotate(360deg);
+                transform: rotate(360deg)
             }
         }
 
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 768px) {
-            #sidebar {
-                width: 60px;
-                padding: 16px 10px;
-            }
-
-            #sidebar .sidebar-brand-text,
-            #sidebar .nav-label {
-                display: none;
-            }
-
-            #mainContent {
-                margin-left: 60px;
-                padding: 20px 16px;
+        /* Responsive */
+        @media(max-width:900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .form-row {
@@ -747,13 +774,168 @@
             .options-grid {
                 grid-template-columns: 1fr;
             }
+
+            .extracted-q-opts {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-box,
+            .edit-modal-box {
+                width: 90%;
+                max-width: 520px;
+            }
+        }
+
+        @media(max-width:680px) {
+            body {
+                padding-bottom: 70px;
+            }
+
+            #sidebar {
+                width: 100% !important;
+                height: 60px;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                flex-direction: row;
+                padding: 0 6px;
+                border-right: none;
+                border-top: 1px solid var(--border);
+                justify-content: space-around;
+                align-items: center;
+                overflow-x: auto;
+                gap: 0;
+                height: 64px;
+            }
+
+            .sidebar-brand,
+            .sidebar-footer {
+                display: none;
+            }
+
+            .nav-item {
+                flex-direction: column;
+                padding: 5px 8px;
+                gap: 2px;
+                min-width: 48px;
+                align-items: center;
+                font-size: 0.6rem;
+                margin-bottom: 0;
+                border-radius: 8px;
+                border: none;
+            }
+
+            .nav-icon {
+                font-size: 1.2rem;
+                width: auto;
+            }
+
+            .nav-label {
+                font-size: 0.58rem !important;
+                display: block !important;
+            }
+
+            #mainContent {
+                margin-left: 0 !important;
+                padding: 14px 12px 80px;
+                width: 100%;
+            }
+
+            .panel {
+                padding: 14px;
+            }
+
+            .login-card {
+                padding: 24px 18px;
+                width: 100%;
+            }
+
+            .page-header h1 {
+                font-size: 1.2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 14px;
+            }
+
+            .stat-num {
+                font-size: 1.5rem;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            th,
+            td {
+                padding: 7px 8px;
+            }
+
+            .chart-wrap {
+                height: 200px;
+            }
+
+            .flex-end {
+                flex-direction: column;
+            }
+
+            .flex-end .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .extracted-q-opts {
+                grid-template-columns: 1fr;
+            }
+
+            h2 {
+                font-size: 1.1rem;
+            }
+
+            .modal-box,
+            .edit-modal-box {
+                width: calc(100% - 16px);
+                padding: 20px 16px;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+            }
+
+            .upload-zone {
+                padding: 16px;
+            }
+        }
+
+        @media(max-width:380px) {
+            .nav-item {
+                padding: 4px 5px;
+                min-width: 42px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <!-- ===== LOGIN OVERLAY ===== -->
     <div id="loginOverlay">
         <div class="login-card">
             <div class="brand-logo">⚛</div>
@@ -770,43 +952,31 @@
         </div>
     </div>
 
-    <!-- ===== SIDEBAR ===== -->
     <nav id="sidebar" class="hidden">
         <div class="sidebar-brand">
             <span class="sidebar-brand-icon">⚛</span>
             <div class="sidebar-brand-text">
-                <h3>Grip Physics</h3>
-                <span>Admin Panel</span>
+                <h3>Grip Physics</h3><span>Admin Panel</span>
             </div>
         </div>
-
-        <div class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard">
-            <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
-        </div>
-        <div class="nav-item" onclick="showSection('addQuestion')" id="nav-addQuestion">
-            <span class="nav-icon">➕</span><span class="nav-label">Add Question</span>
-        </div>
-        <div class="nav-item" onclick="showSection('importQuestion')" id="nav-importQuestion">
-            <span class="nav-icon">📷</span><span class="nav-label">Import from Screenshot</span>
-        </div>
-        <div class="nav-item" onclick="showSection('manageQuestions')" id="nav-manageQuestions">
-            <span class="nav-icon">📋</span><span class="nav-label">Manage Questions</span>
-        </div>
-        <div class="nav-item" onclick="showSection('students')" id="nav-students">
-            <span class="nav-icon">👥</span><span class="nav-label">Students</span>
-        </div>
-        <div class="nav-item" onclick="showSection('migrate')" id="nav-migrate">
-            <span class="nav-icon">🔧</span><span class="nav-label">Fix DB Records</span>
-        </div>
-
+        <div class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard"><span
+                class="nav-icon">📊</span><span class="nav-label">Dashboard</span></div>
+        <div class="nav-item" onclick="showSection('addQuestion')" id="nav-addQuestion"><span
+                class="nav-icon">➕</span><span class="nav-label">Add Question</span></div>
+        <div class="nav-item" onclick="showSection('importQuestion')" id="nav-importQuestion"><span
+                class="nav-icon">📷</span><span class="nav-label">Import Screenshot</span></div>
+        <div class="nav-item" onclick="showSection('manageQuestions')" id="nav-manageQuestions"><span
+                class="nav-icon">📋</span><span class="nav-label">Manage</span></div>
+        <div class="nav-item" onclick="showSection('students')" id="nav-students"><span class="nav-icon">👥</span><span
+                class="nav-label">Students</span></div>
+        <div class="nav-item" onclick="showSection('migrate')" id="nav-migrate"><span class="nav-icon">🔧</span><span
+                class="nav-label">Fix DB</span></div>
         <div class="sidebar-footer">
-            <div class="nav-item" onclick="logout()" style="color:var(--error)">
-                <span class="nav-icon">🚪</span><span class="nav-label">Logout</span>
-            </div>
+            <div class="nav-item" onclick="logout()" style="color:var(--error)"><span class="nav-icon">🚪</span><span
+                    class="nav-label">Logout</span></div>
         </div>
     </nav>
 
-    <!-- ===== MAIN CONTENT ===== -->
     <div id="mainContent" class="hidden">
 
         <!-- DASHBOARD -->
@@ -815,7 +985,6 @@
                 <h1>Dashboard</h1>
                 <p>Overview of all student activity</p>
             </div>
-
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">👥</div>
@@ -838,25 +1007,19 @@
                     <div class="stat-label">Active Lectures</div>
                 </div>
             </div>
-
             <div class="panel">
                 <div class="panel-title">📈 Lecture-wise Attempts (Correct vs Wrong)</div>
                 <div class="chart-wrap"><canvas id="lectureChart"></canvas></div>
             </div>
-
             <div class="panel">
                 <div class="panel-title">🔍 Drill-down by Lecture</div>
-                <div class="field">
-                    <label>Select Chapter</label>
-                    <select id="drillChapter" onchange="loadDrillLectures()">
-                        <option value="">— All Chapters —</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label>Select Lecture</label>
-                    <select id="drillLecture" onchange="loadDrillData()">
-                        <option value="">— Select —</option>
-                    </select>
+                <div class="form-row">
+                    <div class="field"><label>Chapter</label><select id="drillChapter" onchange="loadDrillLectures()">
+                            <option value="">— All —</option>
+                        </select></div>
+                    <div class="field"><label>Lecture</label><select id="drillLecture" onchange="loadDrillData()">
+                            <option value="">— Select —</option>
+                        </select></div>
                 </div>
                 <div id="drillResults" style="display:none">
                     <div class="stats-grid mt-12" id="drillStats"></div>
@@ -868,7 +1031,7 @@
                                     <th>Mobile</th>
                                     <th>Correct</th>
                                     <th>Total</th>
-                                    <th>Result</th>
+                                    <th>Score</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -876,39 +1039,27 @@
                     </div>
                 </div>
             </div>
-
-            <div class="flex-end">
-                <button class="btn btn-primary" onclick="exportCSV()">⬇ Export to CSV</button>
-            </div>
+            <div class="flex-end"><button class="btn btn-primary" onclick="exportCSV()">⬇ Export to CSV</button></div>
         </div>
 
-        <!-- ADD QUESTION (manual) -->
+        <!-- ADD QUESTION -->
         <div class="section" id="section-addQuestion">
             <div class="page-header">
                 <h1>Add / Update Question</h1>
-                <p>Manually add a question for a lecture</p>
+                <p>Manually add questions for a lecture</p>
             </div>
-
             <div class="panel">
                 <div class="form-row">
-                    <div class="field">
-                        <label>Chapter Name</label>
-                        <input id="aq-chapter" placeholder="e.g. Laws of Motion" list="existingChapters">
-                        <datalist id="existingChapters"></datalist>
-                    </div>
-                    <div class="field">
-                        <label>Lecture Number</label>
-                        <input id="aq-lecture" placeholder="e.g. 5">
-                    </div>
+                    <div class="field"><label>Chapter Name</label><input id="aq-chapter"
+                            placeholder="e.g. Laws of Motion" list="existingChapters"><datalist
+                            id="existingChapters"></datalist></div>
+                    <div class="field"><label>Lecture Number</label><input id="aq-lecture" type="number" min="1"
+                            placeholder="e.g. 5"></div>
                 </div>
-
                 <div id="aqQuestionsContainer"></div>
-
                 <button class="btn btn-ghost mt-12" onclick="addManualQuestion()">+ Add Another Question</button>
-
-                <div class="flex-end">
-                    <button class="btn btn-primary" onclick="saveManualQuestions()">💾 Save Questions</button>
-                </div>
+                <div class="flex-end"><button class="btn btn-primary" onclick="saveManualQuestions()">💾 Save
+                        Questions</button></div>
             </div>
         </div>
 
@@ -916,102 +1067,58 @@
         <div class="section" id="section-importQuestion">
             <div class="page-header">
                 <h1>Import from Screenshot</h1>
-                <p>AI detects all questions from a single screenshot. Multiple questions get auto-assigned lecture
-                    numbers starting from what you enter.</p>
+                <p>AI detects all questions including equations. Multiple questions get auto-assigned lecture numbers.
+                    Multi-correct answers are detected automatically.</p>
             </div>
             <div class="panel">
                 <div class="form-row">
-                    <div class="field">
-                        <label>Chapter Name</label>
-                        <input id="imp-chapter" placeholder="e.g. Laws of Motion" list="existingChapters2">
-                        <datalist id="existingChapters2"></datalist>
-                    </div>
-                    <div class="field">
-                        <label>Starting Lecture Number</label>
-                        <input id="imp-lecture" type="number" min="1" placeholder="e.g. 4">
-                        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:5px">If image has 3 questions →
-                            lectures 4, 5, 6 assigned automatically</div>
+                    <div class="field"><label>Chapter Name</label><input id="imp-chapter"
+                            placeholder="e.g. Laws of Motion" list="existingChapters2"><datalist
+                            id="existingChapters2"></datalist></div>
+                    <div class="field"><label>Starting Lecture Number</label><input id="imp-lecture" type="number"
+                            min="1" placeholder="e.g. 4">
+                        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:5px">3 questions found → lectures
+                            4, 5, 6 assigned</div>
                     </div>
                 </div>
-
                 <div class="field" style="margin-top:8px">
-                    <label>📄 Questions Screenshot
-                        <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste
-                            (Ctrl+V)</span>
-                    </label>
-                    <div class="upload-zone" id="qZone" tabindex="0">
-                        <input type="file" accept="image/*" id="qFileInput" onchange="handleQFileInput(this)">
+                    <label>📄 Questions Screenshot <span style="color:var(--accent);font-weight:400">— click, drag &
+                            drop, or paste (Ctrl+V)</span></label>
+                    <div class="upload-zone" id="qZone" tabindex="0"><input type="file" accept="image/*" id="qFileInput"
+                            onchange="handleQFile(this)">
                         <div class="upload-icon">📸</div>
-                        <p><strong>Click, drag &amp; drop, or paste</strong> the questions screenshot</p>
+                        <p><strong>Click, drag & drop, or paste</strong> the questions screenshot</p>
                     </div>
-                    <div id="qPreview" class="upload-preview" style="display:none;position:relative">
-                        <img id="qPreviewImg" src=""
-                            style="width:100%;object-fit:contain;max-height:200px;border-radius:8px">
-                        <button onclick="removeImage('q')"
-                            style="position:absolute;top:8px;right:8px;background:rgba(231,76,60,0.85);border:none;border-radius:6px;color:white;padding:4px 10px;font-size:0.78rem;cursor:pointer;font-family:Outfit,sans-serif;font-weight:600">✕
-                            Remove</button>
-                    </div>
+                    <div id="qPreview" class="upload-preview"><img id="qPreviewImg" src=""><button
+                            class="remove-img-btn" onclick="removeImg('q')">✕ Remove</button></div>
                 </div>
-
                 <div class="field">
-                    <label>🔑 Answer Key Screenshot
-                        <span style="color:var(--accent);font-weight:400"> — click, drag &amp; drop, or paste
-                            (Ctrl+V)</span>
-                    </label>
-                    <div class="upload-zone" id="aZone" tabindex="0">
-                        <input type="file" accept="image/*" id="aFileInput" onchange="handleAFileInput(this)">
+                    <label>🔑 Answer Key Screenshot <span style="color:var(--accent);font-weight:400">— click, drag &
+                            drop, or paste (Ctrl+V)</span></label>
+                    <div class="upload-zone" id="aZone" tabindex="0"><input type="file" accept="image/*" id="aFileInput"
+                            onchange="handleAFile(this)">
                         <div class="upload-icon">🔑</div>
-                        <p><strong>Click, drag &amp; drop, or paste</strong> the answer key screenshot</p>
+                        <p><strong>Click, drag & drop, or paste</strong> the answer key screenshot</p>
                     </div>
-                    <div id="aPreview" class="upload-preview" style="display:none;position:relative">
-                        <img id="aPreviewImg" src=""
-                            style="width:100%;object-fit:contain;max-height:200px;border-radius:8px">
-                        <button onclick="removeImage('a')"
-                            style="position:absolute;top:8px;right:8px;background:rgba(231,76,60,0.85);border:none;border-radius:6px;color:white;padding:4px 10px;font-size:0.78rem;cursor:pointer;font-family:Outfit,sans-serif;font-weight:600">✕
-                            Remove</button>
-                    </div>
+                    <div id="aPreview" class="upload-preview"><img id="aPreviewImg" src=""><button
+                            class="remove-img-btn" onclick="removeImg('a')">✕ Remove</button></div>
                 </div>
-
                 <div class="extract-status" id="extractStatus"></div>
-                <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>
-                    🤖 Extract Questions with AI
-                </button>
+                <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>🤖
+                    Extract Questions with AI</button>
             </div>
-
             <div id="extractedList" style="display:none">
                 <div class="panel">
-                    <div class="panel-title">📋 Extracted Questions — Review &amp; Edit Lecture Assignments</div>
-                    <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">Each question gets its own
-                        lecture number. Edit below before saving.</p>
+                    <div class="panel-title">📋 Extracted Questions — Review & Edit</div>
+                    <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">Each question has its own
+                        lecture number. Multi-correct questions show ✦. Edit anything before saving.</p>
                     <div id="extractedQContainer"></div>
                     <div class="flex-end mt-20">
-                        <button class="btn btn-ghost" onclick="addExtractedQuestion()">+ Add Question</button>
+                        <button class="btn btn-ghost" onclick="addExtractedQ()">+ Add Question</button>
                         <button class="btn btn-primary" onclick="saveExtractedQuestions()">💾 Save All to
                             Database</button>
                     </div>
                 </div>
-            </div>
-        </div>
-        <!-- FIX DB RECORDS -->
-        <div class="section" id="section-migrate">
-            <div class="page-header">
-                <h1>Fix DB Records</h1>
-                <p>Scan for and remove corrupted question records so those lecture numbers can be re-added cleanly.</p>
-            </div>
-            <div class="panel">
-                <div class="panel-title">🔍 Corrupted Record Scanner</div>
-                <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:20px">
-                    Old MongoDB records with no question text or empty options block new questions from saving for those
-                    lectures.
-                    <strong>Scan</strong> finds them. <strong>Delete Corrupted</strong> removes them permanently.
-                </p>
-                <div style="display:flex;gap:12px;flex-wrap:wrap">
-                    <button class="btn btn-ghost" onclick="scanCorrupted()">🔍 Scan for Corrupted Records</button>
-                    <button class="btn btn-danger hidden" id="deleteCorruptedBtn" onclick="deleteCorrupted()">🗑 Delete
-                        Corrupted Records</button>
-                </div>
-                <div id="migrateStatus" style="margin-top:16px"></div>
-                <div id="migrateResults" style="margin-top:16px"></div>
             </div>
         </div>
 
@@ -1019,7 +1126,7 @@
         <div class="section" id="section-manageQuestions">
             <div class="page-header">
                 <h1>Manage Questions</h1>
-                <p>View, edit, or delete questions by lecture</p>
+                <p>Click any question to view, edit, or delete</p>
             </div>
             <div class="panel">
                 <input class="table-search" placeholder="🔍 Search by chapter or lecture..."
@@ -1057,17 +1164,35 @@
             </div>
         </div>
 
-    </div>
+        <!-- FIX DB -->
+        <div class="section" id="section-migrate">
+            <div class="page-header">
+                <h1>Fix DB Records</h1>
+                <p>Scan for corrupted question records and delete them so those lectures can be re-added.</p>
+            </div>
+            <div class="panel">
+                <div class="panel-title">🔍 Corrupted Record Scanner</div>
+                <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:20px">Old records with no question text
+                    block new questions from saving. Scan to find them, then delete to fix.</p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <button class="btn btn-ghost" onclick="scanCorrupted()">🔍 Scan</button>
+                    <button class="btn btn-danger hidden" id="deleteCorruptedBtn" onclick="deleteCorrupted()">🗑 Delete
+                        Corrupted</button>
+                </div>
+                <div id="migrateStatus" style="margin-top:16px"></div>
+                <div id="migrateResults" style="margin-top:16px"></div>
+            </div>
+        </div>
+
+    </div><!-- end mainContent -->
 
     <!-- REPLACE MODAL -->
     <div class="modal-overlay" id="replaceModal">
         <div class="modal-box">
             <h3>Replace Existing Question?</h3>
-            <p>A question for this lecture already exists. Replacing it will allow all students to answer again.</p>
-            <div class="modal-actions">
-                <button class="btn btn-danger" onclick="confirmReplace()">Replace</button>
-                <button class="btn btn-ghost" onclick="closeModal('replaceModal')">Cancel</button>
-            </div>
+            <p>A question for this lecture already exists. Replacing it lets all students answer again.</p>
+            <div class="modal-actions"><button class="btn btn-danger" onclick="confirmReplace()">Replace</button><button
+                    class="btn btn-ghost" onclick="closeModal('replaceModal')">Cancel</button></div>
         </div>
     </div>
 
@@ -1076,7 +1201,7 @@
         <div class="modal-box">
             <div style="font-size:2.5rem;margin-bottom:12px">✅</div>
             <h3 id="successModalTitle">Success</h3>
-            <p id="successModalText">Operation completed successfully.</p>
+            <p id="successModalText">Done.</p>
             <button class="btn btn-primary btn-full" onclick="closeModal('successModal')">OK</button>
         </div>
     </div>
@@ -1086,754 +1211,522 @@
         <div class="modal-box">
             <div style="font-size:2rem;margin-bottom:12px">🗑</div>
             <h3>Delete Question?</h3>
-            <p id="deleteModalText">This will permanently remove this question and cannot be undone.</p>
-            <div class="modal-actions">
-                <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
-                <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+            <p id="deleteModalText">This will permanently remove this question.</p>
+            <div class="modal-actions"><button class="btn btn-danger" onclick="confirmDelete()">Delete</button><button
+                    class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- EDIT QUESTION MODAL -->
+    <div class="modal-overlay" id="editModal">
+        <div class="edit-modal-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                <h3 style="font-size:1.1rem">✏️ Edit Question</h3>
+                <button class="btn btn-ghost" style="padding:6px 12px" onclick="closeModal('editModal')">✕</button>
+            </div>
+            <div id="editModalContent"></div>
+            <div class="flex-end mt-20">
+                <button class="btn btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditedQuestion()">💾 Save Changes</button>
             </div>
         </div>
     </div>
 
     <script>
-        const API_BASE = ""; // Vercel proxies /api/* to Render via vercel.json
+        const API_BASE = "";
+        let allStudents = [], allQuestions = [], pendingReplaceData = null, pendingDeleteChapter = null, pendingDeleteLecture = null;
+        let qImageBase64 = null, aImageBase64 = null, extractedQuestions = [], manualQuestionCount = 0;
+        let editingChapter = null, editingLecture = null, editingQIndex = null;
+        const LETTERS = ["A", "B", "C", "D"];
 
-        /* ========== STATE ========== */
-        let allStudents = [];
-        let allQuestions = [];
-        let pendingReplaceData = null;
-        let pendingDeleteChapter = null;
-        let pendingDeleteLecture = null;
-        let qImageBase64 = null;
-        let aImageBase64 = null;
-        let extractedQuestions = [];
-        let manualQuestionCount = 0;
+        /* ===== MATH ===== */
+        function renderMath(el) {
+            if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }], throwOnError: false });
+        }
 
-        /* ========== LOGIN ========== */
-        // Check if session is still active on page load — skips login screen if already logged in
+        /* ===== SESSION CHECK ===== */
         (async function checkSession() {
-            try {
-                const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
-                if (res.ok) enterDashboard();
-            } catch (e) { /* stay on login */ }
+            try { const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" }); if (r.ok) enterDashboard(); } catch (e) { }
         })();
 
         function enterDashboard() {
             document.getElementById("loginOverlay").style.display = "none";
             document.getElementById("sidebar").classList.remove("hidden");
             document.getElementById("mainContent").classList.remove("hidden");
-            loadDashboard();
-            loadChaptersAdmin();
-            loadQuestionsAdmin();
+            loadDashboard(); loadChaptersAdmin(); loadQuestionsAdmin();
         }
 
         async function login() {
-            const passcode = document.getElementById("passcode").value;
-            const errEl = document.getElementById("loginError");
+            const passcode = document.getElementById("passcode").value, errEl = document.getElementById("loginError");
             errEl.style.display = "none";
-            const res = await fetch(`${API_BASE}/api/admin/login`, {
-                method: "POST", credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ passcode })
-            });
-            if (!res.ok) { errEl.style.display = "block"; return; }
+            const r = await fetch(`${API_BASE}/api/admin/login`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode }) });
+            if (!r.ok) { errEl.style.display = "block"; return; }
             enterDashboard();
         }
+        async function logout() { await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" }); location.reload(); }
 
-        async function logout() {
-            await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" });
-            location.reload();
-        }
-
-        /* ========== NAVIGATION ========== */
+        /* ===== NAVIGATION ===== */
         function showSection(name) {
             document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
             document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
             document.getElementById(`section-${name}`).classList.add("active");
             document.getElementById(`nav-${name}`).classList.add("active");
-
             if (name === "students") renderStudentTable(allStudents);
             if (name === "manageQuestions") renderQuestionList(allQuestions);
         }
 
-        /* ========== DASHBOARD ========== */
+        /* ===== DASHBOARD ===== */
         async function loadDashboard() {
             try {
-                const res = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
-                allStudents = await res.json();
-
-                // Stats
-                const withAnswers = allStudents.filter(s => s.answers && s.answers.length > 0);
-                const totalCorrect = withAnswers.reduce((sum, s) => sum + (s.correctCount || 0), 0);
-                const totalWrong = withAnswers.reduce((sum, s) => sum + ((s.totalQuestions || 0) - (s.correctCount || 0)), 0);
+                const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
+                if (r.status === 403) return;
+                allStudents = await r.json();
+                const withAns = allStudents.filter(s => s.answers && s.answers.length > 0);
+                const totalCorrect = withAns.reduce((s, x) => s + (x.correctCount || 0), 0);
+                const totalWrong = withAns.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
                 const lectures = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
-
                 document.getElementById("stat-total").textContent = allStudents.length;
                 document.getElementById("stat-correct").textContent = totalCorrect;
                 document.getElementById("stat-wrong").textContent = totalWrong;
                 document.getElementById("stat-lectures").textContent = lectures.size;
-
-                buildChart(withAnswers);
-                populateDrillChapters();
-                renderStudentTable(allStudents);
-            } catch (err) { console.error("Dashboard load error:", err); }
+                buildChart(withAns); populateDrillChapters();
+            } catch (e) { console.error(e); }
         }
 
         function buildChart(data) {
-            const lectureMap = {};
-            data.forEach(s => {
-                const key = `${s.chapter} / L${s.lecture}`;
-                if (!lectureMap[key]) lectureMap[key] = { correct: 0, wrong: 0 };
-                lectureMap[key].correct += s.correctCount || 0;
-                lectureMap[key].wrong += ((s.totalQuestions || 0) - (s.correctCount || 0));
-            });
-
-            const labels = Object.keys(lectureMap).sort();
-            const corrects = labels.map(k => lectureMap[k].correct);
-            const wrongs = labels.map(k => lectureMap[k].wrong);
-
+            const m = {};
+            data.forEach(s => { const k = `${s.chapter || "?"}/L${s.lecture}`; if (!m[k]) m[k] = { c: 0, w: 0 }; m[k].c += s.correctCount || 0; m[k].w += ((s.totalQuestions || 0) - (s.correctCount || 0)); });
+            const labels = Object.keys(m).sort(), cs = labels.map(k => m[k].c), ws = labels.map(k => m[k].w);
             const ctx = document.getElementById("lectureChart");
             if (window._chart) window._chart.destroy();
-
-            window._chart = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels,
-                    datasets: [
-                        { label: "Correct", data: corrects, backgroundColor: "rgba(46,204,113,0.7)", borderRadius: 6 },
-                        { label: "Wrong", data: wrongs, backgroundColor: "rgba(231,76,60,0.7)", borderRadius: 6 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: "#fff", font: { family: "Outfit" } } } },
-                    scales: {
-                        x: { stacked: false, ticks: { color: "#aaa", font: { family: "Outfit", size: 11 } }, grid: { color: "rgba(255,255,255,0.05)" } },
-                        y: { beginAtZero: true, ticks: { color: "#aaa", stepSize: 1, font: { family: "Outfit" } }, grid: { color: "rgba(255,255,255,0.05)" } }
-                    }
-                }
-            });
+            window._chart = new Chart(ctx, { type: "bar", data: { labels, datasets: [{ label: "Correct", data: cs, backgroundColor: "rgba(46,204,113,0.7)", borderRadius: 6 }, { label: "Wrong", data: ws, backgroundColor: "rgba(231,76,60,0.7)", borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#fff", font: { family: "Outfit" } } } }, scales: { x: { ticks: { color: "#aaa", font: { family: "Outfit", size: 10 } }, grid: { color: "rgba(255,255,255,0.05)" } }, y: { beginAtZero: true, ticks: { color: "#aaa", font: { family: "Outfit" } }, grid: { color: "rgba(255,255,255,0.05)" } } } } });
         }
 
-        /* ========== DRILL DOWN ========== */
         function populateDrillChapters() {
-            const chapters = [...new Set(allStudents.map(s => s.chapter).filter(Boolean))].sort();
+            const chs = [...new Set(allStudents.map(s => s.chapter).filter(Boolean))].sort();
             const sel = document.getElementById("drillChapter");
-            sel.innerHTML = '<option value="">— All Chapters —</option>';
-            chapters.forEach(ch => { const o = document.createElement("option"); o.value = ch; o.textContent = ch; sel.appendChild(o); });
+            sel.innerHTML = '<option value="">— All —</option>' + chs.map(c => `<option value="${c}">${c}</option>`).join("");
         }
-
         function loadDrillLectures() {
-            const chapter = document.getElementById("drillChapter").value;
-            const lectures = [...new Set(allStudents.filter(s => !chapter || s.chapter === chapter).map(s => s.lecture).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
-            const sel = document.getElementById("drillLecture");
-            sel.innerHTML = '<option value="">— Select Lecture —</option>';
-            lectures.forEach(l => { const o = document.createElement("option"); o.value = l; o.textContent = `Lecture ${l}`; sel.appendChild(o); });
+            const ch = document.getElementById("drillChapter").value;
+            const lecs = [...new Set(allStudents.filter(s => !ch || s.chapter === ch).map(s => s.lecture).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+            document.getElementById("drillLecture").innerHTML = '<option value="">— Select —</option>' + lecs.map(l => `<option value="${l}">Lecture ${l}</option>`).join("");
             document.getElementById("drillResults").style.display = "none";
         }
-
         function loadDrillData() {
-            const chapter = document.getElementById("drillChapter").value;
-            const lecture = document.getElementById("drillLecture").value;
-            if (!lecture) { document.getElementById("drillResults").style.display = "none"; return; }
-
-            const filtered = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lecture && (!chapter || s.chapter === chapter));
-            const totalCorrect = filtered.reduce((sum, s) => sum + (s.correctCount || 0), 0);
-            const totalWrong = filtered.reduce((sum, s) => sum + ((s.totalQuestions || 0) - (s.correctCount || 0)), 0);
-
-            document.getElementById("drillStats").innerHTML = `
-        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${filtered.length}</div><div class="stat-label">Attempted</div></div>
-        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${totalCorrect}</div><div class="stat-label">Correct</div></div>
-        <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num">${totalWrong}</div><div class="stat-label">Wrong</div></div>
-    `;
-
-            const tbody = document.querySelector("#drillTable tbody");
-            tbody.innerHTML = "";
-            filtered.forEach(s => {
-                const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
-                tbody.insertAdjacentHTML("beforeend", `
-            <tr>
-                <td>${s.name || "—"}</td>
-                <td><span style="font-family:'Space Mono',monospace;font-size:0.8rem">${s.mobile}</span></td>
-                <td>${s.correctCount || 0}</td>
-                <td>${s.totalQuestions || 0}</td>
-                <td><span class="badge-pill ${pct >= 50 ? 'ok' : 'wrong'}">${pct}%</span></td>
-            </tr>
-        `);
-            });
-
+            const ch = document.getElementById("drillChapter").value, lec = document.getElementById("drillLecture").value;
+            if (!lec) { document.getElementById("drillResults").style.display = "none"; return; }
+            const filtered = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lec && (!ch || s.chapter === ch));
+            const tc = filtered.reduce((s, x) => s + (x.correctCount || 0), 0), tw = filtered.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
+            document.getElementById("drillStats").innerHTML = `<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${filtered.length}</div><div class="stat-label">Attempted</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${tc}</div><div class="stat-label">Correct</div></div><div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num">${tw}</div><div class="stat-label">Wrong</div></div>`;
+            const tbody = document.querySelector("#drillTable tbody"); tbody.innerHTML = "";
+            filtered.forEach(s => { const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0; tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'Space Mono',monospace;font-size:0.78rem">${s.mobile}</td><td>${s.correctCount || 0}</td><td>${s.totalQuestions || 0}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`); });
             document.getElementById("drillResults").style.display = "block";
         }
 
-        /* ========== CHAPTERS ADMIN ========== */
+        /* ===== CHAPTERS ADMIN ===== */
         async function loadChaptersAdmin() {
             try {
-                const res = await fetch(`${API_BASE}/api/chapters`);
-                const chapters = await res.json();
-                ["existingChapters", "existingChapters2"].forEach(id => {
-                    const dl = document.getElementById(id);
-                    if (!dl) return;
-                    dl.innerHTML = chapters.map(ch => `<option value="${ch}">`).join("");
-                });
-                // Drill chapter
-                const drillCh = document.getElementById("drillChapter");
-                if (drillCh) {
-                    drillCh.innerHTML = '<option value="">— All Chapters —</option>' + chapters.map(ch => `<option value="${ch}">${ch}</option>`).join("");
-                }
-            } catch (err) { console.error(err); }
+                const r = await fetch(`${API_BASE}/api/chapters`);
+                const chs = await r.json();
+                ["existingChapters", "existingChapters2"].forEach(id => { const dl = document.getElementById(id); if (dl) dl.innerHTML = chs.map(c => `<option value="${c}">`).join(""); });
+            } catch (e) { }
         }
 
-        /* ========== MANUAL ADD QUESTION ========== */
+        /* ===== MANUAL ADD QUESTION ===== */
         function addManualQuestion(data) {
             manualQuestionCount++;
-            const id = `mq_${manualQuestionCount}`;
-            const container = document.getElementById("aqQuestionsContainer");
-            const div = document.createElement("div");
-            div.className = "panel"; div.id = id; div.style.background = "rgba(255,255,255,0.03)";
-
+            const id = `mq_${manualQuestionCount}`, container = document.getElementById("aqQuestionsContainer");
+            const div = document.createElement("div"); div.className = "panel"; div.id = id; div.style.background = "rgba(255,255,255,0.03)"; div.style.marginBottom = "14px";
+            const isMulti = data && data.isMultiCorrect;
             div.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
             <strong style="font-size:0.9rem">Question ${container.children.length + 1}</strong>
-            <button class="btn btn-danger" style="padding:6px 12px;font-size:0.78rem" onclick="this.closest('.panel').remove()">Remove</button>
+            <div style="display:flex;gap:8px;align-items:center">
+                <label style="font-size:0.78rem;color:var(--text-dim);display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" class="mq-multi" ${isMulti ? "checked" : ""} style="width:auto;padding:0"> Multi-correct
+                </label>
+                <button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem" onclick="this.closest('.panel').remove()">Remove</button>
+            </div>
         </div>
-        <div class="field"><label>Question Text</label><textarea placeholder="Enter the question..." class="mq-text">${data ? data.question : ""}</textarea></div>
+        <div class="field"><label>Question Text (use $...$ for math, e.g. $v^2=u^2+2as$)</label><textarea class="mq-text" placeholder="Enter question..." rows="2">${data ? data.question : ""}</textarea></div>
         <div class="options-grid">
-            <div class="field"><label>Option A</label><input placeholder="Option A" class="mq-opt" data-idx="0" value="${data ? data.options[0] || "" : ""}"></div>
-            <div class="field"><label>Option B</label><input placeholder="Option B" class="mq-opt" data-idx="1" value="${data ? data.options[1] || "" : ""}"></div>
-            <div class="field"><label>Option C</label><input placeholder="Option C" class="mq-opt" data-idx="2" value="${data ? data.options[2] || "" : ""}"></div>
-            <div class="field"><label>Option D</label><input placeholder="Option D" class="mq-opt" data-idx="3" value="${data ? data.options[3] || "" : ""}"></div>
+            <div class="field"><label>Option A</label><input class="mq-opt" data-idx="0" placeholder="Option A" value="${data && data.options ? data.options[0] || "" : ""}"></div>
+            <div class="field"><label>Option B</label><input class="mq-opt" data-idx="1" placeholder="Option B" value="${data && data.options ? data.options[1] || "" : ""}"></div>
+            <div class="field"><label>Option C</label><input class="mq-opt" data-idx="2" placeholder="Option C" value="${data && data.options ? data.options[2] || "" : ""}"></div>
+            <div class="field"><label>Option D</label><input class="mq-opt" data-idx="3" placeholder="Option D" value="${data && data.options ? data.options[3] || "" : ""}"></div>
         </div>
-        <div class="field"><label>Correct Answer</label>
+        <div class="field" id="${id}_correct_wrap">
+            <label class="single-label">Correct Answer</label>
             <select class="mq-correct">
-                <option value="0" ${data && data.correctIndex === 0 ? "selected" : ""}>A</option>
-                <option value="1" ${data && data.correctIndex === 1 ? "selected" : ""}>B</option>
-                <option value="2" ${data && data.correctIndex === 2 ? "selected" : ""}>C</option>
-                <option value="3" ${data && data.correctIndex === 3 ? "selected" : ""}>D</option>
+                <option value="0" ${data && !isMulti && (data.correctIndexes ? data.correctIndexes[0] === 0 : data.correctIndex === 0) ? "selected" : ""}>A</option>
+                <option value="1" ${data && !isMulti && (data.correctIndexes ? data.correctIndexes[0] === 1 : data.correctIndex === 1) ? "selected" : ""}>B</option>
+                <option value="2" ${data && !isMulti && (data.correctIndexes ? data.correctIndexes[0] === 2 : data.correctIndex === 2) ? "selected" : ""}>C</option>
+                <option value="3" ${data && !isMulti && (data.correctIndexes ? data.correctIndexes[0] === 3 : data.correctIndex === 3) ? "selected" : ""}>D</option>
             </select>
-        </div>
-    `;
+            <div class="multi-label" style="display:none">
+                <label style="font-size:0.78rem;color:var(--text-dim)">Correct Answers (check all that apply)</label>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">
+                    ${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="mq-multi-correct" value="${i}" ${data && isMulti && data.correctIndexes && data.correctIndexes.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}
+                </div>
+            </div>
+        </div>`;
             container.appendChild(div);
+            // Toggle multi-correct UI
+            div.querySelector(".mq-multi").addEventListener("change", function () {
+                const wrap = div.querySelector(`#${id}_correct_wrap`);
+                wrap.querySelector(".single-label").style.display = this.checked ? "none" : "block";
+                wrap.querySelector("select.mq-correct").style.display = this.checked ? "none" : "block";
+                wrap.querySelector(".multi-label").style.display = this.checked ? "block" : "none";
+            });
+            if (isMulti) div.querySelector(".mq-multi").dispatchEvent(new Event("change"));
         }
 
-        // Initialize with one question slot
         addManualQuestion();
 
         async function saveManualQuestions() {
-            const chapter = document.getElementById("aq-chapter").value.trim();
-            const lecture = document.getElementById("aq-lecture").value.trim();
+            const chapter = document.getElementById("aq-chapter").value.trim(), lecture = document.getElementById("aq-lecture").value.trim();
             if (!chapter || !lecture) { alert("Please enter chapter and lecture."); return; }
-
-            const questionBlocks = document.querySelectorAll("#aqQuestionsContainer .panel");
-            const questions = [];
-
-            questionBlocks.forEach(block => {
-                const text = block.querySelector(".mq-text").value.trim();
-                const opts = [...block.querySelectorAll(".mq-opt")].map(i => i.value.trim());
-                const correctIndex = parseInt(block.querySelector(".mq-correct").value);
-                if (text && opts.every(o => o)) {
-                    questions.push({ question: text, options: opts, correctIndex });
-                }
+            const blocks = document.querySelectorAll("#aqQuestionsContainer .panel"), questions = [];
+            blocks.forEach(b => {
+                const text = b.querySelector(".mq-text").value.trim();
+                const opts = [...b.querySelectorAll(".mq-opt")].map(i => i.value.trim());
+                const isMulti = b.querySelector(".mq-multi").checked;
+                let correctIndexes;
+                if (isMulti) { correctIndexes = [...b.querySelectorAll(".mq-multi-correct:checked")].map(c => parseInt(c.value)); }
+                else { correctIndexes = [parseInt(b.querySelector(".mq-correct").value)]; }
+                if (text && opts.every(o => o) && correctIndexes.length) questions.push({ question: text, options: opts, correctIndexes, isMultiCorrect: isMulti });
             });
-
-            if (questions.length === 0) { alert("Please fill in at least one complete question."); return; }
-
+            if (!questions.length) { alert("Please fill in at least one complete question."); return; }
             await submitQuestions(chapter, lecture, questions);
         }
 
-        /* ========== SCREENSHOT IMPORT ========== */
+        /* ===== SCREENSHOT IMPORT ===== */
+        function fileToBase64(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); }); }
+        function showPreview(pid, imgId, src) { const el = document.getElementById(pid), img = document.getElementById(imgId); if (el && img) { img.src = src; el.style.display = "block"; } }
+        async function handleQFile(input) { const f = input.files[0]; if (!f) return; qImageBase64 = await fileToBase64(f); showPreview("qPreview", "qPreviewImg", URL.createObjectURL(f)); checkExtractReady(); }
+        async function handleAFile(input) { const f = input.files[0]; if (!f) return; aImageBase64 = await fileToBase64(f); showPreview("aPreview", "aPreviewImg", URL.createObjectURL(f)); checkExtractReady(); }
+        function removeImg(type) { if (type === "q") { qImageBase64 = null; document.getElementById("qPreview").style.display = "none"; document.getElementById("qPreviewImg").src = ""; document.getElementById("qFileInput").value = ""; } else { aImageBase64 = null; document.getElementById("aPreview").style.display = "none"; document.getElementById("aPreviewImg").src = ""; document.getElementById("aFileInput").value = ""; } checkExtractReady(); }
+        function checkExtractReady() { document.getElementById("extractBtn").disabled = !(qImageBase64 && aImageBase64); }
 
-        function fileToBase64(file) {
-            return new Promise((res, rej) => {
-                const r = new FileReader();
-                r.onload = e => res(e.target.result.split(",")[1]);
-                r.onerror = rej;
-                r.readAsDataURL(file);
-            });
-        }
-
-        function setImagePreview(previewId, imgId, src) {
-            const el = document.getElementById(previewId);
-            const img = document.getElementById(imgId);
-            if (el && img) { img.src = src; el.style.display = "block"; }
-        }
-
-        function removeImage(type) {
-            if (type === 'q') {
-                qImageBase64 = null;
-                const el = document.getElementById("qPreview");
-                const img = document.getElementById("qPreviewImg");
-                const input = document.getElementById("qFileInput");
-                if (el) el.style.display = "none";
-                if (img) img.src = "";
-                if (input) input.value = "";
-            } else {
-                aImageBase64 = null;
-                const el = document.getElementById("aPreview");
-                const img = document.getElementById("aPreviewImg");
-                const input = document.getElementById("aFileInput");
-                if (el) el.style.display = "none";
-                if (img) img.src = "";
-                if (input) input.value = "";
-            }
-            checkExtractReady();
-        }
-
-        async function handleQFileInput(input) {
-            const file = input.files[0]; if (!file) return;
-            qImageBase64 = await fileToBase64(file);
-            setImagePreview("qPreview", "qPreviewImg", URL.createObjectURL(file));
-            checkExtractReady();
-        }
-
-        async function handleAFileInput(input) {
-            const file = input.files[0]; if (!file) return;
-            aImageBase64 = await fileToBase64(file);
-            setImagePreview("aPreview", "aPreviewImg", URL.createObjectURL(file));
-            checkExtractReady();
-        }
-
-        function checkExtractReady() {
-            document.getElementById("extractBtn").disabled = !(qImageBase64 && aImageBase64);
-        }
-
-        // Paste support — Ctrl+V anywhere on the import page
         document.addEventListener("paste", async function (e) {
             if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return;
-            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
-            if (!items) return;
-            for (const item of items) {
-                if (!item.type.startsWith("image/")) continue;
-                e.preventDefault();
-                const file = item.getAsFile();
-                const b64 = await fileToBase64(file);
-                const url = URL.createObjectURL(file);
-                // If Q image not set yet, paste into Q zone; otherwise paste into answer zone
-                if (!qImageBase64) {
-                    qImageBase64 = b64;
-                    setImagePreview("qPreview", "qPreviewImg", url);
-                } else {
-                    aImageBase64 = b64;
-                    setImagePreview("aPreview", "aPreviewImg", url);
-                }
-                checkExtractReady();
-                break;
-            }
+            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return;
+            for (const item of items) { if (!item.type.startsWith("image/")) continue; e.preventDefault(); const f = item.getAsFile(); const b64 = await fileToBase64(f); const url = URL.createObjectURL(f); if (!qImageBase64) { qImageBase64 = b64; showPreview("qPreview", "qPreviewImg", url); } else { aImageBase64 = b64; showPreview("aPreview", "aPreviewImg", url); } checkExtractReady(); break; }
         });
 
-        // Drag & drop support
-        ["qZone", "aZone"].forEach(zoneId => {
-            const zone = document.getElementById(zoneId);
-            if (!zone) return;
-            zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("dragover"); });
-            zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
-            zone.addEventListener("drop", async e => {
-                e.preventDefault(); zone.classList.remove("dragover");
-                const file = e.dataTransfer.files[0];
-                if (!file || !file.type.startsWith("image/")) return;
-                const b64 = await fileToBase64(file);
-                const url = URL.createObjectURL(file);
-                if (zoneId === "qZone") { qImageBase64 = b64; setImagePreview("qPreview", "qPreviewImg", url); }
-                else { aImageBase64 = b64; setImagePreview("aPreview", "aPreviewImg", url); }
-                checkExtractReady();
-            });
-        });
+        ["qZone", "aZone"].forEach(zid => { const z = document.getElementById(zid); if (!z) return; z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("dragover"); }); z.addEventListener("dragleave", () => z.classList.remove("dragover")); z.addEventListener("drop", async e => { e.preventDefault(); z.classList.remove("dragover"); const f = e.dataTransfer.files[0]; if (!f || !f.type.startsWith("image/")) return; const b64 = await fileToBase64(f); const url = URL.createObjectURL(f); if (zid === "qZone") { qImageBase64 = b64; showPreview("qPreview", "qPreviewImg", url); } else { aImageBase64 = b64; showPreview("aPreview", "aPreviewImg", url); } checkExtractReady(); }); });
 
         async function extractWithAI() {
-            const chapter = document.getElementById("imp-chapter").value.trim();
-            const startLecture = parseInt(document.getElementById("imp-lecture").value);
+            const chapter = document.getElementById("imp-chapter").value.trim(), startLec = parseInt(document.getElementById("imp-lecture").value);
             const status = document.getElementById("extractStatus");
-
             if (!chapter) { alert("Please enter a chapter name."); return; }
-            if (!startLecture || startLecture < 1) { alert("Please enter a valid starting lecture number."); return; }
+            if (!startLec || startLec < 1) { alert("Please enter a valid starting lecture number."); return; }
             if (!qImageBase64 || !aImageBase64) { alert("Please upload both screenshots."); return; }
-
-            status.className = "extract-status loading";
-            status.style.display = "block";
-            status.innerHTML = '<span class="spinner"></span>&nbsp; Sending to AI — detecting all questions...';
+            status.className = "extract-status loading"; status.style.display = "block";
+            status.innerHTML = '<span class="spinner"></span>&nbsp; Sending to AI — detecting questions and equations...';
             document.getElementById("extractBtn").disabled = true;
             document.getElementById("extractedList").style.display = "none";
-
             try {
-                const response = await fetch(`${API_BASE}/api/admin/extract`, {
-                    method: "POST", credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ questionImageBase64: qImageBase64, answerImageBase64: aImageBase64 })
-                });
-                if (!response.ok) { const e = await response.json(); throw new Error(e.error || "Server error"); }
-                const data = await response.json();
-                const parsed = data.questions;
-                if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("No questions found in image");
-
-                // Assign lecture numbers starting from startLecture, one per question
-                extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLecture + i }));
-
+                const r = await fetch(`${API_BASE}/api/admin/extract`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionImageBase64: qImageBase64, answerImageBase64: aImageBase64 }) });
+                if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Server error"); }
+                const data = await r.json(); const parsed = data.questions;
+                if (!Array.isArray(parsed) || !parsed.length) throw new Error("No questions found");
+                extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i }));
                 status.className = "extract-status success";
-                status.innerHTML = `✅ Found ${parsed.length} question(s) — assigned lectures ${startLecture}–${startLecture + parsed.length - 1}. Review and edit below.`;
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1} assigned. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct detected.`;
                 renderExtractedQuestions(extractedQuestions);
                 document.getElementById("extractedList").style.display = "block";
-
-            } catch (err) {
-                status.className = "extract-status error";
-                status.innerHTML = `❌ Extraction failed: ${err.message}`;
-            }
+            } catch (err) { status.className = "extract-status error"; status.innerHTML = `❌ ${err.message}`; }
             document.getElementById("extractBtn").disabled = false;
         }
 
-        // Convert plain-text math notation to proper unicode superscripts/subscripts
-        function formatMath(text) {
-            if (!text) return text;
-
-            // Superscripts: x^2 → x², x^3 → x³, x^n → xⁿ etc
-            const supMap = {
-                '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-                'n': 'ⁿ', 'm': 'ᵐ', 'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'i': 'ⁱ', 'j': 'ʲ', 'k': 'ᵏ', 'p': 'ᵖ', 'r': 'ʳ',
-                's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
-            };
-            const subMap = {
-                '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
-                'a': 'ₐ', 'e': 'ₑ', 'i': 'ᵢ', 'j': 'ⱼ', 'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ',
-                'u': 'ᵤ', 'v': 'ᵥ', 'x': 'ₓ', '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎'
-            };
-
-            // Handle multi-char exponents like x^{23} or x^(23)
-            text = text.replace(/\^\{([^}]+)\}/g, (_, exp) => exp.split('').map(c => supMap[c] || c).join(''));
-            text = text.replace(/\^\(([^)]+)\)/g, (_, exp) => exp.split('').map(c => supMap[c] || c).join(''));
-            // Single char exponents x^2
-            text = text.replace(/\^([a-zA-Z0-9+\-])/g, (_, c) => supMap[c] || ('^' + c));
-
-            // Handle multi-char subscripts like x_{23} or x_(23)
-            text = text.replace(/_\{([^}]+)\}/g, (_, sub) => sub.split('').map(c => subMap[c] || c).join(''));
-            text = text.replace(/_\(([^)]+)\)/g, (_, sub) => sub.split('').map(c => subMap[c] || c).join(''));
-            // Single char subscripts x_1
-            text = text.replace(/_([a-zA-Z0-9])/g, (_, c) => subMap[c] || ('_' + c));
-
-            return text;
+        function renderExtractedQuestions(questions) {
+            const container = document.getElementById("extractedQContainer"); container.innerHTML = "";
+            questions.forEach((q, qi) => {
+                const div = document.createElement("div"); div.className = "extracted-q-item"; div.id = `eq_${qi}`;
+                const correctIdxs = q.correctIndexes || (typeof q.correctIndex === "number" ? [q.correctIndex] : [0]);
+                div.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <strong>Q${qi + 1}</strong>
+                    ${q.isMultiCorrect ? '<span style="font-size:0.72rem;padding:2px 8px;background:rgba(243,156,18,0.15);border:1px solid rgba(243,156,18,0.4);border-radius:20px;color:var(--warn)">✦ Multi-correct</span>' : ""}
+                    <div style="display:flex;align-items:center;gap:6px;background:rgba(0,242,254,0.08);border:1px solid rgba(0,242,254,0.2);border-radius:8px;padding:3px 10px">
+                        <span style="font-size:0.72rem;opacity:0.7">Lecture</span>
+                        <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" onchange="syncLectureNumbers()" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
+                    </div>
+                </div>
+                <button class="btn btn-danger" style="padding:4px 10px;font-size:0.75rem" onclick="removeExtractedQ(${qi})">✕ Remove</button>
+            </div>
+            <div class="field"><textarea id="eq_q_${qi}" rows="2" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;resize:vertical;outline:none">${q.question}</textarea></div>
+            <div class="extracted-q-opts">
+                ${q.options.map((opt, oi) => `<div class="eq-opt ${correctIdxs.includes(oi) ? "correct" : ""}"><span style="font-family:'Space Mono',monospace;font-size:0.7rem;font-weight:700">${LETTERS[oi]}</span><input value="${(opt || "").replace(/"/g, "&quot;")}" id="eq_opt_${qi}_${oi}" style="flex:1;background:transparent;border:none;color:white;font-size:0.82rem;outline:none;font-family:Outfit,sans-serif"></div>`).join("")}
+            </div>
+            <div style="margin-top:10px">
+                ${q.isMultiCorrect
+                        ? `<label style="font-size:0.78rem;color:var(--text-dim)">Correct Answers:</label><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${correctIdxs.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}</div>`
+                        : `<label style="font-size:0.78rem;color:var(--text-dim)">Correct Answer:</label><select id="eq_correct_${qi}" style="background:#1a1535;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:white;font-size:0.85rem;outline:none;margin-top:6px">${LETTERS.map((l, i) => `<option value="${i}" ${correctIdxs[0] === i ? "selected" : ""} style="background:#1a1535;color:white">${l} — ${q.options[i] || ""}</option>`).join("")}</select>`
+                    }
+            </div>`;
+                container.appendChild(div);
+            });
+            renderMath(container);
         }
 
-        function renderExtractedQuestions(questions) {
-            const container = document.getElementById("extractedQContainer");
-            container.innerHTML = "";
-            const letters = ["A", "B", "C", "D"];
-            questions.forEach((q, qi) => {
-                const div = document.createElement("div");
-                div.className = "extracted-q-item"; div.id = `eq_${qi}`;
-                div.style.marginBottom = "20px";
-                div.innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap">
-                        <div style="display:flex;align-items:center;gap:10px">
-                            <strong style="font-size:0.88rem">Q${qi + 1}</strong>
-                            <div style="display:flex;align-items:center;gap:8px;background:rgba(0,242,254,0.08);border:1px solid rgba(0,242,254,0.2);border-radius:8px;padding:4px 12px">
-                                <span style="font-size:0.75rem;opacity:0.7">Lecture</span>
-                                <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1"
-                                    style="width:54px;background:transparent;border:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:0.9rem;font-weight:700;outline:none;text-align:center">
-                            </div>
-                        </div>
-                        <button class="btn btn-danger" style="padding:5px 10px;font-size:0.75rem" onclick="removeExtractedQ(${qi})">✕ Remove</button>
-                    </div>
-                    <div class="field">
-                        <textarea style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:white;font-family:Outfit,sans-serif;font-size:0.88rem;resize:vertical;outline:none" rows="2" id="eq_q_${qi}">${formatMath(q.question)}</textarea>
-                    </div>
-                    <div class="extracted-q-opts">
-                        ${q.options.map((opt, oi) => `
-                            <div class="eq-opt ${oi === q.correctIndex ? 'correct' : ''}">
-                                <span style="font-family:'Space Mono',monospace;font-size:0.7rem;font-weight:700;flex-shrink:0">${letters[oi]}</span>
-                                <input value="${formatMath((opt || '').replace(/"/g, '&quot;'))}" id="eq_opt_${qi}_${oi}"
-                                    style="flex:1;background:transparent;border:none;color:white;font-size:0.82rem;outline:none;font-family:Outfit,sans-serif">
-                            </div>`).join("")}
-                    </div>
-                    <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
-                        <label style="font-size:0.78rem;color:var(--text-dim)">Correct Answer:</label>
-                        <select id="eq_correct_${qi}" style="background:#1a1535;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none">
-                            ${letters.map((l, i) => `<option value="${i}" ${i === q.correctIndex ? "selected" : ""} style="background:#1a1535;color:white">${l} — ${q.options[i] || ""}</option>`).join("")}
-                        </select>
-                    </div>`;
-                container.appendChild(div);
+        function syncLectureNumbers() {
+            // After any lecture number change, this can be used to auto-sort if needed
+            // Currently just ensures UI is consistent
+        }
+
+        function removeExtractedQ(qi) {
+            document.getElementById(`eq_${qi}`)?.remove();
+            // Re-number remaining questions
+            const startLec = parseInt(document.getElementById("imp-lecture").value) || 1;
+            const items = document.querySelectorAll(".extracted-q-item");
+            items.forEach((item, idx) => {
+                const label = item.querySelector("strong"); if (label) label.textContent = `Q${idx + 1}`;
+                const lecInput = item.querySelector('[id^="eq_lec_"]'); if (lecInput) lecInput.value = startLec + idx;
             });
         }
 
-        function removeExtractedQ(qi) { document.getElementById(`eq_${qi}`)?.remove(); }
-
-        function addExtractedQuestion() {
-            const startLecture = parseInt(document.getElementById("imp-lecture").value) || 1;
+        function addExtractedQ() {
+            const startLec = parseInt(document.getElementById("imp-lecture").value) || 1;
             const count = document.querySelectorAll(".extracted-q-item").length;
-            extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndex: 0, assignedLecture: startLecture + count });
+            extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndexes: [0], isMultiCorrect: false, assignedLecture: startLec + count });
             renderExtractedQuestions(extractedQuestions);
         }
 
         async function saveExtractedQuestions() {
             const chapter = document.getElementById("imp-chapter").value.trim();
             if (!chapter) { alert("Please enter a chapter name."); return; }
-            const qItems = document.querySelectorAll(".extracted-q-item");
-            if (!qItems.length) { alert("No questions to save."); return; }
-
-            // Group by lecture number
+            const items = document.querySelectorAll(".extracted-q-item");
+            if (!items.length) { alert("No questions to save."); return; }
             const groups = {};
             let hasError = false;
-            qItems.forEach((item, qi) => {
-                const lec = item.querySelector(`[id^="eq_lec_"]`)?.value.trim();
-                const txt = item.querySelector(`[id^="eq_q_"]`)?.value.trim();
+            items.forEach((item, qi) => {
+                const lec = item.querySelector('[id^="eq_lec_"]')?.value.trim();
+                const txt = item.querySelector('[id^="eq_q_"]')?.value.trim();
                 const opts = [0, 1, 2, 3].map(oi => item.querySelector(`[id*="eq_opt_"][id$="_${oi}"]`)?.value.trim() || "");
-                const ci = parseInt(item.querySelector(`[id^="eq_correct_"]`)?.value || 0);
+                const multiChecks = [...item.querySelectorAll(`[class*="eq_correct_multi_"]:checked`)];
+                let correctIndexes;
+                if (multiChecks.length > 0) { correctIndexes = multiChecks.map(c => parseInt(c.value)); }
+                else { const sel = item.querySelector('[id^="eq_correct_"]'); correctIndexes = [parseInt(sel?.value || 0)]; }
+                const isMultiCorrect = correctIndexes.length > 1;
                 if (!lec || !txt || !opts.every(o => o)) { hasError = true; return; }
                 if (!groups[lec]) groups[lec] = [];
-                groups[lec].push({ question: txt, options: opts, correctIndex: ci });
+                groups[lec].push({ question: txt, options: opts, correctIndexes, isMultiCorrect });
             });
-            if (hasError) { alert("Some questions are incomplete. Fill in all fields and lecture numbers."); return; }
-            const lectures = Object.keys(groups);
-            if (!lectures.length) { alert("No complete questions to save."); return; }
+            if (hasError) { alert("Some questions are incomplete. Fill in all fields."); return; }
+            const lectures = Object.keys(groups); if (!lectures.length) { alert("No complete questions."); return; }
 
-            console.log("Saving groups:", JSON.stringify(Object.keys(groups).map(l => ({ lecture: l, count: groups[l].length }))));
-
-            // Show progress overlay
-            const progressOverlay = document.createElement("div");
-            progressOverlay.id = "saveProgressOverlay";
-            progressOverlay.style.cssText = "position:fixed;inset:0;background:rgba(8,7,20,0.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px";
-            progressOverlay.innerHTML = `
-                <div style="font-size:2rem">💾</div>
-                <div style="font-size:1.1rem;font-weight:600;color:white" id="progressTitle">Saving Questions...</div>
-                <div style="width:280px;height:6px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden">
-                    <div id="progressBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 0.3s ease;width:0%"></div>
-                </div>
-                <div style="font-size:0.85rem;color:rgba(255,255,255,0.6)" id="progressText">0 / ${lectures.length} lectures</div>
-            `;
-            document.body.appendChild(progressOverlay);
+            // Progress overlay
+            const ov = document.createElement("div"); ov.id = "saveProgressOverlay";
+            ov.style.cssText = "position:fixed;inset:0;background:rgba(8,7,20,0.88);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px";
+            ov.innerHTML = `<div style="font-size:2rem">💾</div><div style="font-size:1.1rem;font-weight:600;color:white" id="progTitle">Saving Questions...</div><div style="width:280px;height:6px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 0.3s;width:0%"></div></div><div style="font-size:0.85rem;color:rgba(255,255,255,0.6)" id="progText">0 / ${lectures.length} lectures</div>`;
+            document.body.appendChild(ov);
 
             let saved = 0, failed = [];
             for (const lec of lectures) {
-                // Update progress
-                const pct = Math.round((saved / lectures.length) * 100);
-                const pb = document.getElementById("progressBar");
-                const pt = document.getElementById("progressText");
-                if (pb) pb.style.width = pct + "%";
-                if (pt) pt.textContent = saved + " / " + lectures.length + " lectures saved...";
-
-                console.log("Saving lecture", lec, "with", groups[lec].length, "question(s)");
-                const r = await fetch(`${API_BASE}/api/admin/add-question`, {
-                    method: "POST", credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false })
-                });
-                console.log("Response for lecture", lec, ":", r.status);
+                document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%";
+                document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved...`;
+                const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false }) });
                 if (r.ok) { saved++; }
                 else if (r.status === 409) {
                     if (confirm(`Lecture ${lec} already exists. Replace it?`)) {
-                        const r2 = await fetch(`${API_BASE}/api/admin/add-question`, {
-                            method: "POST", credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true })
-                        });
+                        const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true }) });
                         if (r2.ok) saved++; else failed.push(lec);
                     }
                 } else { failed.push(lec); }
             }
-            // Remove progress overlay
-            const ov = document.getElementById("saveProgressOverlay");
-            if (ov) ov.remove();
-
+            document.getElementById("saveProgressOverlay")?.remove();
             openModal("successModal");
             document.getElementById("successModalTitle").textContent = saved > 0 ? "Saved!" : "Failed";
-            document.getElementById("successModalText").textContent = failed.length === 0
-                ? `${saved} lecture(s) saved for "${chapter}".`
-                : `Saved: ${saved}. Failed lectures: ${failed.join(", ")}.`;
+            document.getElementById("successModalText").textContent = failed.length === 0 ? `${saved} lecture(s) saved for "${chapter}".` : `Saved: ${saved}. Failed: lectures ${failed.join(", ")}.`;
             loadQuestionsAdmin(); loadChaptersAdmin();
         }
 
-        /* ========== FIX DB RECORDS ========== */
-        async function scanCorrupted() {
-            const status = document.getElementById("migrateStatus");
-            const results = document.getElementById("migrateResults");
-            status.innerHTML = '<span class="spinner"></span>&nbsp; Scanning database...';
-            results.innerHTML = "";
-            try {
-                const res = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" });
-                if (res.status === 404) { status.innerHTML = '<div style="color:var(--error)">Endpoint not found — update server.js first.</div>'; return; }
-                const data = await res.json();
-                status.innerHTML = "";
-                if (data.corrupted === 0) {
-                    results.innerHTML = `<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ No corrupted records found. Database is clean!</div>`;
-                    document.getElementById("deleteCorruptedBtn").classList.add("hidden");
-                } else {
-                    const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "<em style='opacity:0.4'>none</em>"}</td><td>Lecture ${l.lecture}</td><td style="font-family:'Space Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join("");
-                    results.innerHTML = `<div style="padding:14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:10px;color:var(--error);margin-bottom:14px">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s) out of ${data.total} total.</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>Document ID</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-                    document.getElementById("deleteCorruptedBtn").classList.remove("hidden");
-                }
-            } catch (err) { status.innerHTML = `<div style="color:var(--error)">Error: ${err.message}</div>`; }
+        /* ===== SHARED SUBMIT ===== */
+        async function submitQuestions(chapter, lecture, questions, replace = false) {
+            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace }) });
+            if (r.status === 409) { pendingReplaceData = { chapter, lecture, questions }; openModal("replaceModal"); return; }
+            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Questions Saved!"; document.getElementById("successModalText").textContent = `${questions.length} question(s) saved for ${chapter} / Lecture ${lecture}.`; loadQuestionsAdmin(); loadChaptersAdmin(); }
+            else { alert("Failed to save. Make sure you are logged in."); }
         }
-
-        async function deleteCorrupted() {
-            if (!confirm("Permanently delete corrupted records? You will need to re-add those lectures manually.")) return;
-            const status = document.getElementById("migrateStatus");
-            status.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...';
-            try {
-                const res = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" });
-                const data = await res.json();
-                status.innerHTML = "";
-                document.getElementById("migrateResults").innerHTML = `<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ ${data.message}</div>`;
-                document.getElementById("deleteCorruptedBtn").classList.add("hidden");
-                loadQuestionsAdmin();
-            } catch (err) { status.innerHTML = `<div style="color:var(--error)">Error: ${err.message}</div>`; }
-        }
-
-        /* ========== MANAGE QUESTIONS ========== */
-        async function loadQuestionsAdmin() {
-            try {
-                const res = await fetch(`${API_BASE}/api/admin/questions`, { credentials: "include" });
-                if (res.status === 403) return;
-                allQuestions = await res.json();
-                renderQuestionList(allQuestions);
-            } catch (err) { console.error("loadQuestionsAdmin error:", err); }
-        }
-
-        function renderQuestionList(questions) {
-            const container = document.getElementById("questionList");
-            if (!container) return;
-            if (!questions || questions.length === 0) {
-                container.innerHTML = `<p style="color:var(--text-dim);text-align:center;padding:24px">No questions found.</p>`;
-                return;
-            }
-            container.innerHTML = questions.map(q => `
-                <div class="q-row">
-                    <div class="q-info">
-                        <div><strong>${q.chapter || "<em style='opacity:0.4'>No chapter</em>"}</strong> — Lecture ${q.lecture}</div>
-                        <div class="q-chapter">${(q.questions || []).length} question(s) · Updated: ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
-                    </div>
-                    <button class="btn btn-danger" style="padding:7px 14px;font-size:0.78rem"
-                        onclick="openDeleteModal('${(q.chapter || '_none_').replace(/'/g, "\\'")}','${q.lecture}')">🗑 Delete</button>
-                </div>
-            `).join("");
-        }
-
-        function filterQuestions(query) {
-            const q = query.toLowerCase();
-            const filtered = allQuestions.filter(q2 =>
-                (q2.chapter || "").toLowerCase().includes(q) ||
-                String(q2.lecture).includes(q)
-            );
-            renderQuestionList(filtered);
-        }
-
-        function openDeleteModal(chapter, lecture) {
-            pendingDeleteChapter = chapter;
-            pendingDeleteLecture = lecture;
-            document.getElementById("deleteModalText").textContent =
-                `Delete all questions for "${chapter === "_none_" ? "No chapter" : chapter} / Lecture ${lecture}"?`;
-            openModal("deleteModal");
-        }
-
-        async function confirmDelete() {
-            closeModal("deleteModal");
-            const ch = encodeURIComponent(pendingDeleteChapter || "_none_");
-            const lec = encodeURIComponent(pendingDeleteLecture);
-            const res = await fetch(`${API_BASE}/api/admin/question/${ch}/${lec}`, {
-                method: "DELETE", credentials: "include"
-            });
-            if (res.ok) {
-                openModal("successModal");
-                document.getElementById("successModalTitle").textContent = "Deleted";
-                document.getElementById("successModalText").textContent = "Question deleted successfully.";
-                loadQuestionsAdmin();
-            } else {
-                alert("Delete failed.");
-            }
-        }
-
-        /* ========== STUDENTS ========== */
-        function renderStudentTable(data) {
-            const tbody = document.getElementById("studentTableBody");
-            if (!tbody) return;
-            tbody.innerHTML = "";
-
-            // Show both students with answers (new) and old-format students
-            const withAnswers = data.filter(s =>
-                (s.answers && s.answers.length > 0) ||
-                typeof s.answer === "number"
-            );
-
-            if (withAnswers.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;opacity:0.5;padding:20px">No student records yet.</td></tr>`;
-                return;
-            }
-
-            withAnswers.forEach(s => {
-                // Support both new format (correctCount/totalQuestions) and old (correct boolean)
-                let correct, total, pct;
-                if (typeof s.correctCount === "number") {
-                    correct = s.correctCount;
-                    total = s.totalQuestions || 1;
-                } else if (typeof s.correct === "boolean") {
-                    correct = s.correct ? 1 : 0;
-                    total = 1;
-                } else {
-                    correct = 0; total = 1;
-                }
-                pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-
-                tbody.insertAdjacentHTML("beforeend", `
-                    <tr>
-                        <td>${s.name || "—"}</td>
-                        <td><span style="font-family:'Space Mono',monospace;font-size:0.78rem">${s.mobile || "—"}</span></td>
-                        <td>${s.place || "—"}</td>
-                        <td>${s.className || "—"}</td>
-                        <td>${s.chapter || "—"}</td>
-                        <td>Lec ${s.lecture || "—"}</td>
-                        <td>${correct}/${total}</td>
-                        <td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct >= 50 ? "✅" : "❌"} ${pct}%</span></td>
-                    </tr>
-                `);
-            });
-        }
-
-        function filterStudents(query) {
-            const q = query.toLowerCase();
-            const filtered = allStudents.filter(s =>
-                (s.name || "").toLowerCase().includes(q) ||
-                (s.mobile || "").includes(q) ||
-                String(s.lecture || "").includes(q) ||
-                (s.chapter || "").toLowerCase().includes(q)
-            );
-            renderStudentTable(filtered);
-        }
-
-        /* ========== EXPORT CSV ========== */
-        function exportCSV() {
-            let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n";
-            allStudents.forEach(s => {
-                let correct, total;
-                if (typeof s.correctCount === "number") { correct = s.correctCount; total = s.totalQuestions || 1; }
-                else if (typeof s.correct === "boolean") { correct = s.correct ? 1 : 0; total = 1; }
-                else { correct = 0; total = 1; }
-                const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-                csv += `"${s.name || ""}","="${s.mobile || ""}","${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${correct},${total},${pct}%\n`;
-            });
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `GripPhysics_Report_${new Date().toISOString().slice(0, 10)}.csv`;
-            link.click();
-        }
-
-        /* ========== MODALS ========== */
-        function openModal(id) { document.getElementById(id).style.display = "flex"; }
-        function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
         async function confirmReplace() {
             closeModal("replaceModal");
             const d = pendingReplaceData;
-            const res = await fetch(`${API_BASE}/api/admin/add-question`, {
-                method: "POST", credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, questions: d.questions, replace: true })
-            });
-            if (res.ok) {
-                openModal("successModal");
-                document.getElementById("successModalTitle").textContent = "Replaced!";
-                document.getElementById("successModalText").textContent = "Question replaced successfully.";
-                loadQuestionsAdmin(); loadChaptersAdmin();
-            } else {
-                alert("Replace failed.");
-            }
+            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, questions: d.questions, replace: true }) });
+            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Replaced!"; document.getElementById("successModalText").textContent = "Question replaced."; loadQuestionsAdmin(); loadChaptersAdmin(); }
+            else alert("Replace failed.");
         }
 
+        /* ===== MANAGE QUESTIONS ===== */
+        async function loadQuestionsAdmin() {
+            try { const r = await fetch(`${API_BASE}/api/admin/questions`, { credentials: "include" }); if (r.status === 403) return; allQuestions = await r.json(); renderQuestionList(allQuestions); } catch (e) { console.error(e); }
+        }
+
+        function renderQuestionList(questions) {
+            const container = document.getElementById("questionList"); if (!container) return;
+            if (!questions || !questions.length) { container.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:24px">No questions found.</p>'; return; }
+            container.innerHTML = questions.map((q, qi) => {
+                const qCount = (q.questions || []).length;
+                const hasMulti = (q.questions || []).some(x => x.isMultiCorrect);
+                return `<div class="q-row" onclick="toggleQExpand(${qi})">
+            <div class="q-info">
+                <div><strong>${q.chapter || "<em style='opacity:0.4'>No chapter</em>"}</strong> — Lecture ${q.lecture} <span style="font-size:0.72rem;color:var(--text-dim);margin-left:8px">${qCount} question(s)${hasMulti ? " · ✦ multi-correct" : ""}</span></div>
+                <div class="q-meta">Updated: ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0">
+                <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.78rem" onclick="event.stopPropagation();openEditModal('${(q.chapter || "_none_").replace(/'/g, "\\'")}','${q.lecture}',${qi})">✏️ Edit</button>
+                <button class="btn btn-danger" style="padding:6px 12px;font-size:0.78rem" onclick="event.stopPropagation();openDeleteModal('${(q.chapter || "_none_").replace(/'/g, "\\'")}','${q.lecture}')">🗑</button>
+            </div>
+        </div>
+        <div class="q-expand" id="qexp_${qi}">
+            ${(q.questions || []).map((sub, si) => `
+                <div class="q-sub-item">
+                    <div style="font-size:0.82rem;font-weight:600;margin-bottom:6px">Q${si + 1}${sub.isMultiCorrect ? ' <span style="color:var(--warn);font-size:0.72rem">✦ Multi</span>' : ""}: ${sub.question}</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        ${(sub.options || []).map((opt, oi) => {
+                    const ci = sub.correctIndexes || [sub.correctIndex || 0];
+                    return `<span style="padding:3px 10px;border-radius:8px;font-size:0.78rem;${ci.includes(oi) ? "background:rgba(46,204,113,0.2);border:1px solid rgba(46,204,113,0.4)" : "background:rgba(255,255,255,0.06)"}">${LETTERS[oi]}: ${opt}</span>`;
+                }).join("")}
+                    </div>
+                </div>`).join("")}
+        </div>`;
+            }).join("");
+            renderMath(container);
+        }
+
+        function toggleQExpand(qi) {
+            const el = document.getElementById(`qexp_${qi}`);
+            if (el) el.classList.toggle("open");
+        }
+
+        function filterQuestions(q) {
+            const f = q.toLowerCase();
+            renderQuestionList(allQuestions.filter(x => (x.chapter || "").toLowerCase().includes(f) || String(x.lecture).includes(f)));
+        }
+
+        /* ===== EDIT MODAL ===== */
+        function openEditModal(chapter, lecture, qi) {
+            editingChapter = chapter === "__none__" || chapter === "_none_" ? null : chapter;
+            editingLecture = lecture; editingQIndex = qi;
+            const q = allQuestions[qi]; if (!q) return;
+            const content = document.getElementById("editModalContent");
+            content.innerHTML = `
+        <div class="field"><label>Chapter</label><input id="edit-chapter" value="${q.chapter || ""}" list="existingChapters"></div>
+        <div class="field"><label>Lecture</label><input id="edit-lecture" type="number" min="1" value="${q.lecture}"></div>
+        <div id="edit-questions-container">
+            ${(q.questions || []).map((sub, si) => `
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;margin-bottom:12px" id="edit_q_${si}">
+                    <strong style="font-size:0.82rem;color:var(--text-dim)">Question ${si + 1}</strong>
+                    <div class="field" style="margin-top:8px"><textarea id="edit_qt_${si}" rows="2" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;resize:vertical;outline:none">${sub.question}</textarea></div>
+                    <div class="options-grid">
+                        ${LETTERS.map((l, oi) => `<div class="field"><label>${l}</label><input id="edit_opt_${si}_${oi}" value="${(sub.options && sub.options[oi] || "").replace(/"/g, "&quot;")}" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px 12px;color:white;font-family:Outfit,sans-serif;font-size:0.85rem;outline:none"></div>`).join("")}
+                    </div>
+                    <div style="margin-top:10px">
+                        <label style="font-size:0.78rem;color:var(--text-dim)">Correct Answer(s):</label>
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+                            ${LETTERS.map((l, oi) => { const ci = sub.correctIndexes || [sub.correctIndex || 0]; return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="edit_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""}> ${l}</label>`; }).join("")}
+                        </div>
+                    </div>
+                </div>`).join("")}
+        </div>`;
+            openModal("editModal");
+            renderMath(content);
+        }
+
+        async function saveEditedQuestion() {
+            const chapter = document.getElementById("edit-chapter").value.trim();
+            const lecture = document.getElementById("edit-lecture").value.trim();
+            if (!chapter || !lecture) { alert("Chapter and lecture required."); return; }
+            const qContainers = document.querySelectorAll("#edit-questions-container > div[id^='edit_q_']");
+            const questions = [];
+            qContainers.forEach((c, si) => {
+                const text = document.getElementById(`edit_qt_${si}`)?.value.trim();
+                const opts = LETTERS.map((_, oi) => document.getElementById(`edit_opt_${si}_${oi}`)?.value.trim() || "");
+                const checked = [...c.querySelectorAll(`[class*="edit_correct_"]:checked`)].map(x => parseInt(x.value));
+                const correctIndexes = checked.length ? checked : [0];
+                if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes, isMultiCorrect: correctIndexes.length > 1 });
+            });
+            if (!questions.length) { alert("No complete questions."); return; }
+            // Delete old and save new (handles chapter/lecture change)
+            const oldChapter = editingChapter || "_none_", oldLecture = editingLecture;
+            if (oldChapter !== chapter || (editingLecture + "") !== lecture) {
+                await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(oldChapter)}/${encodeURIComponent(oldLecture)}`, { method: "DELETE", credentials: "include" });
+            }
+            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace: true }) });
+            closeModal("editModal");
+            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Saved!"; document.getElementById("successModalText").textContent = `Lecture ${lecture} updated.`; loadQuestionsAdmin(); loadChaptersAdmin(); }
+            else alert("Save failed.");
+        }
+
+        /* ===== DELETE ===== */
+        function openDeleteModal(chapter, lecture) { pendingDeleteChapter = chapter; pendingDeleteLecture = lecture; document.getElementById("deleteModalText").textContent = `Delete all questions for "${chapter === "__none_" || chapter === "_none_" ? "No chapter" : chapter} / Lecture ${lecture}"?`; openModal("deleteModal"); }
+        async function confirmDelete() {
+            closeModal("deleteModal");
+            const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, { method: "DELETE", credentials: "include" });
+            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = "Question deleted."; loadQuestionsAdmin(); }
+            else alert("Delete failed.");
+        }
+
+        /* ===== STUDENTS ===== */
+        function renderStudentTable(data) {
+            const tbody = document.getElementById("studentTableBody"); if (!tbody) return; tbody.innerHTML = "";
+            const withAns = data.filter(s => (s.answers && s.answers.length > 0) || typeof s.answer === "number");
+            if (!withAns.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;opacity:0.5;padding:20px">No student records yet.</td></tr>'; return; }
+            withAns.forEach(s => {
+                let correct, total;
+                if (typeof s.correctCount === "number") { correct = s.correctCount; total = s.totalQuestions || 1; }
+                else { correct = s.correct ? 1 : 0; total = 1; }
+                const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+                tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'Space Mono',monospace;font-size:0.78rem">${s.mobile || "—"}</td><td>${s.place || "—"}</td><td>${s.className || "—"}</td><td>${s.chapter || "—"}</td><td>Lec ${s.lecture || "—"}</td><td>${correct}/${total}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct >= 50 ? "✅" : "❌"} ${pct}%</span></td></tr>`);
+            });
+        }
+        function filterStudents(q) { const f = q.toLowerCase(); renderStudentTable(allStudents.filter(s => (s.name || "").toLowerCase().includes(f) || (s.mobile || "").includes(f) || String(s.lecture || "").includes(f) || (s.chapter || "").toLowerCase().includes(f))); }
+
+        /* ===== EXPORT CSV ===== */
+        function exportCSV() {
+            let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n";
+            allStudents.filter(s => s.answers?.length > 0).forEach(s => {
+                const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
+                csv += `"${s.name || ""}","="${s.mobile || ""}","${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${s.correctCount || 0},${s.totalQuestions || 0},${pct}%\n`;
+            });
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }), url = URL.createObjectURL(blob), link = document.createElement("a");
+            link.href = url; link.download = `GripPhysics_${new Date().toISOString().slice(0, 10)}.csv`; link.click();
+        }
+
+        /* ===== FIX DB ===== */
+        async function scanCorrupted() {
+            const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults");
+            st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = "";
+            try {
+                const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" });
+                if (r.status === 404) { st.innerHTML = '<div style="color:var(--error)">Endpoint not found — update server.js.</div>'; return; }
+                const data = await r.json(); st.innerHTML = "";
+                if (data.corrupted === 0) { res.innerHTML = '<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ No corrupted records. Database is clean!</div>'; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); }
+                else {
+                    const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>Lecture ${l.lecture}</td><td style="font-family:'Space Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join("");
+                    res.innerHTML = `<div style="padding:14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:10px;color:var(--error);margin-bottom:14px">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s) out of ${data.total} total.</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+                    document.getElementById("deleteCorruptedBtn").classList.remove("hidden");
+                }
+            } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; }
+        }
+        async function deleteCorrupted() {
+            if (!confirm("Permanently delete corrupted records? You will re-add those lectures manually.")) return;
+            const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...';
+            try {
+                const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" });
+                const data = await r.json(); st.innerHTML = "";
+                document.getElementById("migrateResults").innerHTML = `<div style="padding:16px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:10px;color:var(--success)">✅ ${data.message}</div>`;
+                document.getElementById("deleteCorruptedBtn").classList.add("hidden"); loadQuestionsAdmin();
+            } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; }
+        }
+
+        /* ===== MODALS ===== */
+        function openModal(id) { document.getElementById(id).style.display = "flex"; }
+        function closeModal(id) { document.getElementById(id).style.display = "none"; }
     </script>
 </body>
 
