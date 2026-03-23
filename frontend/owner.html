@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -8,53 +8,90 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GP Admin">
-    <meta name="theme-color" content="#0d0f1a">
+    <meta name="theme-color" content="#0b0d18" id="themeColorMeta">
     <title>Grip Physics — Admin</title>
     <link rel="manifest" href="/admin-manifest.json">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
+        /* THEME TOKENS */
         :root {
-            --bg: #0d0f1a;
-            --bg-card: #13162a;
-            --bg-input: #1a1e35;
-            --bg-hover: #1e2240;
-            --border: rgba(255, 255, 255, 0.08);
-            --border-focus: #6366f1;
-            --accent: #6366f1;
+            --bg: #0b0d18;
+            --bg-card: #111425;
+            --bg-input: #191d32;
+            --bg-hover: #1e2340;
+            --bg-sidebar: #0e1020;
+            --border: rgba(255, 255, 255, 0.07);
+            --border-focus: #5b5fef;
+            --accent: #5b5fef;
             --accent-2: #8b5cf6;
-            --accent-3: #06b6d4;
-            --accent-glow: rgba(99, 102, 241, 0.2);
-            --success: #10b981;
-            --error: #ef4444;
+            --accent-3: #06d6a0;
+            --accent-4: #f59e0b;
+            --accent-glow: rgba(91, 95, 239, 0.22);
+            --success: #06d6a0;
+            --error: #f25c5c;
             --warn: #f59e0b;
-            --text: #e8eaf6;
-            --text-dim: rgba(232, 234, 246, 0.5);
-            --text-muted: rgba(232, 234, 246, 0.28);
-            --sidebar-w: 230px;
-            --radius: 12px;
-            --radius-sm: 8px;
-            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --text: #e4e8ff;
+            --text-dim: rgba(228, 232, 255, 0.52);
+            --text-muted: rgba(228, 232, 255, 0.28);
+            --sidebar-w: 228px;
+            --radius: 14px;
+            --radius-sm: 9px;
+            --radius-xs: 6px;
+            --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
+            --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7);
         }
 
-        * {
+        [data-theme="light"] {
+            --bg: #f0f2fc;
+            --bg-card: #ffffff;
+            --bg-input: #f4f5fc;
+            --bg-hover: #ebedf9;
+            --bg-sidebar: #ffffff;
+            --border: rgba(0, 0, 0, 0.08);
+            --border-focus: #5b5fef;
+            --accent: #4f52e0;
+            --accent-2: #7c3aed;
+            --accent-3: #0aaa82;
+            --accent-4: #d97706;
+            --accent-glow: rgba(79, 82, 224, 0.14);
+            --success: #0aaa82;
+            --error: #dc2626;
+            --warn: #d97706;
+            --text: #111827;
+            --text-dim: rgba(17, 24, 39, 0.55);
+            --text-muted: rgba(17, 24, 39, 0.35);
+            --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.08);
+            --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.25);
+        }
+
+        /* RESET */
+        *,
+        *::before,
+        *::after {
             box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
         }
 
         body {
-            background: radial-gradient(ellipse 80% 50% at 10% -5%, rgba(99, 102, 241, 0.1) 0%, transparent 60%), var(--bg);
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
             min-height: 100vh;
             color: var(--text);
             display: flex;
+            transition: background 0.25s, color 0.25s;
+        }
+
+        [data-theme="dark"] body {
+            background: radial-gradient(ellipse 90% 60% at 15% 0%, rgba(91, 95, 239, 0.09) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 85% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 60%), var(--bg);
         }
 
         /* LOGIN */
@@ -62,62 +99,66 @@
             position: fixed;
             inset: 0;
             z-index: 999;
-            background: radial-gradient(ellipse at 30% 40%, rgba(99, 102, 241, 0.08), var(--bg));
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            background: var(--bg);
+        }
+
+        [data-theme="dark"] #loginOverlay {
+            background: radial-gradient(ellipse at 30% 40%, rgba(91, 95, 239, 0.1), var(--bg));
         }
 
         .login-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 40px 36px;
-            width: 380px;
+            border-radius: 22px;
+            padding: 44px 38px;
+            width: 390px;
             max-width: 100%;
             text-align: center;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+            box-shadow: var(--shadow-modal);
         }
 
         .login-logo {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            margin-bottom: 24px;
+            gap: 13px;
+            margin-bottom: 26px;
         }
 
         .login-logo-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
+            width: 52px;
+            height: 52px;
+            border-radius: 15px;
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.6rem;
-            box-shadow: 0 4px 20px var(--accent-glow);
+            box-shadow: 0 4px 24px var(--accent-glow);
         }
 
         .login-logo-text h2 {
-            font-size: 1.3rem;
+            font-size: 1.35rem;
             font-weight: 800;
             color: var(--text);
             text-align: left;
+            letter-spacing: -0.3px;
         }
 
         .login-logo-text span {
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: 0.8px;
         }
 
         .login-card p.sub {
-            font-size: 0.82rem;
+            font-size: 0.83rem;
             color: var(--text-dim);
-            margin-bottom: 24px;
+            margin-bottom: 26px;
         }
 
         .login-input-wrap {
@@ -145,6 +186,7 @@
             color: var(--text);
             font-size: 0.9rem;
             outline: none;
+            font-family: 'Outfit', sans-serif;
         }
 
         .login-input-wrap input::placeholder {
@@ -154,11 +196,11 @@
         /* SIDEBAR */
         #sidebar {
             width: var(--sidebar-w);
-            background: var(--bg-card);
+            background: var(--bg-sidebar);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 24px 14px;
+            padding: 22px 12px;
             position: fixed;
             top: 0;
             left: 0;
@@ -171,44 +213,44 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 0 6px;
-            margin-bottom: 28px;
+            padding: 2px 8px;
+            margin-bottom: 30px;
         }
 
         .sidebar-logo-icon {
-            width: 38px;
-            height: 38px;
+            width: 36px;
+            height: 36px;
             border-radius: 10px;
+            flex-shrink: 0;
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-            box-shadow: 0 2px 12px var(--accent-glow);
+            box-shadow: 0 2px 14px var(--accent-glow);
         }
 
         .sidebar-logo-text h3 {
-            font-size: 0.92rem;
+            font-size: 0.9rem;
             font-weight: 800;
             color: var(--text);
+            letter-spacing: -0.2px;
         }
 
         .sidebar-logo-text span {
-            font-size: 0.62rem;
+            font-size: 0.6rem;
             color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
         }
 
         .nav-group-label {
-            font-size: 0.62rem;
-            font-weight: 600;
+            font-size: 0.6rem;
+            font-weight: 700;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
             padding: 0 10px;
-            margin: 14px 0 6px;
+            margin: 16px 0 6px;
         }
 
         .nav-item {
@@ -219,7 +261,7 @@
             border-radius: var(--radius-sm);
             cursor: pointer;
             transition: var(--transition);
-            font-size: 0.85rem;
+            font-size: 0.84rem;
             font-weight: 500;
             color: var(--text-dim);
             margin-bottom: 2px;
@@ -232,9 +274,9 @@
         }
 
         .nav-item.active {
-            background: rgba(99, 102, 241, 0.12);
+            background: linear-gradient(135deg, rgba(91, 95, 239, 0.14), rgba(139, 92, 246, 0.08));
             color: var(--accent);
-            border-color: rgba(99, 102, 241, 0.2);
+            border-color: rgba(91, 95, 239, 0.2);
             font-weight: 600;
         }
 
@@ -251,23 +293,51 @@
             border-top: 1px solid var(--border);
         }
 
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.84rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            user-select: none;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--border-focus);
+            color: var(--text);
+        }
+
+        .theme-icon {
+            font-size: 1rem;
+            width: 18px;
+            text-align: center;
+        }
+
         /* MAIN */
         #mainContent {
             margin-left: var(--sidebar-w);
             flex: 1;
-            padding: 28px 28px 40px;
+            padding: 30px 28px 48px;
             overflow-y: auto;
             min-height: 100vh;
         }
 
         .page-header {
-            margin-bottom: 24px;
+            margin-bottom: 26px;
         }
 
         .page-header h1 {
-            font-size: 1.5rem;
+            font-size: 1.55rem;
             font-weight: 800;
-            letter-spacing: -0.3px;
+            letter-spacing: -0.4px;
         }
 
         .page-header p {
@@ -279,7 +349,7 @@
         /* STATS */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 14px;
             margin-bottom: 24px;
         }
@@ -288,23 +358,23 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 18px;
+            padding: 20px 18px;
             transition: var(--transition);
-            cursor: default;
+            box-shadow: var(--shadow-card);
         }
 
         .stat-card:hover {
-            border-color: rgba(99, 102, 241, 0.3);
+            border-color: rgba(91, 95, 239, 0.35);
             transform: translateY(-2px);
         }
 
         .stat-icon {
-            font-size: 1.6rem;
-            margin-bottom: 8px;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
         }
 
         .stat-num {
-            font-size: 1.8rem;
+            font-size: 1.9rem;
             font-weight: 800;
             font-family: 'JetBrains Mono', monospace;
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -314,11 +384,12 @@
         }
 
         .stat-label {
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 3px;
+            letter-spacing: 0.6px;
+            margin-top: 4px;
+            font-weight: 600;
         }
 
         /* PANEL */
@@ -328,6 +399,7 @@
             border-radius: var(--radius);
             padding: 22px;
             margin-bottom: 20px;
+            box-shadow: var(--shadow-card);
         }
 
         .panel-title {
@@ -339,7 +411,7 @@
             gap: 8px;
         }
 
-        /* FORM */
+        /* FORMS */
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -351,13 +423,13 @@
         }
 
         .field label {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--text-dim);
-            font-weight: 600;
-            margin-bottom: 5px;
+            font-weight: 700;
+            margin-bottom: 6px;
             display: block;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.5px;
         }
 
         .field input,
@@ -370,7 +442,7 @@
             padding: 10px 13px;
             color: var(--text);
             font-size: 0.87rem;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Outfit', sans-serif;
             outline: none;
             transition: var(--transition);
         }
@@ -385,7 +457,6 @@
         .field input::placeholder,
         .field textarea::placeholder {
             color: var(--text-muted);
-            font-style: italic;
         }
 
         .field textarea {
@@ -395,6 +466,7 @@
 
         .field select option {
             background: var(--bg-card);
+            color: var(--text);
         }
 
         .options-grid {
@@ -413,7 +485,7 @@
             font-size: 0.87rem;
             outline: none;
             margin-bottom: 14px;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Outfit', sans-serif;
             transition: var(--transition);
         }
 
@@ -424,7 +496,6 @@
 
         .table-search::placeholder {
             color: var(--text-muted);
-            font-style: italic;
         }
 
         /* BUTTONS */
@@ -435,7 +506,7 @@
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Outfit', sans-serif;
             transition: var(--transition);
             display: inline-flex;
             align-items: center;
@@ -445,22 +516,22 @@
         .btn-primary {
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
             color: white;
-            box-shadow: 0 2px 12px var(--accent-glow);
+            box-shadow: 0 2px 14px var(--accent-glow);
         }
 
         .btn-primary:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 20px var(--accent-glow);
+            box-shadow: 0 6px 24px var(--accent-glow);
         }
 
         .btn-danger {
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(242, 92, 92, 0.13);
+            border: 1px solid rgba(242, 92, 92, 0.3);
             color: #fca5a5;
         }
 
         .btn-danger:hover {
-            background: rgba(239, 68, 68, 0.25);
+            background: rgba(242, 92, 92, 0.22);
         }
 
         .btn-ghost {
@@ -470,23 +541,23 @@
         }
 
         .btn-ghost:hover {
-            border-color: rgba(99, 102, 241, 0.4);
+            border-color: rgba(91, 95, 239, 0.4);
             background: var(--bg-hover);
         }
 
         .btn-warn {
-            background: rgba(245, 158, 11, 0.15);
+            background: rgba(245, 158, 11, 0.13);
             border: 1px solid rgba(245, 158, 11, 0.3);
             color: #fcd34d;
         }
 
         .btn-warn:hover {
-            background: rgba(245, 158, 11, 0.25);
+            background: rgba(245, 158, 11, 0.22);
         }
 
         .btn-success {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            background: rgba(6, 214, 160, 0.12);
+            border: 1px solid rgba(6, 214, 160, 0.3);
             color: #6ee7b7;
         }
 
@@ -505,9 +576,9 @@
 
         /* UPLOAD */
         .upload-zone {
-            border: 2px dashed rgba(99, 102, 241, 0.2);
+            border: 2px dashed rgba(91, 95, 239, 0.25);
             border-radius: var(--radius);
-            padding: 20px;
+            padding: 22px;
             text-align: center;
             cursor: pointer;
             transition: var(--transition);
@@ -517,7 +588,7 @@
         .upload-zone:hover,
         .upload-zone.dragover {
             border-color: var(--accent);
-            background: rgba(99, 102, 241, 0.05);
+            background: rgba(91, 95, 239, 0.05);
         }
 
         .upload-zone input[type=file] {
@@ -530,7 +601,7 @@
         }
 
         .upload-icon {
-            font-size: 1.6rem;
+            font-size: 1.7rem;
             margin-bottom: 6px;
         }
 
@@ -543,37 +614,6 @@
             color: var(--accent);
         }
 
-        .upload-preview {
-            margin-top: 10px;
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            display: none;
-            position: relative;
-        }
-
-        .upload-preview img {
-            width: 100%;
-            object-fit: contain;
-            max-height: 180px;
-            border-radius: var(--radius-sm);
-        }
-
-        .remove-img-btn {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            background: rgba(239, 68, 68, 0.85);
-            border: none;
-            border-radius: 6px;
-            color: white;
-            padding: 4px 10px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-        }
-
-        /* Multi-image preview grid */
         .multi-preview-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -598,7 +638,7 @@
             position: absolute;
             top: 4px;
             right: 4px;
-            background: rgba(239, 68, 68, 0.9);
+            background: rgba(242, 92, 92, 0.92);
             border: none;
             border-radius: 4px;
             color: white;
@@ -633,20 +673,20 @@
         }
 
         .extract-status.loading {
-            background: rgba(99, 102, 241, 0.08);
-            border: 1px solid rgba(99, 102, 241, 0.2);
+            background: rgba(91, 95, 239, 0.08);
+            border: 1px solid rgba(91, 95, 239, 0.2);
             color: #a5b4fc;
         }
 
         .extract-status.success {
-            background: rgba(16, 185, 129, 0.08);
-            border: 1px solid rgba(16, 185, 129, 0.25);
+            background: rgba(6, 214, 160, 0.08);
+            border: 1px solid rgba(6, 214, 160, 0.25);
             color: #6ee7b7;
         }
 
         .extract-status.error {
-            background: rgba(239, 68, 68, 0.08);
-            border: 1px solid rgba(239, 68, 68, 0.25);
+            background: rgba(242, 92, 92, 0.08);
+            border: 1px solid rgba(242, 92, 92, 0.25);
             color: #fca5a5;
         }
 
@@ -655,7 +695,7 @@
             background: var(--bg-input);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 16px;
+            padding: 18px;
             margin-bottom: 14px;
         }
 
@@ -678,8 +718,33 @@
         }
 
         .eq-opt.correct {
-            background: rgba(16, 185, 129, 0.12);
-            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(6, 214, 160, 0.12);
+            border-color: rgba(6, 214, 160, 0.3);
+        }
+
+        .eq-image-preview {
+            margin-top: 10px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            background: rgba(6, 182, 212, 0.05);
+            padding: 10px;
+        }
+
+        .eq-image-preview img {
+            max-width: 100%;
+            max-height: 220px;
+            border-radius: var(--radius-xs);
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .eq-image-label {
+            font-size: 0.7rem;
+            color: var(--accent-3);
+            margin-top: 6px;
+            text-align: center;
         }
 
         /* TABLES */
@@ -697,22 +762,26 @@
         th {
             text-align: left;
             padding: 9px 12px;
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             color: var(--text-muted);
             border-bottom: 1px solid var(--border);
         }
 
         td {
-            padding: 9px 12px;
+            padding: 10px 12px;
             font-size: 0.82rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
         }
 
+        [data-theme="light"] td {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
         tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
+            background: var(--bg-hover);
         }
 
         .badge-pill {
@@ -726,15 +795,23 @@
         }
 
         .badge-pill.ok {
-            background: rgba(16, 185, 129, 0.12);
+            background: rgba(6, 214, 160, 0.12);
             color: #6ee7b7;
-            border: 1px solid rgba(16, 185, 129, 0.25);
+            border: 1px solid rgba(6, 214, 160, 0.25);
         }
 
         .badge-pill.wrong {
-            background: rgba(239, 68, 68, 0.12);
+            background: rgba(242, 92, 92, 0.12);
             color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.25);
+            border: 1px solid rgba(242, 92, 92, 0.25);
+        }
+
+        [data-theme="light"] .badge-pill.ok {
+            color: #0a7a60;
+        }
+
+        [data-theme="light"] .badge-pill.wrong {
+            color: #b91c1c;
         }
 
         /* CHART */
@@ -743,7 +820,7 @@
             height: 260px;
         }
 
-        /* MANAGE QUESTIONS CARDS */
+        /* CARDS */
         .chapter-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -753,13 +830,29 @@
             transition: var(--transition);
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+
+        .chapter-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            opacity: 0;
+            transition: var(--transition);
         }
 
         .chapter-card:hover {
-            border-color: rgba(99, 102, 241, 0.4);
+            border-color: rgba(91, 95, 239, 0.4);
             transform: translateY(-3px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-            background: var(--bg-hover);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .chapter-card:hover::before {
+            opacity: 1;
         }
 
         .chapter-card-icon {
@@ -770,18 +863,19 @@
 
         .chapter-card-title {
             font-weight: 700;
-            font-size: 0.92rem;
-            margin-bottom: 5px;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            line-height: 1.3;
         }
 
         .chapter-card-count {
-            font-size: 0.75rem;
+            font-size: 0.73rem;
             color: var(--text-dim);
         }
 
         .chapter-card.selected-card {
             border-color: var(--accent);
-            background: rgba(99, 102, 241, 0.08);
+            background: rgba(91, 95, 239, 0.07);
         }
 
         .card-checkbox {
@@ -802,12 +896,23 @@
             cursor: pointer;
             transition: var(--transition);
             text-align: center;
+            box-shadow: var(--shadow-card);
+            position: relative;
         }
 
         .lecture-card:hover {
-            border-color: rgba(99, 102, 241, 0.4);
+            border-color: rgba(91, 95, 239, 0.4);
             transform: translateY(-2px);
             background: var(--bg-hover);
+        }
+
+        .lecture-card.has-multi {
+            border-color: rgba(245, 158, 11, 0.35);
+        }
+
+        .lecture-card.selected-lec {
+            border-color: var(--accent);
+            background: rgba(91, 95, 239, 0.08);
         }
 
         .lecture-card-num {
@@ -827,24 +932,26 @@
             margin-top: 4px;
         }
 
-        .lecture-card.has-multi {
-            border-color: rgba(245, 158, 11, 0.3);
+        .lec-checkbox {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent);
+            display: none;
         }
 
-        .q-sub-item {
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        .lec-select-mode .lec-checkbox {
+            display: block;
         }
 
-        .q-sub-item:last-child {
-            border-bottom: none;
-        }
-
-        /* MASS DELETE BAR */
+        /* MASS DELETE */
         .mass-delete-bar {
             display: none;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.25);
+            background: rgba(242, 92, 92, 0.09);
+            border: 1px solid rgba(242, 92, 92, 0.28);
             border-radius: var(--radius-sm);
             padding: 10px 16px;
             margin-bottom: 14px;
@@ -857,28 +964,74 @@
             display: flex;
         }
 
+        /* OPTION RENDER IN MANAGE */
+        .q-render-preview {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 10px 13px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            min-height: 40px;
+        }
+
+        [data-theme="light"] .q-render-preview {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .opt-render-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 7px 10px;
+            margin-bottom: 6px;
+            font-size: 0.84rem;
+            line-height: 1.5;
+        }
+
+        .opt-render-row.is-correct {
+            background: rgba(6, 214, 160, 0.1);
+            border-color: rgba(6, 214, 160, 0.3);
+        }
+
+        .opt-letter {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            width: 18px;
+        }
+
+        .opt-render-row.is-correct .opt-letter {
+            color: var(--success);
+        }
+
         /* MODALS */
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(4px);
-            display: flex;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(5px);
+            display: none;
             align-items: center;
             justify-content: center;
             z-index: 500;
             padding: 20px;
-            display: none;
         }
 
         .modal-box {
             background: var(--bg-card);
-            border-radius: 16px;
-            padding: 28px;
-            width: 380px;
+            border-radius: 18px;
+            padding: 30px;
+            width: 390px;
             max-width: 100%;
             text-align: center;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+            box-shadow: var(--shadow-modal);
             border: 1px solid var(--border);
         }
 
@@ -891,7 +1044,7 @@
         .modal-box p {
             font-size: 0.83rem;
             color: var(--text-dim);
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
 
         .modal-actions {
@@ -906,15 +1059,42 @@
 
         .edit-modal-box {
             background: var(--bg-card);
-            border-radius: 16px;
+            border-radius: 18px;
             padding: 26px;
-            width: 600px;
+            width: 620px;
             max-width: 100%;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+            box-shadow: var(--shadow-modal);
             border: 1px solid var(--border);
             max-height: 90vh;
             overflow-y: auto;
             text-align: left;
+        }
+
+        /* AK TABS */
+        .answer-key-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 14px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .ak-tab {
+            flex: 1;
+            padding: 9px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            background: var(--bg-input);
+            color: var(--text-dim);
+            transition: var(--transition);
+        }
+
+        .ak-tab.active {
+            background: rgba(91, 95, 239, 0.15);
+            color: var(--accent);
         }
 
         /* MISC */
@@ -953,10 +1133,6 @@
             color: inherit;
         }
 
-        .rendered-math {
-            display: inline;
-        }
-
         @keyframes spin {
             to {
                 transform: rotate(360deg)
@@ -973,33 +1149,6 @@
                 opacity: 1;
                 transform: translateX(-50%) translateY(0)
             }
-        }
-
-        /* MANUAL ANSWER KEY */
-        .answer-key-tabs {
-            display: flex;
-            gap: 0;
-            margin-bottom: 14px;
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            border: 1px solid var(--border);
-        }
-
-        .ak-tab {
-            flex: 1;
-            padding: 9px;
-            text-align: center;
-            cursor: pointer;
-            font-size: 0.82rem;
-            font-weight: 600;
-            background: var(--bg-input);
-            color: var(--text-dim);
-            transition: var(--transition);
-        }
-
-        .ak-tab.active {
-            background: rgba(99, 102, 241, 0.15);
-            color: var(--accent);
         }
 
         /* RESPONSIVE */
@@ -1046,13 +1195,12 @@
                 align-items: center;
                 overflow-x: auto;
                 gap: 0;
-                background: #0d0f1a !important;
-                backdrop-filter: blur(20px);
             }
 
             .sidebar-logo,
             .sidebar-footer,
-            .nav-group-label {
+            .nav-group-label,
+            .theme-toggle {
                 display: none;
             }
 
@@ -1146,12 +1294,13 @@
 </head>
 
 <body>
-    <!-- LOGIN OVERLAY -->
+
+    <!-- LOGIN -->
     <div id="loginOverlay">
         <div class="login-card">
             <div class="login-logo">
                 <div class="login-logo-icon">
-                    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
                         <circle cx="50" cy="50" r="8" fill="white" />
                         <ellipse cx="50" cy="50" rx="42" ry="16" stroke="white" stroke-width="5" fill="none" />
                         <ellipse cx="50" cy="50" rx="42" ry="16" stroke="white" stroke-width="5" fill="none"
@@ -1177,16 +1326,14 @@
     <!-- SIDEBAR -->
     <nav id="sidebar" class="hidden">
         <div class="sidebar-logo">
-            <div class="sidebar-logo-icon">
-                <svg width="22" height="22" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div class="sidebar-logo-icon"><svg width="20" height="20" viewBox="0 0 100 100" fill="none">
                     <circle cx="50" cy="50" r="8" fill="white" />
                     <ellipse cx="50" cy="50" rx="42" ry="16" stroke="white" stroke-width="5" fill="none" />
                     <ellipse cx="50" cy="50" rx="42" ry="16" stroke="white" stroke-width="5" fill="none"
                         transform="rotate(60 50 50)" />
                     <ellipse cx="50" cy="50" rx="42" ry="16" stroke="white" stroke-width="5" fill="none"
                         transform="rotate(120 50 50)" />
-                </svg>
-            </div>
+                </svg></div>
             <div class="sidebar-logo-text">
                 <h3>Grip Physics</h3><span>Admin Panel</span>
             </div>
@@ -1207,12 +1354,16 @@
         <div class="nav-item" onclick="showSection('migrate')" id="nav-migrate"><span class="nav-icon">🔧</span><span
                 class="nav-label">Fix DB</span></div>
         <div class="sidebar-footer">
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <span class="theme-icon" id="themeIcon">☀️</span>
+                <span id="themeLabel">Light Mode</span>
+            </div>
             <div class="nav-item" onclick="logout()" style="color:#fca5a5"><span class="nav-icon">🚪</span><span
                     class="nav-label">Logout</span></div>
         </div>
     </nav>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN -->
     <div id="mainContent" class="hidden">
 
         <!-- DASHBOARD -->
@@ -1303,8 +1454,7 @@
         <div class="section" id="section-importQuestion">
             <div class="page-header">
                 <h1>Import from Screenshot</h1>
-                <p>Paste multiple question screenshots + answer key. AI detects all questions, equations, and images
-                    automatically.</p>
+                <p>AI detects questions, equations, and diagram images automatically.</p>
             </div>
             <div class="panel">
                 <div class="form-row">
@@ -1317,11 +1467,9 @@
                             5, 6</div>
                     </div>
                 </div>
-
-                <!-- MULTIPLE QUESTION SCREENSHOTS -->
                 <div class="field" style="margin-top:8px">
                     <label>📄 Question Screenshots <span style="color:var(--accent);font-weight:500">— paste (Ctrl+V),
-                            drag & drop, or click. Add multiple pages.</span></label>
+                            drag & drop, or click</span></label>
                     <div class="upload-zone" id="qZone" tabindex="0"><input type="file" accept="image/*" multiple
                             id="qFileInput" onchange="handleQFiles(this)">
                         <div class="upload-icon">📸</div>
@@ -1329,8 +1477,6 @@
                     </div>
                     <div id="qPreviews" class="multi-preview-grid"></div>
                 </div>
-
-                <!-- ANSWER KEY — tabbed: screenshot or manual -->
                 <div class="field">
                     <label>🔑 Answer Key</label>
                     <div class="answer-key-tabs">
@@ -1348,18 +1494,16 @@
                     </div>
                     <div id="ak-manual-panel" style="display:none">
                         <textarea id="manualAnswerKey"
-                            placeholder="Type answer key e.g.:&#10;1-C&#10;2-A,D (multi-correct)&#10;3-B&#10;4-A,C"
-                            style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:0.85rem;resize:vertical;outline:none;height:120px;margin-top:2px"></textarea>
-                        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:5px">Format: question number —
-                            option letter(s). Use comma for multi-correct.</div>
+                            placeholder="Type answer key e.g.:&#10;1-C&#10;2-A,D (multi-correct)&#10;3-B"
+                            style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.85rem;resize:vertical;outline:none;height:120px;margin-top:2px"></textarea>
+                        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:5px">Format: number —
+                            letter(s). Comma for multi-correct.</div>
                     </div>
                 </div>
-
                 <div class="extract-status" id="extractStatus"></div>
                 <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>🤖
                     Extract Questions with AI</button>
             </div>
-
             <div id="extractedList" style="display:none">
                 <div class="panel">
                     <div
@@ -1373,7 +1517,7 @@
                         </div>
                     </div>
                     <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:14px">Each question gets its own
-                        lecture. Multi-correct shows ✦. Questions with diagrams show 🖼. Edit before saving.</p>
+                        lecture. Multi-correct shows ✦. Questions with diagrams show 🖼 with extracted image.</p>
                     <div id="extractedQContainer"></div>
                     <div class="flex-end mt-20">
                         <button class="btn btn-ghost" onclick="addExtractedQ()">+ Add Question</button>
@@ -1390,7 +1534,6 @@
                 <h1>Manage Questions</h1>
                 <p>Browse by chapter → lecture → question</p>
             </div>
-
             <div id="mq-chapter-view">
                 <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
                     <input class="table-search" style="margin:0;flex:1;min-width:180px"
@@ -1408,20 +1551,30 @@
                 <div id="chapterCardsGrid"
                     style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
             </div>
-
             <div id="mq-lecture-view" style="display:none">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
                     <button class="btn btn-ghost" onclick="showChapterViewH()"
                         style="padding:7px 14px;font-size:0.85rem">← Back</button>
-                    <div>
+                    <div style="flex:1">
                         <h2 id="mq-chapter-title" style="font-size:1.05rem;font-weight:800;margin:0"></h2>
                         <p id="mq-lecture-count" style="font-size:0.78rem;color:var(--text-dim);margin:2px 0 0"></p>
                     </div>
                 </div>
+                <!-- LECTURE MASS DELETE BAR -->
+                <div id="lec-mass-delete-bar" class="mass-delete-bar">
+                    <span id="lec-mass-delete-count" style="font-size:0.82rem;color:#fca5a5"></span>
+                    <button class="btn btn-danger" style="padding:7px 14px;font-size:0.82rem"
+                        onclick="massDeleteLectures()">🗑 Delete Selected Lectures</button>
+                    <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
+                        onclick="clearLectureSelection()">✕ Cancel</button>
+                </div>
+                <div style="margin-bottom:14px">
+                    <button class="btn btn-warn" style="padding:8px 14px;font-size:0.82rem" id="lecSelectModeBtn"
+                        onclick="toggleLectureSelectMode()">☐ Select Lectures</button>
+                </div>
                 <div id="lectureCardsGrid"
                     style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"></div>
             </div>
-
             <div id="mq-question-view" style="display:none">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
                     <button class="btn btn-ghost" onclick="history.back()" style="padding:7px 14px;font-size:0.85rem">←
@@ -1510,7 +1663,7 @@
     </div>
     <div class="modal-overlay" id="successModal">
         <div class="modal-box">
-            <div style="font-size:2.2rem;margin-bottom:10px">✅</div>
+            <div style="font-size:2.4rem;margin-bottom:10px">✅</div>
             <h3 id="successModalTitle">Success</h3>
             <p id="successModalText">Done.</p><button class="btn btn-primary btn-full"
                 onclick="closeModal('successModal')">OK</button>
@@ -1535,144 +1688,127 @@
             </div>
         </div>
     </div>
+    <div class="modal-overlay" id="lecMassDeleteModal">
+        <div class="modal-box">
+            <div style="font-size:2rem;margin-bottom:10px">🗑</div>
+            <h3>Delete Selected Lectures?</h3>
+            <p id="lecMassDeleteModalText">This cannot be undone.</p>
+            <div class="modal-actions"><button class="btn btn-danger"
+                    onclick="confirmLecMassDelete()">Delete</button><button class="btn btn-ghost"
+                    onclick="closeModal('lecMassDeleteModal')">Cancel</button></div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = "";
         const LETTERS = ["A", "B", "C", "D"];
-        const CHAPTER_ICONS = ["⚡", "🔥", "🌊", "🔭", "⚗️", "🧲", "🔬", "🌡️", "💡", "🔋", "🎯", "🌌", "⚛️", "🔩", "📡"];
+        const CHAPTER_ICONS = ["⚡", "🔥", "🌊", "🔭", "⚗️", "🧲", "🔬", "🌡️", "🌍", "💡", "🪐", "☄️", "🔋", "💻", "🎯", "🔌", "🌌", "⚛️", "⚙️", "🪫", "🔩", "📡"];
         let allStudents = [], allQuestions = [], pendingReplaceData = null, pendingDeleteChapter = null, pendingDeleteLecture = null;
         let qImagesBase64 = [], aImagesBase64 = [], extractedQuestions = [], manualQuestionCount = 0;
         let undoStack = [], redoStack = [];
         let mqCurrentChapter = null, mqCurrentLectureIdx = null;
-        let editingChapter = null, editingLecture = null;
         let selectModeOn = false, selectedLectures = new Set();
+        let lecSelectModeOn = false, selectedLectureKeys = new Set();
+        let _chartData = null;
+
+        /* ── THEME ── */
+        function initTheme() { const saved = localStorage.getItem('gpTheme') || 'dark'; document.documentElement.setAttribute('data-theme', saved); updateThemeUI(saved); }
+        function toggleTheme() { const cur = document.documentElement.getAttribute('data-theme'); const next = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); localStorage.setItem('gpTheme', next); updateThemeUI(next); if (_chartData) buildChart(_chartData); }
+        function updateThemeUI(t) { const icon = document.getElementById('themeIcon'); const lbl = document.getElementById('themeLabel'); if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙'; if (lbl) lbl.textContent = t === 'dark' ? 'Light Mode' : 'Dark Mode'; const mc = document.getElementById('themeColorMeta'); if (mc) mc.setAttribute('content', t === 'dark' ? '#0b0d18' : '#f0f2fc'); }
+        initTheme();
 
         /* ── MATH ── */
         function renderMath(el) { if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }], throwOnError: false }); }
 
         /* ── SESSION ── */
         (async function checkSession() { try { const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" }); if (r.ok) enterDashboard(); } catch (e) { } })();
-
-        function enterDashboard() {
-            document.getElementById("loginOverlay").style.display = "none";
-            document.getElementById("sidebar").classList.remove("hidden");
-            document.getElementById("mainContent").classList.remove("hidden");
-            loadDashboard(); loadChaptersAdmin(); loadQuestionsAdmin();
-            history.replaceState({ type: "section", name: "dashboard" }, "", "");
-        }
+        function enterDashboard() { document.getElementById("loginOverlay").style.display = "none"; document.getElementById("sidebar").classList.remove("hidden"); document.getElementById("mainContent").classList.remove("hidden"); loadDashboard(); loadChaptersAdmin(); loadQuestionsAdmin(); history.replaceState({ type: "section", name: "dashboard" }, "", ""); }
         async function login() { const p = document.getElementById("passcode").value, e = document.getElementById("loginError"); e.style.display = "none"; const r = await fetch(`${API_BASE}/api/admin/login`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: p }) }); if (!r.ok) { e.style.display = "block"; return; } enterDashboard(); }
         async function logout() { await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" }); location.reload(); }
 
-        /* ── NAVIGATION ── */
-        function showSection(name, push = true) {
-            document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-            document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-            document.getElementById(`section-${name}`).classList.add("active");
-            document.getElementById(`nav-${name}`).classList.add("active");
-            if (name === "students") renderStudentTable(allStudents);
-            if (name === "manageQuestions") { showChapterView(); renderChapterCards(allQuestions); }
-            if (push) history.pushState({ type: "section", name }, "", "");
-        }
+        /* ── NAV ── */
+        function showSection(name, push = true) { document.querySelectorAll(".section").forEach(s => s.classList.remove("active")); document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active")); document.getElementById(`section-${name}`).classList.add("active"); document.getElementById(`nav-${name}`).classList.add("active"); if (name === "students") renderStudentTable(allStudents); if (name === "manageQuestions") { showChapterView(); renderChapterCards(allQuestions); } if (push) history.pushState({ type: "section", name }, "", ""); }
         function showChapterViewH() { showChapterView(); history.pushState({ type: "mqChapter" }, "", ""); }
         function showLectureViewH(ch) { showLectureViewForChapter(ch); history.pushState({ type: "mqLecture", chapter: ch }, "", ""); }
         function showQuestionViewH(idx) { showQuestionView(idx); history.pushState({ type: "mqQuestion", idx }, "", ""); }
-        window.addEventListener("popstate", e => {
-            const s = e.state; if (!s) return;
-            if (s.type === "section") { showSection(s.name, false); return; }
-            if (s.type === "mqChapter") { showChapterView(); return; }
-            if (s.type === "mqLecture") { if (s.chapter) showLectureViewForChapter(s.chapter); else showChapterView(); return; }
-            if (s.type === "mqQuestion") { if (typeof s.idx === "number") showQuestionView(s.idx); else showLectureView(); return; }
-        });
+        window.addEventListener("popstate", e => { const s = e.state; if (!s) return; if (s.type === "section") { showSection(s.name, false); return; } if (s.type === "mqChapter") { showChapterView(); return; } if (s.type === "mqLecture") { if (s.chapter) showLectureViewForChapter(s.chapter); else showChapterView(); return; } if (s.type === "mqQuestion") { if (typeof s.idx === "number") showQuestionView(s.idx); else showLectureView(); return; } });
 
         /* ── DASHBOARD ── */
-        async function loadDashboard() {
-            try {
-                const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
-                if (r.status === 403) return;
-                allStudents = await r.json();
-                const wa = allStudents.filter(s => s.answers && s.answers.length > 0);
-                const tc = wa.reduce((s, x) => s + (x.correctCount || 0), 0);
-                const tw = wa.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
-                const lecs = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
-                document.getElementById("stat-total").textContent = allStudents.length;
-                document.getElementById("stat-correct").textContent = tc;
-                document.getElementById("stat-wrong").textContent = tw;
-                document.getElementById("stat-lectures").textContent = lecs.size;
-                buildChart(wa); populateDrillChapters();
-            } catch (e) { console.error(e); }
-        }
-        function buildChart(data) {
-            const m = {};
-            data.forEach(s => { const k = `${s.chapter || "?"}/L${s.lecture}`; if (!m[k]) m[k] = { c: 0, w: 0 }; m[k].c += s.correctCount || 0; m[k].w += ((s.totalQuestions || 0) - (s.correctCount || 0)); });
-            const labels = Object.keys(m).sort(), cs = labels.map(k => m[k].c), ws = labels.map(k => m[k].w);
-            const ctx = document.getElementById("lectureChart");
-            if (window._chart) window._chart.destroy();
-            window._chart = new Chart(ctx, { type: "bar", data: { labels, datasets: [{ label: "Correct", data: cs, backgroundColor: "rgba(16,185,129,0.7)", borderRadius: 5 }, { label: "Wrong", data: ws, backgroundColor: "rgba(239,68,68,0.7)", borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#e8eaf6", font: { family: "Inter" } } } }, scales: { x: { ticks: { color: "#9095b0", font: { family: "Inter", size: 10 } }, grid: { color: "rgba(255,255,255,0.04)" } }, y: { beginAtZero: true, ticks: { color: "#9095b0", font: { family: "Inter" } }, grid: { color: "rgba(255,255,255,0.04)" } } } } });
-        }
+        async function loadDashboard() { try { const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" }); if (r.status === 403) return; allStudents = await r.json(); const wa = allStudents.filter(s => s.answers && s.answers.length > 0); const tc = wa.reduce((s, x) => s + (x.correctCount || 0), 0); const tw = wa.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0); const lecs = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`)); document.getElementById("stat-total").textContent = allStudents.length; document.getElementById("stat-correct").textContent = tc; document.getElementById("stat-wrong").textContent = tw; document.getElementById("stat-lectures").textContent = lecs.size; _chartData = wa; buildChart(wa); populateDrillChapters(); } catch (e) { console.error(e); } }
+        function buildChart(data) { const m = {}; data.forEach(s => { const k = `${s.chapter || "?"}/L${s.lecture}`; if (!m[k]) m[k] = { c: 0, w: 0 }; m[k].c += s.correctCount || 0; m[k].w += ((s.totalQuestions || 0) - (s.correctCount || 0)); }); const labels = Object.keys(m).sort(), cs = labels.map(k => m[k].c), ws = labels.map(k => m[k].w); const ctx = document.getElementById("lectureChart"); if (window._chart) window._chart.destroy(); const isDark = document.documentElement.getAttribute('data-theme') !== 'light'; const tc = isDark ? "#e4e8ff" : "#374151"; const gc = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)"; window._chart = new Chart(ctx, { type: "bar", data: { labels, datasets: [{ label: "Correct", data: cs, backgroundColor: "rgba(6,214,160,0.72)", borderRadius: 5 }, { label: "Wrong", data: ws, backgroundColor: "rgba(242,92,92,0.72)", borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tc, font: { family: "Outfit" } } } }, scales: { x: { ticks: { color: tc, font: { family: "Outfit", size: 10 } }, grid: { color: gc } }, y: { beginAtZero: true, ticks: { color: tc, font: { family: "Outfit" } }, grid: { color: gc } } } } }); }
         function populateDrillChapters() { const chs = [...new Set(allStudents.map(s => s.chapter).filter(Boolean))].sort(); const sel = document.getElementById("drillChapter"); sel.innerHTML = '<option value="">— All —</option>' + chs.map(c => `<option value="${c}">${c}</option>`).join(""); }
         function loadDrillLectures() { const ch = document.getElementById("drillChapter").value; const lecs = [...new Set(allStudents.filter(s => !ch || s.chapter === ch).map(s => s.lecture).filter(Boolean))].sort((a, b) => Number(a) - Number(b)); document.getElementById("drillLecture").innerHTML = '<option value="">— Select —</option>' + lecs.map(l => `<option value="${l}">Lecture ${l}</option>`).join(""); document.getElementById("drillResults").style.display = "none"; }
         function loadDrillData() { const ch = document.getElementById("drillChapter").value, lec = document.getElementById("drillLecture").value; if (!lec) { document.getElementById("drillResults").style.display = "none"; return; } const f = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lec && (!ch || s.chapter === ch)); const tc = f.reduce((s, x) => s + (x.correctCount || 0), 0), tw = f.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0); document.getElementById("drillStats").innerHTML = `<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${f.length}</div><div class="stat-label">Attempted</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${tc}</div><div class="stat-label">Correct</div></div><div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num">${tw}</div><div class="stat-label">Wrong</div></div>`; const tbody = document.querySelector("#drillTable tbody"); tbody.innerHTML = ""; f.forEach(s => { const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0; tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${s.mobile}</td><td>${s.correctCount || 0}</td><td>${s.totalQuestions || 0}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`); }); document.getElementById("drillResults").style.display = "block"; }
 
         /* ── CHAPTERS ── */
-        async function loadChaptersAdmin() { try { const r = await fetch(`${API_BASE}/api/chapters`); const chs = await r.json();["existingChapters", "existingChapters2"].forEach(id => { const dl = document.getElementById(id); if (dl) dl.innerHTML = chs.map(c => `<option value="${c}">`).join(""); }); const dc = document.getElementById("drillChapter"); if (dc) { dc.innerHTML = '<option value="">— All —</option>' + chs.map(c => `<option value="${c}">${c}</option>`).join(""); } } catch (e) { } }
+        async function loadChaptersAdmin() { try { const r = await fetch(`${API_BASE}/api/chapters`); const chs = await r.json();["existingChapters", "existingChapters2"].forEach(id => { const dl = document.getElementById(id); if (dl) dl.innerHTML = chs.map(c => `<option value="${c}">`).join(""); }); const dc = document.getElementById("drillChapter"); if (dc) dc.innerHTML = '<option value="">— All —</option>' + chs.map(c => `<option value="${c}">${c}</option>`).join(""); } catch (e) { } }
 
         /* ── MANUAL ADD ── */
-        function addManualQuestion(data) {
-            manualQuestionCount++; const id = `mq_${manualQuestionCount}`; const container = document.getElementById("aqQuestionsContainer"); const div = document.createElement("div"); div.className = "panel"; div.id = id; div.style.cssText = "background:var(--bg-input);margin-bottom:12px;"; const isMulti = data && data.isMultiCorrect;
-            div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><strong style="font-size:0.88rem">Question ${container.children.length + 1}</strong><div style="display:flex;gap:8px;align-items:center"><label style="font-size:0.8rem;color:var(--text-dim);display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mq-multi" ${isMulti ? "checked" : ""} style="width:auto;padding:0"> Multi-correct</label><button class="btn btn-danger" style="padding:5px 10px;font-size:0.76rem" onclick="this.closest('.panel').remove()">Remove</button></div></div>
-    <div class="field"><label>Question Text ($math$ for equations)</label><textarea class="mq-text" placeholder="Enter question..." rows="2">${data ? data.question : ""}</textarea></div>
-    <div class="options-grid">${LETTERS.map((l, i) => `<div class="field"><label>Option ${l}</label><input class="mq-opt" data-idx="${i}" placeholder="Option ${l}" value="${data && data.options ? data.options[i] || "" : ""}"></div>`).join("")}</div>
-    <div class="field" id="${id}_cw"><label class="single-lbl">Correct Answer</label><select class="mq-correct">${LETTERS.map((l, i) => `<option value="${i}" ${data && !isMulti && (data.correctIndexes ? data.correctIndexes[0] === i : data.correctIndex === i) ? "selected" : ""}>${l}</option>`).join("")}</select><div class="multi-lbl" style="display:none"><label style="font-size:0.78rem;color:var(--text-dim)">Correct Answers (check all):</label><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="mq-multi-correct" value="${i}" ${data && isMulti && data.correctIndexes && data.correctIndexes.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}</div></div></div>`;
-            container.appendChild(div);
-            div.querySelector(".mq-multi").addEventListener("change", function () { const w = div.querySelector(`#${id}_cw`); w.querySelector(".single-lbl").style.display = this.checked ? "none" : "block"; w.querySelector("select.mq-correct").style.display = this.checked ? "none" : "block"; w.querySelector(".multi-lbl").style.display = this.checked ? "block" : "none"; });
-            if (isMulti) div.querySelector(".mq-multi").dispatchEvent(new Event("change"));
-        }
+        function addManualQuestion(data) { manualQuestionCount++; const id = `mq_${manualQuestionCount}`; const container = document.getElementById("aqQuestionsContainer"); const div = document.createElement("div"); div.className = "panel"; div.id = id; div.style.cssText = "background:var(--bg-input);margin-bottom:12px;"; const isMulti = data && data.isMultiCorrect; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><strong style="font-size:0.88rem">Question ${container.children.length + 1}</strong><div style="display:flex;gap:8px;align-items:center"><label style="font-size:0.8rem;color:var(--text-dim);display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="mq-multi" ${isMulti ? "checked" : ""} style="width:auto;padding:0"> Multi-correct</label><button class="btn btn-danger" style="padding:5px 10px;font-size:0.76rem" onclick="this.closest('.panel').remove()">Remove</button></div></div><div class="field"><label>Question Text ($math$ for equations)</label><textarea class="mq-text" placeholder="Enter question..." rows="2">${data ? data.question : ""}</textarea></div><div class="options-grid">${LETTERS.map((l, i) => `<div class="field"><label>Option ${l}</label><input class="mq-opt" data-idx="${i}" placeholder="Option ${l}" value="${data && data.options ? data.options[i] || "" : ""}"></div>`).join("")}</div><div class="field" id="${id}_cw"><label class="single-lbl">Correct Answer</label><select class="mq-correct">${LETTERS.map((l, i) => `<option value="${i}" ${data && !isMulti && (data.correctIndexes ? data.correctIndexes[0] === i : data.correctIndex === i) ? "selected" : ""}>${l}</option>`).join("")}</select><div class="multi-lbl" style="display:none"><label style="font-size:0.78rem;color:var(--text-dim)">Correct Answers (check all):</label><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="mq-multi-correct" value="${i}" ${data && isMulti && data.correctIndexes && data.correctIndexes.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}</div></div></div>`; container.appendChild(div); div.querySelector(".mq-multi").addEventListener("change", function () { const w = div.querySelector(`#${id}_cw`); w.querySelector(".single-lbl").style.display = this.checked ? "none" : "block"; w.querySelector("select.mq-correct").style.display = this.checked ? "none" : "block"; w.querySelector(".multi-lbl").style.display = this.checked ? "block" : "none"; }); if (isMulti) div.querySelector(".mq-multi").dispatchEvent(new Event("change")); }
         addManualQuestion();
         async function saveManualQuestions() { const chapter = document.getElementById("aq-chapter").value.trim(), lecture = document.getElementById("aq-lecture").value.trim(); if (!chapter || !lecture) { alert("Please enter chapter and lecture."); return; } const questions = []; document.querySelectorAll("#aqQuestionsContainer .panel").forEach(b => { const text = b.querySelector(".mq-text").value.trim(); const opts = [...b.querySelectorAll(".mq-opt")].map(i => i.value.trim()); const isMulti = b.querySelector(".mq-multi").checked; let ci; if (isMulti) { ci = [...b.querySelectorAll(".mq-multi-correct:checked")].map(c => parseInt(c.value)); } else { ci = [parseInt(b.querySelector(".mq-correct").value)]; } if (text && opts.every(o => o) && ci.length) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: isMulti }); }); if (!questions.length) { alert("Please fill at least one complete question."); return; } await submitQuestions(chapter, lecture, questions); }
 
         /* ── SCREENSHOT IMPORT ── */
         function fileToBase64(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); }); }
-
-        function makeThumb(b64, idx, type) {
-            const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
-            const div = document.createElement("div"); div.className = "preview-thumb"; div.id = `thumb_${type}_${idx}`;
-            div.innerHTML = `<img src="data:${mime};base64,${b64}"><button class="remove-thumb" onclick="removeThumb('${type}',${idx})">✕</button><div class="thumb-label">${type === "q" ? "Q" : "Ans"} ${idx + 1}</div>`;
-            return div;
-        }
-        function refreshPreviews() {
-            const qGrid = document.getElementById("qPreviews"); qGrid.innerHTML = ""; qImagesBase64.forEach((b, i) => qGrid.appendChild(makeThumb(b, i, "q")));
-            const aGrid = document.getElementById("aPreviews"); aGrid.innerHTML = ""; aImagesBase64.forEach((b, i) => aGrid.appendChild(makeThumb(b, i, "a")));
-            checkExtractReady();
-        }
+        function makeThumb(b64, idx, type) { const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png"; const div = document.createElement("div"); div.className = "preview-thumb"; div.id = `thumb_${type}_${idx}`; div.innerHTML = `<img src="data:${mime};base64,${b64}"><button class="remove-thumb" onclick="removeThumb('${type}',${idx})">✕</button><div class="thumb-label">${type === "q" ? "Q" : "Ans"} ${idx + 1}</div>`; return div; }
+        function refreshPreviews() { const qGrid = document.getElementById("qPreviews"); qGrid.innerHTML = ""; qImagesBase64.forEach((b, i) => qGrid.appendChild(makeThumb(b, i, "q"))); const aGrid = document.getElementById("aPreviews"); aGrid.innerHTML = ""; aImagesBase64.forEach((b, i) => aGrid.appendChild(makeThumb(b, i, "a"))); checkExtractReady(); }
         function removeThumb(type, idx) { if (type === "q") qImagesBase64.splice(idx, 1); else aImagesBase64.splice(idx, 1); refreshPreviews(); }
-
         async function handleQFiles(input) { for (const f of input.files) { if (!f) continue; pushUndo(snapshotState()); qImagesBase64.push(await fileToBase64(f)); } refreshPreviews(); }
         async function handleAFiles(input) { for (const f of input.files) { if (!f) continue; pushUndo(snapshotState()); aImagesBase64.push(await fileToBase64(f)); } refreshPreviews(); }
-
-        function checkExtractReady() {
-            const hasManual = document.getElementById("ak-tab-manual").classList.contains("active") && document.getElementById("manualAnswerKey").value.trim();
-            document.getElementById("extractBtn").disabled = !(qImagesBase64.length > 0 && (aImagesBase64.length > 0 || hasManual));
-        }
-
-        function switchAKTab(tab) {
-            document.getElementById("ak-tab-screenshot").classList.toggle("active", tab === "screenshot");
-            document.getElementById("ak-tab-manual").classList.toggle("active", tab === "manual");
-            document.getElementById("ak-screenshot-panel").style.display = tab === "screenshot" ? "block" : "none";
-            document.getElementById("ak-manual-panel").style.display = tab === "manual" ? "block" : "none";
-            checkExtractReady();
-        }
+        function checkExtractReady() { const hasManual = document.getElementById("ak-tab-manual").classList.contains("active") && document.getElementById("manualAnswerKey").value.trim(); document.getElementById("extractBtn").disabled = !(qImagesBase64.length > 0 && (aImagesBase64.length > 0 || hasManual)); }
+        function switchAKTab(tab) { document.getElementById("ak-tab-screenshot").classList.toggle("active", tab === "screenshot"); document.getElementById("ak-tab-manual").classList.toggle("active", tab === "manual"); document.getElementById("ak-screenshot-panel").style.display = tab === "screenshot" ? "block" : "none"; document.getElementById("ak-manual-panel").style.display = tab === "manual" ? "block" : "none"; checkExtractReady(); }
         document.getElementById("manualAnswerKey").addEventListener("input", checkExtractReady);
 
-        document.addEventListener("paste", async function (e) {
-            if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return;
-            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return;
-            for (const item of items) {
-                if (!item.type.startsWith("image/")) continue; e.preventDefault(); const f = item.getAsFile(); const b64 = await fileToBase64(f); pushUndo(snapshotState());
-                // If answer tab is active paste to answer, else to question
-                if (document.getElementById("ak-tab-screenshot").classList.contains("active") && qImagesBase64.length > 0 && aImagesBase64.length === 0) { aImagesBase64.push(b64); } else { qImagesBase64.push(b64); }
-                refreshPreviews(); break;
-            }
-        });
+        document.addEventListener("paste", async function (e) { if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return; const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return; for (const item of items) { if (!item.type.startsWith("image/")) continue; e.preventDefault(); const f = item.getAsFile(); const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (document.getElementById("ak-tab-screenshot").classList.contains("active") && qImagesBase64.length > 0 && aImagesBase64.length === 0) { aImagesBase64.push(b64); } else { qImagesBase64.push(b64); } refreshPreviews(); break; } });
         ["qZone", "aZone"].forEach(zid => { const z = document.getElementById(zid); if (!z) return; z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("dragover"); }); z.addEventListener("dragleave", () => z.classList.remove("dragover")); z.addEventListener("drop", async e => { e.preventDefault(); z.classList.remove("dragover"); for (const f of e.dataTransfer.files) { if (!f || !f.type.startsWith("image/")) continue; const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (zid === "qZone") qImagesBase64.push(b64); else aImagesBase64.push(b64); } refreshPreviews(); }); });
+
+        /* ─── IMAGE EXTRACTION FROM SCREENSHOTS ─── */
+        async function extractImagesForQuestions(questions, screenshotB64Array) {
+            if (!screenshotB64Array || !screenshotB64Array.length) return;
+            const imgQuestions = questions.filter(q => q.hasImage);
+            if (!imgQuestions.length) return;
+            const totalQs = questions.length;
+            const qsPerScreen = Math.max(1, Math.ceil(totalQs / screenshotB64Array.length));
+            for (let qi = 0; qi < questions.length; qi++) {
+                const q = questions[qi];
+                if (!q.hasImage) continue;
+                const screenIdx = Math.min(Math.floor(qi / qsPerScreen), screenshotB64Array.length - 1);
+                const b64 = screenshotB64Array[screenIdx];
+                try {
+                    // Use canvas to load and store the screenshot as the associated image
+                    const cropped = await getImageFromScreenshot(b64, qi, totalQs, screenshotB64Array.length);
+                    q.extractedImageB64 = cropped || b64;
+                } catch (e) { q.extractedImageB64 = b64; }
+            }
+        }
+        async function getImageFromScreenshot(b64, qi, totalQs, totalScreens) {
+            return new Promise(resolve => {
+                const img = new Image();
+                const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        const w = img.naturalWidth, h = img.naturalHeight;
+                        // If multiple questions per screenshot, try to crop the relevant portion
+                        if (totalQs > totalScreens) {
+                            const qsPerScreen = Math.ceil(totalQs / totalScreens);
+                            const localQi = qi % qsPerScreen;
+                            const sliceH = Math.floor(h / qsPerScreen);
+                            const startY = localQi * sliceH;
+                            canvas.width = w; canvas.height = sliceH;
+                            ctx.drawImage(img, 0, startY, w, sliceH, 0, 0, w, sliceH);
+                        } else {
+                            canvas.width = w; canvas.height = h;
+                            ctx.drawImage(img, 0, 0);
+                        }
+                        resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+                    } catch (e) { resolve(null); }
+                };
+                img.onerror = () => resolve(null);
+                img.src = `data:${mime};base64,${b64}`;
+            });
+        }
 
         async function extractWithAI() {
             const chapter = document.getElementById("imp-chapter").value.trim(), startLec = parseInt(document.getElementById("imp-lecture").value);
@@ -1684,7 +1820,7 @@
             const useManual = document.getElementById("ak-tab-manual").classList.contains("active") && manualAK;
             if (!useManual && !aImagesBase64.length) { alert("Please upload an answer key screenshot or switch to manual entry."); return; }
             status.className = "extract-status loading"; status.style.display = "block";
-            status.innerHTML = '<span class="spinner"></span>&nbsp; Sending to AI — detecting questions, equations, and images...';
+            status.innerHTML = '<span class="spinner"></span>&nbsp; Sending to AI — detecting questions, equations, and diagrams...';
             document.getElementById("extractBtn").disabled = true; document.getElementById("extractedList").style.display = "none";
             try {
                 const payload = { questionImages: qImagesBase64 };
@@ -1695,9 +1831,15 @@
                 const data = await r.json(); const parsed = data.questions;
                 if (!Array.isArray(parsed) || !parsed.length) throw new Error("No questions found");
                 pushUndo(snapshotState());
+                // Extract images for questions that have diagrams
+                const imgCount = parsed.filter(q => q.hasImage).length;
+                if (imgCount > 0) {
+                    status.innerHTML = '<span class="spinner"></span>&nbsp; Extracting diagram images from screenshots...';
+                    await extractImagesForQuestions(parsed, qImagesBase64);
+                }
                 extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i }));
                 status.className = "extract-status success";
-                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct. ${parsed.filter(q => q.hasImage).length} with diagrams.`;
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct. ${imgCount} with diagrams${imgCount > 0 ? ' (images extracted & shown below)' : ''}.`;
                 renderExtractedQuestions(extractedQuestions); document.getElementById("extractedList").style.display = "block";
             } catch (err) { status.className = "extract-status error"; status.innerHTML = `❌ ${err.message}`; }
             document.getElementById("extractBtn").disabled = false;
@@ -1708,21 +1850,23 @@
             questions.forEach((q, qi) => {
                 const div = document.createElement("div"); div.className = "extracted-q-item"; div.id = `eq_${qi}`;
                 const ci = q.correctIndexes || (typeof q.correctIndex === "number" ? [q.correctIndex] : [0]);
+                const mime = q.extractedImageB64 && q.extractedImageB64.startsWith("/9j/") ? "image/jpeg" : "image/png";
                 div.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <strong>Q${qi + 1}</strong>
-                ${q.isMultiCorrect ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:20px;color:var(--warn)">✦ Multi</span>' : ""}
-                ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Image</span>' : ""}
-                <div style="display:flex;align-items:center;gap:5px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:7px;padding:3px 10px">
-                    <span style="font-size:0.7rem;opacity:0.6">Lecture</span>
-                    <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" onchange="renumberAfter(${qi})" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
-                </div>
-            </div>
-            <button class="btn btn-danger" style="padding:4px 10px;font-size:0.74rem" onclick="removeExtractedQ(${qi})">✕</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <strong>Q${qi + 1}</strong>
+        ${q.isMultiCorrect ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:20px;color:var(--warn)">✦ Multi</span>' : ""}
+        ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Image</span>' : ""}
+        <div style="display:flex;align-items:center;gap:5px;background:rgba(91,95,239,0.08);border:1px solid rgba(91,95,239,0.2);border-radius:7px;padding:3px 10px">
+          <span style="font-size:0.7rem;opacity:0.6">Lecture</span>
+          <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
         </div>
-        <div class="field"><label>Question Text</label><textarea id="eq_q_${qi}" rows="2" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:Inter,sans-serif;font-size:0.87rem;resize:vertical;outline:none">${q.question}</textarea></div>
-        <div class="extracted-q-opts">${q.options.map((opt, oi) => `<div class="eq-opt ${ci.includes(oi) ? "correct" : ""}"><span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:700">${LETTERS[oi]}</span><input value="${(opt || "").replace(/"/g, "&quot;")}" id="eq_opt_${qi}_${oi}" style="flex:1;background:transparent;border:none;color:var(--text);font-size:0.82rem;outline:none;font-family:Inter,sans-serif"></div>`).join("")}</div>
-        <div style="margin-top:10px">${q.isMultiCorrect
+      </div>
+      <button class="btn btn-danger" style="padding:4px 10px;font-size:0.74rem" onclick="removeExtractedQ(${qi})">✕</button>
+    </div>
+    <div class="field"><label>Question Text</label><textarea id="eq_q_${qi}" rows="2" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:0.87rem;resize:vertical;outline:none">${q.question}</textarea></div>
+    ${q.hasImage && q.extractedImageB64 ? `<div class="eq-image-preview"><img src="data:${mime};base64,${q.extractedImageB64}" alt="Question diagram"><div class="eq-image-label">🖼 Extracted diagram from screenshot</div></div>` : q.hasImage ? `<div class="eq-image-preview" style="background:rgba(245,158,11,0.05);border-color:rgba(245,158,11,0.3);padding:14px;text-align:center"><div style="font-size:0.8rem;color:var(--warn)">⚠️ This question has a diagram — please add it manually after saving</div></div>` : ""}
+    <div class="extracted-q-opts">${q.options.map((opt, oi) => `<div class="eq-opt ${ci.includes(oi) ? "correct" : ""}"><span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:700">${LETTERS[oi]}</span><input value="${(opt || "").replace(/"/g, "&quot;")}" id="eq_opt_${qi}_${oi}" style="flex:1;background:transparent;border:none;color:var(--text);font-size:0.82rem;outline:none;font-family:'Outfit',sans-serif"></div>`).join("")}</div>
+    <div style="margin-top:10px">${q.isMultiCorrect
                         ? `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answers:</label><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}</div>`
                         : `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answer:</label><select id="eq_correct_${qi}" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;color:var(--text);font-size:0.85rem;outline:none;margin-top:5px">${LETTERS.map((l, i) => `<option value="${i}" ${ci[0] === i ? "selected" : ""} style="background:var(--bg-card)">${l} — ${q.options[i] || ""}</option>`).join("")}</select>`
                     }</div>`;
@@ -1731,29 +1875,14 @@
             renderMath(container);
         }
 
-        function renumberAfter(qi) {
-            const startLec = parseInt(document.getElementById("imp-lecture").value) || 1;
-            // Don't auto-change; just keep whatever the user typed
-        }
-
-        function removeExtractedQ(qi) {
-            pushUndo(snapshotState());
-            document.getElementById(`eq_${qi}`)?.remove();
-            // Re-number labels
-            const startLec = parseInt(document.getElementById("imp-lecture").value) || 1;
-            document.querySelectorAll(".extracted-q-item").forEach((item, idx) => {
-                const lbl = item.querySelector("strong"); if (lbl) lbl.textContent = `Q${idx + 1}`;
-                const li = item.querySelector('[id^="eq_lec_"]'); if (li) li.value = startLec + idx;
-            });
-            updateUndoRedoBtns();
-        }
+        function removeExtractedQ(qi) { pushUndo(snapshotState()); document.getElementById(`eq_${qi}`)?.remove(); const startLec = parseInt(document.getElementById("imp-lecture").value) || 1; document.querySelectorAll(".extracted-q-item").forEach((item, idx) => { const lbl = item.querySelector("strong"); if (lbl) lbl.textContent = `Q${idx + 1}`; const li = item.querySelector('[id^="eq_lec_"]'); if (li) li.value = startLec + idx; }); updateUndoRedoBtns(); }
         function addExtractedQ() { const sl = parseInt(document.getElementById("imp-lecture").value) || 1, count = document.querySelectorAll(".extracted-q-item").length; extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndexes: [0], isMultiCorrect: false, assignedLecture: sl + count }); renderExtractedQuestions(extractedQuestions); }
 
         async function saveExtractedQuestions() {
             const chapter = document.getElementById("imp-chapter").value.trim(); if (!chapter) { alert("Please enter a chapter."); return; }
             const items = document.querySelectorAll(".extracted-q-item"); if (!items.length) { alert("No questions."); return; }
             const groups = {}; let hasError = false;
-            items.forEach(item => {
+            items.forEach((item, localIdx) => {
                 const lec = item.querySelector('[id^="eq_lec_"]')?.value.trim();
                 const txt = item.querySelector('[id^="eq_q_"]')?.value.trim();
                 const opts = [0, 1, 2, 3].map(oi => item.querySelector(`[id*="eq_opt_"][id$="_${oi}"]`)?.value.trim() || "");
@@ -1761,35 +1890,24 @@
                 let ci = mc.length > 0 ? mc : [parseInt(item.querySelector('[id^="eq_correct_"]')?.value || 0)];
                 if (!lec || !txt || !opts.every(o => o)) { hasError = true; return; }
                 if (!groups[lec]) groups[lec] = [];
-                groups[lec].push({ question: txt, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1 });
+                const qi = parseInt(item.id.replace('eq_', ''));
+                const origQ = extractedQuestions[isNaN(qi) ? localIdx : qi] || {};
+                groups[lec].push({ question: txt, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1, hasImage: origQ.hasImage || false, extractedImageB64: origQ.extractedImageB64 || null });
             });
             if (hasError) { alert("Some questions are incomplete."); return; }
             const lectures = Object.keys(groups); if (!lectures.length) { alert("No complete questions."); return; }
-            const ov = document.createElement("div"); ov.id = "saveProgressOverlay"; ov.style.cssText = "position:fixed;inset:0;background:rgba(13,15,26,0.9);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px";
-            ov.innerHTML = `<div style="font-size:2rem">💾</div><div style="font-size:1rem;font-weight:700;color:var(--text)" id="progTitle">Saving Questions...</div><div style="width:260px;height:5px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 0.3s;width:0%"></div></div><div style="font-size:0.82rem;color:var(--text-dim)" id="progText">0 / ${lectures.length}</div>`;
+            const ov = document.createElement("div"); ov.id = "saveProgressOverlay"; ov.style.cssText = "position:fixed;inset:0;background:rgba(11,13,24,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px";
+            ov.innerHTML = `<div style="font-size:2.2rem">💾</div><div style="font-size:1rem;font-weight:700;color:var(--text)">Saving Questions...</div><div style="width:260px;height:5px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 0.3s;width:0%"></div></div><div style="font-size:0.82rem;color:var(--text-dim)" id="progText">0 / ${lectures.length}</div>`;
             document.body.appendChild(ov);
             let saved = 0, failed = [];
-            for (const lec of lectures) {
-                document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%";
-                document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved...`;
-                const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false }) });
-                if (r.ok) { saved++; }
-                else if (r.status === 409) {
-                    if (confirm(`Lecture ${lec} already exists. Replace?`)) { const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true }) }); if (r2.ok) saved++; else failed.push(lec); }
-                } else failed.push(lec);
-            }
+            for (const lec of lectures) { document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%"; document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved...`; const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false }) }); if (r.ok) { saved++; } else if (r.status === 409) { if (confirm(`Lecture ${lec} already exists. Replace?`)) { const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true }) }); if (r2.ok) saved++; else failed.push(lec); } else failed.push(lec); } else failed.push(lec); }
             document.getElementById("saveProgressOverlay")?.remove();
             openModal("successModal"); document.getElementById("successModalTitle").textContent = saved > 0 ? "Saved!" : "Failed"; document.getElementById("successModalText").textContent = failed.length === 0 ? `${saved} lecture(s) saved for "${chapter}".` : `Saved: ${saved}. Failed: ${failed.join(", ")}.`;
             await loadQuestionsAdmin(); loadChaptersAdmin();
         }
 
         /* ── SHARED SUBMIT ── */
-        async function submitQuestions(chapter, lecture, questions, replace = false) {
-            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace }) });
-            if (r.status === 409) { pendingReplaceData = { chapter, lecture, questions }; openModal("replaceModal"); return; }
-            if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Saved!"; document.getElementById("successModalText").textContent = `${questions.length} question(s) for Lecture ${lecture}.`; await loadQuestionsAdmin(); loadChaptersAdmin(); }
-            else alert("Failed to save.");
-        }
+        async function submitQuestions(chapter, lecture, questions, replace = false) { const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace }) }); if (r.status === 409) { pendingReplaceData = { chapter, lecture, questions }; openModal("replaceModal"); return; } if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Saved!"; document.getElementById("successModalText").textContent = `${questions.length} question(s) for Lecture ${lecture}.`; await loadQuestionsAdmin(); loadChaptersAdmin(); } else alert("Failed to save."); }
         async function confirmReplace() { closeModal("replaceModal"); const d = pendingReplaceData; const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, questions: d.questions, replace: true }) }); if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Replaced!"; document.getElementById("successModalText").textContent = "Replaced."; await loadQuestionsAdmin(); loadChaptersAdmin(); } else alert("Replace failed."); }
 
         /* ── UNDO/REDO ── */
@@ -1807,26 +1925,14 @@
 
         function renderChapterCards(questions) {
             const grid = document.getElementById("chapterCardsGrid"); if (!grid) return;
-            const chapters = {};
-            (questions || []).forEach(q => { const ch = q.chapter || "(No Chapter)"; if (!chapters[ch]) chapters[ch] = []; chapters[ch].push(q); });
+            const chapters = {}; (questions || []).forEach(q => { const ch = q.chapter || "(No Chapter)"; if (!chapters[ch]) chapters[ch] = []; chapters[ch].push(q); });
             const names = Object.keys(chapters).sort();
             if (!names.length) { grid.innerHTML = '<p style="color:var(--text-dim);padding:20px;grid-column:1/-1">No questions found.</p>'; return; }
-            grid.innerHTML = names.map((ch, i) => {
-                const qs = chapters[ch], lc = qs.length, qc = qs.reduce((s, q) => s + (q.questions || []).length, 0);
-                const hasMulti = qs.some(q => (q.questions || []).some(x => x.isMultiCorrect));
-                const isSelected = selectModeOn && [...selectedLectures].some(k => k.startsWith(ch + "::"));
-                return `<div class="chapter-card ${isSelected ? "selected-card" : ""}" data-ch="${encodeURIComponent(ch)}" onclick="chapterCardClick(event,decodeURIComponent(this.dataset.ch))">
-            ${selectModeOn ? `<input type="checkbox" class="card-checkbox" onclick="event.stopPropagation();toggleChapterSelect('${encodeURIComponent(ch)}')" ${isSelected ? "checked" : ""}>` : ""}
-            <div class="chapter-card-icon">${CHAPTER_ICONS[i % CHAPTER_ICONS.length]}</div>
-            <div class="chapter-card-title">${ch}</div>
-            <div class="chapter-card-count">${lc} lecture${lc !== 1 ? "s" : ""} &middot; ${qc} Q${hasMulti ? ' <span style="color:var(--warn)">&#10022;</span>' : ""}</div>
-        </div>`;
-            }).join("");
+            grid.innerHTML = names.map((ch, i) => { const qs = chapters[ch], lc = qs.length, qc = qs.reduce((s, q) => s + (q.questions || []).length, 0); const hasMulti = qs.some(q => (q.questions || []).some(x => x.isMultiCorrect)); const isSelected = selectModeOn && [...selectedLectures].some(k => k.startsWith(ch + "::")); return `<div class="chapter-card ${isSelected ? "selected-card" : ""}" data-ch="${encodeURIComponent(ch)}" onclick="chapterCardClick(event,decodeURIComponent(this.dataset.ch))">${selectModeOn ? `<input type="checkbox" class="card-checkbox" onclick="event.stopPropagation();toggleChapterSelect('${encodeURIComponent(ch)}')" ${isSelected ? "checked" : ""}>` : ""}  <div class="chapter-card-icon">${CHAPTER_ICONS[i % CHAPTER_ICONS.length]}</div><div class="chapter-card-title">${ch}</div><div class="chapter-card-count">${lc} lecture${lc !== 1 ? "s" : ""} &middot; ${qc} Q${hasMulti ? ' <span style="color:var(--warn)">&#10022;</span>' : ""}</div></div>`; }).join("");
         }
-
         function chapterCardClick(e, ch) { if (selectModeOn) return; showLectureViewH(ch); }
 
-        /* Select mode */
+        /* Chapter select mode */
         function toggleSelectMode() { selectModeOn = !selectModeOn; selectedLectures.clear(); document.getElementById("selectModeBtn").textContent = selectModeOn ? "✓ Done" : "☐ Select"; document.getElementById("mass-delete-bar").classList.toggle("visible", false); renderChapterCards(allQuestions); }
         function toggleChapterSelect(encCh) { const ch = decodeURIComponent(encCh); const lecturesForCh = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch); if (lecturesForCh.every(q => selectedLectures.has(`${ch}::${q.lecture}`))) { lecturesForCh.forEach(q => selectedLectures.delete(`${ch}::${q.lecture}`)); } else { lecturesForCh.forEach(q => selectedLectures.add(`${ch}::${q.lecture}`)); } updateMassDeleteBar(); renderChapterCards(allQuestions); }
         function clearSelection() { selectModeOn = false; selectedLectures.clear(); document.getElementById("selectModeBtn").textContent = "☐ Select"; document.getElementById("mass-delete-bar").classList.remove("visible"); renderChapterCards(allQuestions); }
@@ -1834,55 +1940,100 @@
         function massDelete() { if (!selectedLectures.size) return; document.getElementById("massDeleteModalText").textContent = `Delete ${selectedLectures.size} selected lecture(s)? This cannot be undone.`; openModal("massDeleteModal"); }
         async function confirmMassDelete() { closeModal("massDeleteModal"); const items = [...selectedLectures].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; }); const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) }); if (r.ok) { const d = await r.json(); openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = `Deleted ${d.deleted} lecture(s).`; clearSelection(); await loadQuestionsAdmin(); } else alert("Mass delete failed."); }
         function filterChapterCards(q) { const f = q.toLowerCase(); renderChapterCards(allQuestions.filter(x => (x.chapter || "").toLowerCase().includes(f) || String(x.lecture).includes(f))); }
-        function filterQuestions(q) { filterChapterCards(q); }
 
+        /* ══════════════════════════════════════
+           LECTURE-LEVEL MASS DELETE (NEW)
+        ══════════════════════════════════════ */
+        function toggleLectureSelectMode() {
+            lecSelectModeOn = !lecSelectModeOn; selectedLectureKeys.clear();
+            document.getElementById("lecSelectModeBtn").textContent = lecSelectModeOn ? "✓ Done" : "☐ Select Lectures";
+            document.getElementById("lec-mass-delete-bar").classList.remove("visible");
+            if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
+        }
+        function toggleLectureSelect(chapter, lecture) {
+            const key = `${chapter}::${lecture}`;
+            if (selectedLectureKeys.has(key)) selectedLectureKeys.delete(key);
+            else selectedLectureKeys.add(key);
+            updateLecMassDeleteBar();
+            document.querySelectorAll(".lecture-card").forEach(c => {
+                if (c.dataset.ch === chapter && c.dataset.lec === String(lecture)) {
+                    c.classList.toggle("selected-lec", selectedLectureKeys.has(key));
+                    const cb = c.querySelector(".lec-checkbox"); if (cb) cb.checked = selectedLectureKeys.has(key);
+                }
+            });
+        }
+        function updateLecMassDeleteBar() { const bar = document.getElementById("lec-mass-delete-bar"); const count = document.getElementById("lec-mass-delete-count"); bar.classList.toggle("visible", selectedLectureKeys.size > 0); count.textContent = `${selectedLectureKeys.size} lecture(s) selected`; }
+        function clearLectureSelection() { lecSelectModeOn = false; selectedLectureKeys.clear(); document.getElementById("lecSelectModeBtn").textContent = "☐ Select Lectures"; document.getElementById("lec-mass-delete-bar").classList.remove("visible"); const grid = document.getElementById("lectureCardsGrid"); if (grid) grid.classList.remove("lec-select-mode"); if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); }
+        function massDeleteLectures() { if (!selectedLectureKeys.size) return; document.getElementById("lecMassDeleteModalText").textContent = `Delete ${selectedLectureKeys.size} selected lecture(s) from "${mqCurrentChapter}"? This cannot be undone.`; openModal("lecMassDeleteModal"); }
+        async function confirmLecMassDelete() { closeModal("lecMassDeleteModal"); const items = [...selectedLectureKeys].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; }); const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) }); if (r.ok) { const d = await r.json(); openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = `Deleted ${d.deleted} lecture(s).`; clearLectureSelection(); await loadQuestionsAdmin(); if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); } else alert("Mass delete failed."); }
+
+        /* ── VIEW FUNCTIONS ── */
         function showChapterView() { document.getElementById("mq-chapter-view").style.display = "block"; document.getElementById("mq-lecture-view").style.display = "none"; document.getElementById("mq-question-view").style.display = "none"; mqCurrentChapter = null; mqCurrentLectureIdx = null; }
-        function showLectureViewForChapter(ch, push = false) {
+
+        function showLectureViewForChapter(ch) {
             mqCurrentChapter = ch;
             const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch).sort((a, b) => Number(a.lecture) - Number(b.lecture));
             document.getElementById("mq-chapter-view").style.display = "none"; document.getElementById("mq-lecture-view").style.display = "block"; document.getElementById("mq-question-view").style.display = "none";
             document.getElementById("mq-chapter-title").textContent = ch; document.getElementById("mq-lecture-count").textContent = lecs.length + " lecture(s)";
+            // Reset lecture select state
+            lecSelectModeOn = false; selectedLectureKeys.clear();
+            document.getElementById("lecSelectModeBtn").textContent = "☐ Select Lectures";
+            document.getElementById("lec-mass-delete-bar").classList.remove("visible");
             const grid = document.getElementById("lectureCardsGrid");
-            grid.innerHTML = lecs.map(q => { const qc = (q.questions || []).length, hm = (q.questions || []).some(x => x.isMultiCorrect); const gi = allQuestions.indexOf(q); return `<div class="lecture-card ${hm ? "has-multi" : ""}" onclick="showQuestionViewH(${gi})"><div class="lecture-card-num">L${q.lecture}</div><div style="font-size:0.78rem;margin-bottom:3px">${qc} Q${hm ? ' <span style="color:var(--warn);font-size:0.7rem">✦</span>' : ""}</div><div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div></div>`; }).join("");
+            grid.className = "";
+            grid.innerHTML = lecs.map(q => { const qc = (q.questions || []).length, hm = (q.questions || []).some(x => x.isMultiCorrect); const gi = allQuestions.indexOf(q); const key = `${ch}::${q.lecture}`; const isSelected = selectedLectureKeys.has(key); return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSelected ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" onclick="handleLecCardClick(event,'${ch.replace(/'/g, "\\'")}',${gi},'${q.lecture}')"><input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect('${ch.replace(/'/g, "\\'")}','${q.lecture}')" ${isSelected ? "checked" : ""}><div class="lecture-card-num">L${q.lecture}</div><div style="font-size:0.78rem;margin-bottom:3px">${qc} Q${hm ? ' <span style="color:var(--warn);font-size:0.7rem">✦</span>' : ""}</div><div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div></div>`; }).join("");
         }
+        function handleLecCardClick(e, ch, gi, lec) { if (lecSelectModeOn) { toggleLectureSelect(ch, lec); return; } showQuestionViewH(gi); }
         function showLectureView() { document.getElementById("mq-chapter-view").style.display = "none"; document.getElementById("mq-lecture-view").style.display = "block"; document.getElementById("mq-question-view").style.display = "none"; if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); }
 
+        /* ── QUESTION VIEW with rendered math options ── */
         function showQuestionView(gi) {
             mqCurrentLectureIdx = gi; const q = allQuestions[gi]; if (!q) return;
             document.getElementById("mq-lecture-view").style.display = "none"; document.getElementById("mq-question-view").style.display = "block";
             document.getElementById("mq-question-title").textContent = `${q.chapter} — Lecture ${q.lecture}`;
             document.getElementById("mq-question-subtitle").textContent = `${(q.questions || []).length} question(s) · ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}`;
             const el = document.getElementById("mq-question-content");
-            el.innerHTML = `<div class="form-row" style="margin-bottom:14px">
-        <div class="field"><label>Chapter</label><input id="iqe-chapter" value="${q.chapter || ""}" list="existingChapters" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:0.87rem;outline:none;width:100%"></div>
-        <div class="field"><label>Lecture</label><input id="iqe-lecture" type="number" min="1" value="${q.lecture}" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:0.87rem;outline:none;width:100%"></div>
-    </div>
-    <div id="iqe-questions-container">
-        ${(q.questions || []).map((sub, si) => {
-                const ci = sub.correctIndexes || [sub.correctIndex || 0]; return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px">
-            <div style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Question ${si + 1}${sub.isMultiCorrect ? ' <span style="color:var(--warn)">✦</span>' : ""}</div>
-            <!-- Rendered preview (math rendered via KaTeX) -->
-            <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:10px;font-size:0.9rem;line-height:1.6;min-height:40px" id="iqe_preview_${si}"></div>
-            <div class="field"><label>Edit Raw Text (with $math$)</label>
-                <textarea id="iqe_qt_${si}" rows="2" oninput="updatePreview(${si})" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:JetBrains Mono,monospace;font-size:0.85rem;resize:vertical;outline:none">${sub.question}</textarea>
-            </div>
-            <div class="options-grid">${LETTERS.map((l, oi) => `<div class="field"><label>Option ${l}</label><input id="iqe_opt_${si}_${oi}" value="${(sub.options && sub.options[oi] || "").replace(/"/g, "&quot;")}" style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:0.85rem;outline:none;width:100%"></div>`).join("")}</div>
-            <div style="margin-top:10px"><label style="font-size:0.75rem;color:var(--text-dim);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px">Correct Answer(s):</label>
-                <div style="display:flex;gap:10px;flex-wrap:wrap">
-                    ${LETTERS.map((l, oi) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.87rem;padding:6px 14px;border-radius:var(--radius-sm);background:${ci.includes(oi) ? "rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)" : "var(--bg-card);border:1px solid var(--border)"}"><input type="checkbox" class="iqe_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""} style="width:auto;cursor:pointer;accent-color:var(--success)"> ${l}</label>`).join("")}
-                </div>
-            </div>
-        </div>`;
+            el.innerHTML = `<div class="form-row" style="margin-bottom:16px">
+    <div class="field"><label>Chapter</label><input id="iqe-chapter" value="${q.chapter || ""}" list="existingChapters" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:0.87rem;outline:none;width:100%;font-family:'Outfit',sans-serif"></div>
+    <div class="field"><label>Lecture</label><input id="iqe-lecture" type="number" min="1" value="${q.lecture}" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:0.87rem;outline:none;width:100%;font-family:'Outfit',sans-serif"></div>
+  </div>
+  <div id="iqe-questions-container">
+    ${(q.questions || []).map((sub, si) => {
+                const ci = sub.correctIndexes || [sub.correctIndex || 0];
+                return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px">
+        <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Question ${si + 1}${sub.isMultiCorrect ? ' <span style="color:var(--warn)">✦ Multi-correct</span>' : ""}</div>
+        <div class="q-render-preview" id="iqe_preview_${si}"></div>
+        <div class="field"><label>Edit Raw Text ($math$ for equations)</label>
+          <textarea id="iqe_qt_${si}" rows="2" oninput="updatePreview(${si})" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.85rem;resize:vertical;outline:none">${sub.question}</textarea>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Options (rendered)</div>
+          ${LETTERS.map((l, oi) => `<div class="opt-render-row ${ci.includes(oi) ? "is-correct" : ""}"><span class="opt-letter">${l}</span><div id="iqe_opt_render_${si}_${oi}"></div></div>`).join("")}
+        </div>
+        <div class="options-grid">
+          ${LETTERS.map((l, oi) => `<div class="field"><label>Edit Option ${l}</label><input id="iqe_opt_${si}_${oi}" value="${(sub.options && sub.options[oi] || "").replace(/"/g, "&quot;")}" oninput="updateOptRender(${si},${oi})" style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:0.85rem;outline:none;width:100%;font-family:'Outfit',sans-serif"></div>`).join("")}
+        </div>
+        <div style="margin-top:10px"><label style="font-size:0.75rem;color:var(--text-dim);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px">Correct Answer(s):</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            ${LETTERS.map((l, oi) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.87rem;padding:6px 14px;border-radius:var(--radius-sm);background:${ci.includes(oi) ? "rgba(6,214,160,0.1);border:1px solid rgba(6,214,160,0.3)" : "var(--bg-card);border:1px solid var(--border)"}"><input type="checkbox" class="iqe_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""} style="width:auto;cursor:pointer;accent-color:var(--success)"> ${l}</label>`).join("")}
+          </div>
+        </div>
+      </div>`;
             }).join("")}
-    </div>`;
-            // Set text content and render math in previews
+  </div>`;
+            // Set previews for question text and options
             (q.questions || []).forEach((sub, si) => {
                 const prev = document.getElementById(`iqe_preview_${si}`);
                 if (prev) { prev.textContent = sub.question; renderMath(prev); }
+                LETTERS.forEach((l, oi) => {
+                    const optRender = document.getElementById(`iqe_opt_render_${si}_${oi}`);
+                    if (optRender) { optRender.textContent = (sub.options && sub.options[oi]) || ""; renderMath(optRender); }
+                });
             });
         }
 
         function updatePreview(si) { const ta = document.getElementById(`iqe_qt_${si}`), prev = document.getElementById(`iqe_preview_${si}`); if (ta && prev) { prev.textContent = ta.value; renderMath(prev); } }
+        function updateOptRender(si, oi) { const inp = document.getElementById(`iqe_opt_${si}_${oi}`), rend = document.getElementById(`iqe_opt_render_${si}_${oi}`); if (inp && rend) { rend.textContent = inp.value; renderMath(rend); } }
 
         async function saveInlineEdit() {
             const chapter = document.getElementById("iqe-chapter")?.value.trim(), lecture = document.getElementById("iqe-lecture")?.value.trim();
@@ -1902,58 +2053,26 @@
         async function confirmDelete() { closeModal("deleteModal"); const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, { method: "DELETE", credentials: "include" }); if (r.ok) { openModal("successModal"); document.getElementById("successModalTitle").textContent = "Deleted"; document.getElementById("successModalText").textContent = "Question deleted."; await loadQuestionsAdmin(); if (window._deleteFromInline) { window._deleteFromInline = false; showLectureView(); } } else alert("Delete failed."); }
 
         /* ── STUDENTS ── */
-        function renderStudentTable(data) {
-            const tbody = document.getElementById("studentTableBody"); if (!tbody) return; tbody.innerHTML = "";
-            const wa = data.filter(s => (s.answers && s.answers.length > 0) || typeof s.answer === "number");
-            if (!wa.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;opacity:0.4;padding:20px">No student records yet.</td></tr>'; return; }
-            wa.forEach(s => {
-                let correct, total; if (typeof s.correctCount === "number") { correct = s.correctCount; total = s.totalQuestions || 1; } else { correct = s.correct ? 1 : 0; total = 1; } const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-                tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${s.mobile || "—"}</td><td>${s.place || "—"}</td><td>${s.className || "—"}</td><td>${s.chapter || "—"}</td><td>L${s.lecture || "—"}</td><td>${correct}/${total}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`);
-            });
-        }
+        function renderStudentTable(data) { const tbody = document.getElementById("studentTableBody"); if (!tbody) return; tbody.innerHTML = ""; const wa = data.filter(s => (s.answers && s.answers.length > 0) || typeof s.answer === "number"); if (!wa.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;opacity:0.4;padding:20px">No student records yet.</td></tr>'; return; } wa.forEach(s => { let correct, total; if (typeof s.correctCount === "number") { correct = s.correctCount; total = s.totalQuestions || 1; } else { correct = s.correct ? 1 : 0; total = 1; } const pct = total > 0 ? Math.round((correct / total) * 100) : 0; tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${s.mobile || "—"}</td><td>${s.place || "—"}</td><td>${s.className || "—"}</td><td>${s.chapter || "—"}</td><td>L${s.lecture || "—"}</td><td>${correct}/${total}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`); }); }
         function filterStudents(q) { const f = q.toLowerCase(); renderStudentTable(allStudents.filter(s => (s.name || "").toLowerCase().includes(f) || (s.mobile || "").includes(f) || String(s.lecture || "").includes(f) || (s.chapter || "").toLowerCase().includes(f))); }
 
         /* ── CSV EXPORT ── */
-        function exportCSV() {
-            let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n";
-            // Include both new format (answers array) and old format (single answer field)
-            allStudents.filter(s => (s.answers && s.answers.length > 0) || typeof s.answer === "number").forEach(s => {
-                const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
-                // Fix mobile: use ="number" format so Excel doesn't convert to scientific notation
-                const mobile = s.mobile ? `="${s.mobile}"` : "";
-                csv += `"${s.name || ""}",${mobile},"${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${s.correctCount || 0},${s.totalQuestions || 0},${pct}%\n`;
-            });
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }), url = URL.createObjectURL(blob), link = document.createElement("a");
-            link.href = url; link.download = `GripPhysics_${new Date().toISOString().slice(0, 10)}.csv`; link.click();
-        }
+        function exportCSV() { let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n"; allStudents.filter(s => (s.answers && s.answers.length > 0) || typeof s.answer === "number").forEach(s => { const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0; const mobile = s.mobile ? `="${s.mobile}"` : ""; csv += `"${s.name || ""}",${mobile},"${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${s.correctCount || 0},${s.totalQuestions || 0},${pct}%\n`; }); const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }), url = URL.createObjectURL(blob), link = document.createElement("a"); link.href = url; link.download = `GripPhysics_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
         /* ── FIX DB ── */
-        async function reloadCache() {
-            const st = document.getElementById("cacheStatus");
-            st.innerHTML = '<span class="spinner"></span>&nbsp; Reloading...';
-            try { const r = await fetch(`${API_BASE}/api/admin/reload-cache`, { method: "POST", credentials: "include" }); const d = await r.json(); st.innerHTML = `<div style="padding:12px 14px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem;margin-top:4px">✅ Cache reloaded — ${d.cached} question(s) cached.</div>`; }
-            catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; }
-        }
-        async function scanCorrupted() {
-            const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults");
-            st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = "";
-            try {
-                const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = "";
-                if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); }
-                else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-sm);color:#fca5a5;margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); }
-            } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; }
-        }
-        async function deleteCorrupted() { if (!confirm("Permanently delete corrupted records?")) return; const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; } }
+        async function reloadCache() { const st = document.getElementById("cacheStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Reloading...'; try { const r = await fetch(`${API_BASE}/api/admin/reload-cache`, { method: "POST", credentials: "include" }); const d = await r.json(); st.innerHTML = `<div style="padding:12px 14px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem;margin-top:4px">✅ Cache reloaded — ${d.cached} question(s) cached.</div>`; } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; } }
+        async function scanCorrupted() { const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults"); st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = ""; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = ""; if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); } else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);color:#fca5a5;margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); } } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; } }
+        async function deleteCorrupted() { if (!confirm("Permanently delete corrupted records?")) return; const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#6ee7b7;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:#fca5a5">Error: ${e.message}</div>`; } }
 
         /* ── MODALS ── */
         function openModal(id) { document.getElementById(id).style.display = "flex"; }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
         /* ── PWA ── */
-        if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("/admin-sw.js").then(r => console.log("SW registered:", r.scope)).catch(e => console.warn("SW failed:", e)); }); }
+        if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("/admin-sw.js").then(r => console.log("SW:", r.scope)).catch(e => console.warn("SW failed:", e)); }); }
         let _dip = null;
-        window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); _dip = e; const b = document.createElement("div"); b.id = "installBanner"; b.style.cssText = "position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid rgba(99,102,241,0.3);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:9000;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:340px;width:calc(100% - 32px);animation:slideUp 0.3s ease"; b.innerHTML = `<span style="font-size:1.6rem">⚛</span><div style="flex:1"><div style="font-weight:700;font-size:0.88rem">Install Grip Physics Admin</div><div style="font-size:0.74rem;color:var(--text-dim);margin-top:2px">Add to Home Screen</div></div><div style="display:flex;gap:6px"><button onclick="installApp()" class="btn btn-primary" style="padding:7px 12px;font-size:0.8rem">Install</button><button onclick="dismissInstall()" class="btn btn-ghost" style="padding:7px 10px;font-size:0.8rem">✕</button></div>`; document.body.appendChild(b); });
-        async function installApp() { if (!_dip) return; _dip.prompt(); const r = await _dip.userChoice; console.log("Install:", r.outcome); _dip = null; dismissInstall(); }
+        window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); _dip = e; const b = document.createElement("div"); b.id = "installBanner"; b.style.cssText = "position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid rgba(91,95,239,0.3);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:9000;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:340px;width:calc(100% - 32px);animation:slideUp 0.3s ease"; b.innerHTML = `<span style="font-size:1.6rem">⚛</span><div style="flex:1"><div style="font-weight:700;font-size:0.88rem">Install Grip Physics Admin</div><div style="font-size:0.74rem;color:var(--text-dim);margin-top:2px">Add to Home Screen</div></div><div style="display:flex;gap:6px"><button onclick="installApp()" class="btn btn-primary" style="padding:7px 12px;font-size:0.8rem">Install</button><button onclick="dismissInstall()" class="btn btn-ghost" style="padding:7px 10px;font-size:0.8rem">✕</button></div>`; document.body.appendChild(b); });
+        async function installApp() { if (!_dip) return; _dip.prompt(); const r = await _dip.userChoice; _dip = null; dismissInstall(); }
         function dismissInstall() { document.getElementById("installBanner")?.remove(); }
         window.addEventListener("appinstalled", () => { dismissInstall(); _dip = null; });
     </script>
