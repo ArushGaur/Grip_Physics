@@ -2783,7 +2783,7 @@
 
         // ── Multi-diagram detection: find ALL diagram regions on a screenshot ──
         // Returns array of base64 cropped images, sorted top-to-bottom by position
-        async function detectAllDiagramsFromScreenshot(b64) {
+        async function detectAllDiagramsFromScreenshot(b64, expectedCount) {
             // Try OpenCV multi-detection first
             if (cvReady) {
                 try {
@@ -2810,12 +2810,16 @@
                         const imgArea = W * H;
                         const areaRatio = area / imgArea;
                         const aspect = rect.width / rect.height;
-                        if (areaRatio < 0.02 || areaRatio > 0.75) continue;
-                        if (rect.width < 60 || rect.height < 40) continue;
+                        // Relaxed filters to catch smaller diagrams
+                        if (areaRatio < 0.008 || areaRatio > 0.75) continue;
+                        if (rect.width < 40 || rect.height < 30) continue;
                         if (rect.width > W * 0.98) continue;
-                        if (aspect < 0.3 || aspect > 6) continue;
-                        if (areaRatio < 0.03) continue;
-                        candidates.push({ ...rect, areaRatio });
+                        if (aspect < 0.2 || aspect > 8) continue;
+                        // Prefer regions in the right half (diagrams are typically there)
+                        const centerX = rect.x + rect.width / 2;
+                        const rightSide = centerX > W * 0.35;
+                        if (areaRatio < 0.015 && !rightSide) continue; // tiny + left = probably text
+                        candidates.push({ ...rect, areaRatio, rightSide });
                     }
 
                     src.delete(); gray.delete(); inv.delete(); thresh.delete();
@@ -2828,8 +2832,10 @@
                         for (const c of candidates) {
                             let didMerge = false;
                             for (const m of merged) {
-                                const overlapX = c.x < m.x + m.width && c.x + c.width > m.x;
-                                const overlapY = c.y < m.y + m.height && c.y + c.height > m.y;
+                                // Check overlap or close proximity (within 20px)
+                                const pad = 20;
+                                const overlapX = c.x < m.x + m.width + pad && c.x + c.width > m.x - pad;
+                                const overlapY = c.y < m.y + m.height + pad && c.y + c.height > m.y - pad;
                                 if (overlapX && overlapY) {
                                     const nx = Math.min(m.x, c.x);
                                     const ny = Math.min(m.y, c.y);
@@ -2845,6 +2851,8 @@
                         // Sort top-to-bottom by Y position
                         merged.sort((a, b) => a.y - b.y);
                         const results = merged.map(r => cropCanvas(canvas, r.x, r.y, r.width, r.height));
+                        if (results.length >= expectedCount) return results;
+                        // If we found some but not enough, keep them (will be supplemented by fallback)
                         if (results.length > 0) return results;
                     }
                 } catch (e) {
@@ -2857,7 +2865,30 @@
             return single ? [single] : [];
         }
 
+        // Right-side crop fallback: split the right portion of screenshot into N sections
+        async function cropRightSideDiagrams(b64, count) {
+            try {
+                const { canvas } = await loadImageToCanvas(b64);
+                const W = canvas.width, H = canvas.height;
+                // Take the right 45% of the image (where diagrams typically are in textbooks)
+                const cropX = Math.floor(W * 0.50);
+                const cropW = W - cropX;
+                const sliceH = Math.floor(H / count);
+                const results = [];
+                for (let i = 0; i < count; i++) {
+                    const y = i * sliceH;
+                    const h = Math.min(sliceH, H - y);
+                    results.push(cropCanvas(canvas, cropX, y, cropW, h, 4));
+                }
+                return results;
+            } catch (e) {
+                console.warn("Right-side crop fallback error:", e);
+                return [];
+            }
+        }
+
         // Override: detect all diagrams per screenshot, then map to questions in order
+        // If not enough diagrams found via OpenCV, falls back to right-side cropping
         async function extractImagesForQuestions(questions, screenshotB64Array) {
             if (!screenshotB64Array || !screenshotB64Array.length) return;
             const imgQuestions = questions.filter(q => q.hasImage);
@@ -2865,9 +2896,35 @@
 
             // Detect all diagrams from each screenshot
             const allDiagrams = [];
-            for (const b64 of screenshotB64Array) {
-                const diagrams = await detectAllDiagramsFromScreenshot(b64);
-                allDiagrams.push(...diagrams);
+            const imgCountPerScreen = Math.ceil(imgQuestions.length / screenshotB64Array.length);
+
+            for (let si = 0; si < screenshotB64Array.length; si++) {
+                const b64 = screenshotB64Array[si];
+                const expectedOnThis = Math.min(imgCountPerScreen, imgQuestions.length - allDiagrams.length);
+                const diagrams = await detectAllDiagramsFromScreenshot(b64, expectedOnThis);
+
+                if (diagrams.length >= expectedOnThis) {
+                    // OpenCV found enough
+                    allDiagrams.push(...diagrams);
+                } else {
+                    // Not enough detected — supplement with right-side crop fallback
+                    // Use any OpenCV results first, then fill remaining with right-side crops
+                    const remaining = expectedOnThis - diagrams.length;
+                    const fallbacks = await cropRightSideDiagrams(b64, expectedOnThis);
+                    // If we have some OpenCV results, use them for the first slots
+                    // and fill missing slots from fallback
+                    if (diagrams.length > 0) {
+                        allDiagrams.push(...diagrams);
+                        // Add fallback crops for remaining positions (skip ones that might overlap with detected)
+                        const startFallbackIdx = diagrams.length;
+                        for (let fi = startFallbackIdx; fi < fallbacks.length && fi < expectedOnThis; fi++) {
+                            allDiagrams.push(fallbacks[fi]);
+                        }
+                    } else {
+                        // No OpenCV results at all — use all fallback crops
+                        allDiagrams.push(...fallbacks.slice(0, expectedOnThis));
+                    }
+                }
             }
 
             // Assign detected diagrams to image-questions in order (top-to-bottom)
