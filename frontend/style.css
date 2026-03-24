@@ -449,49 +449,36 @@ button[type="submit"]:hover,
 .options-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .option {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 13px 16px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 16px 18px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: var(--transition);
-    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.12);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     text-align: left;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     position: relative;
-}
-
-.option-letter {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    flex-shrink: 0;
-    font-family: 'Space Mono', monospace;
-    transition: var(--transition);
+    min-height: 56px;
 }
 
 .option:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(0, 242, 254, 0.4);
+    transform: translateX(4px);
+    box-shadow: 0 4px 20px rgba(0, 242, 254, 0.1);
 }
 
 .option.selected {
-    background: rgba(0, 242, 254, 0.1);
+    background: rgba(0, 242, 254, 0.12);
     border-color: var(--accent);
-    box-shadow: 0 0 16px rgba(0, 242, 254, 0.15);
+    box-shadow: 0 0 24px rgba(0, 242, 254, 0.2);
 }
 
 .option.selected .option-letter {
@@ -501,9 +488,9 @@ button[type="submit"]:hover,
 }
 
 .option.correct {
-    background: rgba(46, 204, 113, 0.15) !important;
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(46, 204, 113, 0.08)) !important;
     border-color: var(--success) !important;
-    box-shadow: 0 0 20px var(--success-glow);
+    box-shadow: 0 0 24px var(--success-glow);
 }
 
 .option.correct .option-letter {
@@ -513,9 +500,9 @@ button[type="submit"]:hover,
 }
 
 .option.incorrect {
-    background: rgba(231, 76, 60, 0.15) !important;
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.2), rgba(231, 76, 60, 0.08)) !important;
     border-color: var(--error) !important;
-    box-shadow: 0 0 20px var(--error-glow);
+    box-shadow: 0 0 24px var(--error-glow);
 }
 
 .option.incorrect .option-letter {
@@ -525,8 +512,44 @@ button[type="submit"]:hover,
 }
 
 .option.partial {
-    background: rgba(243, 156, 18, 0.15) !important;
+    background: linear-gradient(135deg, rgba(243, 156, 18, 0.2), rgba(243, 156, 18, 0.08)) !important;
     border-color: var(--warn) !important;
+}
+
+/* Option Letter */
+.option-letter {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-family: 'Space Mono', monospace;
+    transition: var(--transition);
+}
+
+/* Question Image */
+.question-image-wrap {
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.question-image {
+    display: block;
+    max-width: 100%;
+    max-height: 300px;
+    margin: 0 auto;
+    border-radius: 8px;
+    object-fit: contain;
 }
 
 /* Nav */
