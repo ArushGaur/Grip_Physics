@@ -281,3 +281,22 @@ window.addEventListener("popstate",function(e){
         setStep(1);
     }
 });
+
+/* ── THEME TOGGLE ── */
+function togglePortalTheme(){
+    const html=document.documentElement;
+    const isLight=html.getAttribute("data-theme")==="light";
+    html.setAttribute("data-theme",isLight?"":"light");
+    const btn=document.getElementById("themeToggle");
+    if(btn) btn.textContent=isLight?"🌙":"☀️";
+    localStorage.setItem("grip-theme",isLight?"dark":"light");
+}
+
+(function(){
+    const saved=localStorage.getItem("grip-theme");
+    if(saved==="light"){
+        document.documentElement.setAttribute("data-theme","light");
+        const btn=document.getElementById("themeToggle");
+        if(btn) btn.textContent="☀️";
+    }
+})();
