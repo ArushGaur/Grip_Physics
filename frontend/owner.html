@@ -1234,6 +1234,229 @@
             justify-content: center;
         }
 
+        .student-detail-box {
+            position: relative;
+            width: 380px;
+            text-align: left;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--bg-hover);
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .modal-close-btn:hover {
+            background: var(--bg-input);
+            color: var(--text);
+        }
+
+        .stu-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .stu-detail-avatar {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .stu-detail-info h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stu-detail-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        .stu-detail-score-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            background: var(--bg-input);
+            border-radius: var(--radius);
+            padding: 14px 10px;
+            margin-bottom: 14px;
+        }
+
+        .stu-detail-score-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stu-detail-score-num {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .stu-detail-score-lbl {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .stu-detail-score-divider {
+            width: 1px;
+            height: 36px;
+            background: var(--border);
+        }
+
+        .stu-detail-progress {
+            height: 8px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .stu-detail-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            border-radius: 10px;
+            transition: width 0.6s ease;
+            width: 0%;
+        }
+
+        .stu-detail-score-pct {
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .stu-detail-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .stu-detail-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .stu-detail-field-icon {
+            font-size: 1rem;
+        }
+
+        .multi-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .multi-toggle-label:hover {
+            border-color: var(--accent);
+        }
+
+        .multi-toggle-label input {
+            display: none;
+        }
+
+        .multi-toggle-text {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            transition: var(--transition);
+        }
+
+        .multi-toggle-label:has(input:checked) {
+            background: rgba(136, 145, 255, 0.12);
+            border-color: var(--accent);
+        }
+
+        .multi-toggle-label:has(input:checked) .multi-toggle-text {
+            color: var(--accent);
+        }
+
+        .saving-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .saving-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 40px 50px;
+            text-align: center;
+            box-shadow: var(--shadow-modal);
+        }
+
+        .saving-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .saving-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .saving-subtext {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
         .edit-modal-box {
             background: var(--bg-card);
             border-radius: 18px;
@@ -2667,6 +2890,60 @@
             <h3 id="successModalTitle">Success</h3>
             <p id="successModalText">Done.</p><button class="btn btn-primary btn-full"
                 onclick="closeModal('successModal')">OK</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="studentDetailModal">
+        <div class="modal-box student-detail-box">
+            <button class="modal-close-btn" onclick="closeModal('studentDetailModal')">✕</button>
+            <div class="stu-detail-header">
+                <div class="stu-detail-avatar" id="sdd-avatar">?</div>
+                <div class="stu-detail-info">
+                    <h3 id="sdd-name">Student Name</h3>
+                    <p id="sdd-meta">Chapter • Lecture</p>
+                </div>
+            </div>
+            <div class="stu-detail-score-row">
+                <div class="stu-detail-score-item">
+                    <div class="stu-detail-score-num" id="sdd-correct">0</div>
+                    <div class="stu-detail-score-lbl">Correct</div>
+                </div>
+                <div class="stu-detail-score-divider"></div>
+                <div class="stu-detail-score-item">
+                    <div class="stu-detail-score-num" id="sdd-wrong">0</div>
+                    <div class="stu-detail-score-lbl">Wrong</div>
+                </div>
+                <div class="stu-detail-score-divider"></div>
+                <div class="stu-detail-score-item">
+                    <div class="stu-detail-score-num" id="sdd-total">0</div>
+                    <div class="stu-detail-score-lbl">Total</div>
+                </div>
+            </div>
+            <div class="stu-detail-progress">
+                <div class="stu-detail-progress-bar" id="sdd-progress-bar"></div>
+            </div>
+            <div class="stu-detail-score-pct" id="sdd-score-pct">0%</div>
+            <div class="stu-detail-fields">
+                <div class="stu-detail-field">
+                    <span class="stu-detail-field-icon">📍</span>
+                    <span id="sdd-place">—</span>
+                </div>
+                <div class="stu-detail-field">
+                    <span class="stu-detail-field-icon">🎓</span>
+                    <span id="sdd-class">—</span>
+                </div>
+                <div class="stu-detail-field">
+                    <span class="stu-detail-field-icon">📞</span>
+                    <span id="sdd-mobile">—</span>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="closeModal('studentDetailModal')" style="margin-top:8px">Close</button>
+        </div>
+    </div>
+    <div class="saving-overlay" id="savingOverlay">
+        <div class="saving-box">
+            <div class="saving-spinner"></div>
+            <div class="saving-text" id="savingText">Saving...</div>
+            <div class="saving-subtext" id="savingSubtext">Please wait</div>
         </div>
     </div>
     <div class="modal-overlay" id="deleteModal">
@@ -4234,8 +4511,15 @@
                 const ci = sub.correctIndexes || [sub.correctIndex || 0];
                 const hasImg = sub.questionImage;
                 const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)"><img src="data:image/png;base64,${sub.questionImage}" alt="Question diagram" style="max-width:100%;max-height:250px;display:block;margin:0 auto;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'250px':'none'"></div>` : '';
+                const isMulti = sub.isMultiCorrect || ci.length > 1;
                 return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px">
-                        <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Question ${si + 1}${sub.isMultiCorrect ? ' <span style="color:var(--warn)">✦ Multi-correct</span>' : ""}${hasImg ? ' <span style="color:var(--accent)">📷 Has Image</span>' : ""}</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                            <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px">Question ${si + 1}${hasImg ? ' <span style="color:var(--accent)">📷 Has Image</span>' : ""}</div>
+                            <label class="multi-toggle-label">
+                                <input type="checkbox" id="iqe_multi_${si}" ${isMulti ? "checked" : ""} onchange="toggleMultiCorrect(${si})">
+                                <span class="multi-toggle-text">${isMulti ? "✦ Multi-correct" : "○ Single-correct"}</span>
+                            </label>
+                        </div>
                         ${imgHtml}
                         <div class="q-render-preview" id="iqe_preview_${si}"></div>
                         <div class="field"><label>Edit Raw Text ($math$ for equations)</label>
@@ -4248,9 +4532,9 @@
                         <div class="options-grid">
                             ${LETTERS.map((l, oi) => `<div class="field"><label>Edit Option ${l}</label><input id="iqe_opt_${si}_${oi}" value="${(sub.options && sub.options[oi] || "").replace(/"/g, "&quot;")}" oninput="updateOptRender(${si},${oi})" style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:0.85rem;outline:none;width:100%;font-family:'Outfit',sans-serif"></div>`).join("")}
                         </div>
-                        <div style="margin-top:10px"><label style="font-size:0.75rem;color:var(--text-dim);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px">Correct Answer(s):</label>
+                        <div style="margin-top:10px" id="iqe_correct_wrap_${si}"><label style="font-size:0.75rem;color:var(--text-dim);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px">Correct Answer(s):</label>
                             <div style="display:flex;gap:10px;flex-wrap:wrap">
-                                ${LETTERS.map((l, oi) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.87rem;padding:6px 14px;border-radius:var(--radius-sm);background:${ci.includes(oi) ? "rgba(6,214,160,0.1);border:1px solid rgba(6,214,160,0.3)" : "var(--bg-card);border:1px solid var(--border)"}><input type="checkbox" class="iqe_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""} style="width:auto;cursor:pointer;accent-color:var(--success)"> ${l}</label>`).join("")}
+                                ${LETTERS.map((l, oi) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.87rem;padding:6px 14px;border-radius:var(--radius-sm);background:${ci.includes(oi) ? "rgba(6,214,160,0.1);border:1px solid rgba(6,214,160,0.3)" : "var(--bg-card);border:1px solid var(--border)"}><input type="${isMulti ? "checkbox" : "radio"}" name="iqe_correct_single_${si}" class="iqe_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""} style="width:auto;cursor:pointer;accent-color:var(--success)"> ${l}</label>`).join("")}
                             </div>
                         </div>
                     </div>`;
@@ -4278,6 +4562,40 @@
             if (inp && rend) { rend.textContent = inp.value; renderMath(rend); }
         }
 
+        function toggleMultiCorrect(si) {
+            const isMulti = document.getElementById(`iqe_multi_${si}`)?.checked || false;
+            const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
+            if (!wrap) return;
+            const correctLabels = wrap.querySelectorAll('label');
+            correctLabels.forEach(label => {
+                const input = label.querySelector('input');
+                if (input) {
+                    input.type = isMulti ? 'checkbox' : 'radio';
+                    if (!isMulti && input.checked) {
+                        correctLabels.forEach(l => {
+                            if (l !== label) {
+                                const inp = l.querySelector('input');
+                                if (inp) inp.checked = false;
+                            }
+                        });
+                    }
+                }
+                if (isMulti) {
+                    label.style.background = input?.checked ? "rgba(6,214,160,0.1);border:1px solid rgba(6,214,160,0.3)" : "var(--bg-card);border:1px solid var(--border)";
+                }
+            });
+        }
+
+        function showSavingOverlay(text = "Saving...", subtext = "Please wait") {
+            document.getElementById("savingText").textContent = text;
+            document.getElementById("savingSubtext").textContent = subtext;
+            document.getElementById("savingOverlay").style.display = "flex";
+        }
+
+        function hideSavingOverlay() {
+            document.getElementById("savingOverlay").style.display = "none";
+        }
+
         async function saveInlineEdit() {
             const chapter = document.getElementById("iqe-chapter")?.value.trim();
             const lecture = document.getElementById("iqe-lecture")?.value.trim();
@@ -4287,23 +4605,35 @@
             containers.forEach((c, si) => {
                 const text = document.getElementById(`iqe_qt_${si}`)?.value.trim();
                 const opts = LETTERS.map((_, oi) => document.getElementById(`iqe_opt_${si}_${oi}`)?.value.trim() || "");
+                const isMulti = document.getElementById(`iqe_multi_${si}`)?.checked || false;
                 const checked = [...c.querySelectorAll(`[class*="iqe_correct_"]:checked`)].map(x => parseInt(x.value));
                 const ci = checked.length ? checked : [0];
-                if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1 });
+                if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: isMulti });
             });
             if (!questions.length) { showErrorModal("No complete questions found to save.", "Incomplete data"); return; }
+            showSavingOverlay("Saving questions...", `Saving ${questions.length} question(s)`);
             const q = allQuestions[mqCurrentLectureIdx];
             const oldCh = q?.chapter || "_none_";
             const oldLec = q?.lecture;
-            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace: true }) });
-            if (!r.ok) { showErrorModal(await extractErrorMessage(r, "Save failed for this lecture."), "Save failed"); return; }
-            if (oldCh !== chapter || String(oldLec) !== String(lecture)) {
-                await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(oldCh)}/${encodeURIComponent(oldLec)}`, { method: "DELETE", credentials: "include" });
+            try {
+                const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace: true }) });
+                if (!r.ok) {
+                    hideSavingOverlay();
+                    showErrorModal(await extractErrorMessage(r, "Save failed for this lecture."), "Save failed");
+                    return;
+                }
+                if (oldCh !== chapter || String(oldLec) !== String(lecture)) {
+                    await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(oldCh)}/${encodeURIComponent(oldLec)}`, { method: "DELETE", credentials: "include" });
+                }
+                hideSavingOverlay();
+                showSuccessModal("Saved!", `Lecture ${lecture} updated.`);
+                await loadQuestionsAdmin(); loadChaptersAdmin();
+                const ni = allQuestions.findIndex(x => x.chapter === chapter && String(x.lecture) === String(lecture));
+                if (ni !== -1) showQuestionView(ni); else showLectureView();
+            } catch (e) {
+                hideSavingOverlay();
+                showErrorModal("An error occurred while saving.", "Error");
             }
-            showSuccessModal("Saved!", `Lecture ${lecture} updated.`);
-            await loadQuestionsAdmin(); loadChaptersAdmin();
-            const ni = allQuestions.findIndex(x => x.chapter === chapter && String(x.lecture) === String(lecture));
-            if (ni !== -1) showQuestionView(ni); else showLectureView();
         }
 
         function deleteCurrentQuestion() {
@@ -4492,7 +4822,20 @@
             if (typeof student.correctCount === "number") { correct = student.correctCount; total = student.totalQuestions || 1; }
             else { correct = student.correct ? 1 : 0; total = 1; }
             const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-            showSuccessModal(`${student.name || 'Student'} - ${student.chapter || 'Unknown'} Lecture ${student.lecture || '?'}`, `Score: ${pct}% (${correct}/${total} correct)\n\nPlace: ${student.place || '—'}\nClass: ${student.className || '—'}\nMobile: ${student.mobile || '—'}`);
+            const wrong = total - correct;
+            const initials = getInitials(student.name || "U");
+            document.getElementById("sdd-avatar").textContent = initials;
+            document.getElementById("sdd-name").textContent = student.name || "Unknown Student";
+            document.getElementById("sdd-meta").textContent = `${student.chapter || 'Unknown'} • Lecture ${student.lecture || '?'}`;
+            document.getElementById("sdd-correct").textContent = correct;
+            document.getElementById("sdd-wrong").textContent = wrong;
+            document.getElementById("sdd-total").textContent = total;
+            document.getElementById("sdd-progress-bar").style.width = pct + '%';
+            document.getElementById("sdd-score-pct").textContent = pct + '%';
+            document.getElementById("sdd-place").textContent = student.place || '—';
+            document.getElementById("sdd-class").textContent = student.className || '—';
+            document.getElementById("sdd-mobile").textContent = student.mobile || '—';
+            openModal("studentDetailModal");
         }
 
         /* ══════════════════════════════════════════════════════════════════
