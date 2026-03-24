@@ -358,6 +358,91 @@
             margin-bottom: 24px;
         }
 
+        /* ENHANCED DASHBOARD STATS */
+        .dashboard-stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .dash-stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition);
+        }
+        .dash-stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+        }
+        .dash-stat-glow {
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            opacity: 0.15;
+            filter: blur(40px);
+        }
+        .dash-total .dash-stat-glow { background: var(--accent); }
+        .dash-correct .dash-stat-glow { background: var(--success); }
+        .dash-wrong .dash-stat-glow { background: var(--error); }
+        .dash-lectures .dash-stat-glow { background: var(--accent-3); }
+        .dash-stat-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+        .dash-stat-content {
+            margin-bottom: 12px;
+        }
+        .dash-stat-num {
+            font-size: 2.2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.1;
+        }
+        .dash-total .dash-stat-num { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .dash-correct .dash-stat-num { background: linear-gradient(135deg, var(--success), #2ba88a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .dash-wrong .dash-stat-num { background: linear-gradient(135deg, var(--error), #c53030); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .dash-lectures .dash-stat-num { background: linear-gradient(135deg, var(--accent-3), #0a7a60); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .dash-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+        .dash-stat-trend {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            width: fit-content;
+        }
+        .dash-stat-trend.up { background: rgba(6, 214, 160, 0.12); color: var(--success); }
+        .dash-stat-trend.down { background: rgba(242, 92, 92, 0.12); color: var(--error); }
+        .dash-stat-trend.neutral { background: rgba(136, 145, 255, 0.12); color: var(--accent); }
+
+        @media(max-width:1000px) {
+            .dashboard-stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media(max-width:600px) {
+            .dashboard-stats-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1600,68 +1685,477 @@
             }
         }
 
-        /* STUDENTS SECTION */
-        .students-toolbar {
+        /* ========== DASHBOARD REDESIGN ========== */
+        .dashboard-hero {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 18px;
-            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 24px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(136, 145, 255, 0.08), rgba(139, 92, 246, 0.05));
+            border: 1px solid rgba(136, 145, 255, 0.15);
+            border-radius: var(--radius);
         }
-        .students-toolbar-left {
-            flex: 1;
-            min-width: 200px;
-        }
-        .students-toolbar-right {
+        .hero-left {
             display: flex;
             align-items: center;
+            gap: 24px;
+        }
+        .hero-welcome h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .hero-welcome p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        .hero-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .hero-actions {
+            display: flex;
             gap: 10px;
-            flex-wrap: wrap;
         }
-        .filter-group {
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+        }
+        .dash-main-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .dash-side-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stats-cards-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        .mini-stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
             display: flex;
             align-items: center;
+            gap: 14px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
         }
-        .view-toggle {
+        .mini-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+        .mini-stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+        .mini-stat-card.gradient-1::before { background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
+        .mini-stat-card.gradient-2::before { background: linear-gradient(180deg, var(--success), #2ba88a); }
+        .mini-stat-card.gradient-3::before { background: linear-gradient(180deg, var(--error), #c53030); }
+        .mini-stat-card.gradient-4::before { background: linear-gradient(180deg, var(--accent-3), #0a7a60); }
+        .mini-stat-icon {
+            font-size: 1.6rem;
+        }
+        .mini-stat-body {
+            flex: 1;
+        }
+        .mini-stat-num {
+            font-size: 1.8rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.1;
+        }
+        .gradient-1 .mini-stat-num { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-2 .mini-stat-num { color: var(--success); }
+        .gradient-3 .mini-stat-num { color: var(--error); }
+        .gradient-4 .mini-stat-num { color: var(--accent-3); }
+        .mini-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-weight: 600;
+        }
+
+        .chart-panel {
+            background: var(--bg-card);
+        }
+        .chart-header {
             display: flex;
-            gap: 4px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 4px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
         }
-        .view-btn {
-            width: 34px;
-            height: 34px;
-            border: none;
-            background: transparent;
-            border-radius: 6px;
-            cursor: pointer;
+        .chart-legend {
+            display: flex;
+            gap: 16px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .recent-panel {
+            background: var(--bg-card);
+        }
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+        .activity-item:hover {
+            background: var(--bg-hover);
+        }
+        .activity-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text-muted);
-            transition: var(--transition);
-        }
-        .view-btn:hover {
-            color: var(--text);
-            background: var(--bg-hover);
-        }
-        .view-btn.active {
-            background: var(--accent);
+            font-size: 0.75rem;
+            font-weight: 700;
             color: white;
+            flex-shrink: 0;
         }
+        .activity-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .activity-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .activity-meta {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+        .activity-score {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .score-overview-panel {
+            background: var(--bg-card);
+            text-align: center;
+        }
+        .score-rings {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .score-ring-container {
+            position: relative;
+            width: 140px;
+            height: 140px;
+        }
+        .score-ring-svg {
+            width: 100%;
+            height: 100%;
+        }
+        .score-ring-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .score-ring-text span {
+            font-size: 1.8rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .score-ring-text small {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        .score-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .score-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+        }
+        .score-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .score-item span {
+            flex: 1;
+            color: var(--text-dim);
+        }
+        .score-item strong {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .quick-actions-panel {
+            background: var(--bg-card);
+        }
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .quick-action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text);
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+        .quick-action-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .qa-icon {
+            font-size: 1.4rem;
+        }
+
+        .chapter-breakdown-panel {
+            background: var(--bg-card);
+        }
+        .chapter-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .chapter-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+        }
+        .chapter-icon {
+            font-size: 1.2rem;
+        }
+        .chapter-info {
+            flex: 1;
+        }
+        .chapter-name {
+            font-weight: 600;
+            font-size: 0.82rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chapter-count {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        @media(max-width:1100px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .dash-side-col {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .dash-side-col .panel {
+                flex: 1;
+                min-width: 280px;
+            }
+        }
+        @media(max-width:800px) {
+            .stats-cards-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media(max-width:600px) {
+            .dashboard-hero {
+                flex-direction: column;
+                text-align: center;
+            }
+            .hero-left {
+                flex-direction: column;
+            }
+            .stats-cards-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .dash-side-col {
+                flex-direction: column;
+            }
+        }
+
+        /* ========== STUDENTS REDESIGN ========== */
+        .students-hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 20px 24px;
+            background: linear-gradient(135deg, rgba(136, 145, 255, 0.06), rgba(57, 200, 165, 0.04));
+            border: 1px solid rgba(136, 145, 255, 0.12);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+        }
+        .students-hero-left {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        .hero-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .hero-stat-num {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-stat-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-weight: 600;
+        }
+        .hero-divider {
+            width: 1px;
+            height: 40px;
+            background: var(--border);
+        }
+
+        .students-main-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 20px;
+        }
+        .students-filters-panel {
+            background: var(--bg-card);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+        .filters-header {
+            margin-bottom: 16px;
+        }
+        .filter-section {
+            margin-bottom: 16px;
+        }
+        .filter-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .filter-results {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+        .filter-results span {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .students-content-area {
+            min-height: 400px;
+        }
+
+        .view-toggle.full-width {
+            display: flex;
+            width: 100%;
+        }
+        .view-toggle.full-width .view-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: auto;
+            height: 40px;
+            font-size: 0.78rem;
+        }
+
         .student-cards-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 16px;
         }
         .student-card {
-            background: var(--bg-input);
+            background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 18px;
+            padding: 20px;
             transition: var(--transition);
             cursor: pointer;
             position: relative;
@@ -1669,8 +2163,8 @@
         }
         .student-card:hover {
             border-color: rgba(91, 95, 239, 0.4);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
         }
         .student-card::before {
             content: '';
@@ -1678,8 +2172,8 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
             opacity: 0;
             transition: var(--transition);
         }
@@ -1693,14 +2187,16 @@
             margin-bottom: 14px;
         }
         .student-avatar {
-            width: 48px;
-            height: 48px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
             flex-shrink: 0;
             box-shadow: 0 4px 12px var(--accent-glow);
         }
@@ -1711,22 +2207,38 @@
         .student-name {
             font-weight: 700;
             font-size: 0.95rem;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: var(--text);
         }
         .student-meta {
-            font-size: 0.76rem;
+            font-size: 0.75rem;
             color: var(--text-dim);
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 3px;
         }
         .student-meta span {
             display: flex;
             align-items: center;
             gap: 5px;
+        }
+        .student-card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .student-tag {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            background: rgba(136, 145, 255, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(136, 145, 255, 0.2);
         }
         .student-card-score {
             display: flex;
@@ -1738,67 +2250,61 @@
         .score-badge {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
         .score-circle {
-            width: 52px;
-            height: 52px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
             font-weight: 800;
             font-family: 'JetBrains Mono', monospace;
         }
         .score-circle.excellent {
-            background: rgba(6, 214, 160, 0.15);
+            background: linear-gradient(135deg, rgba(6, 214, 160, 0.15), rgba(6, 214, 160, 0.05));
             color: var(--success);
             border: 2px solid rgba(6, 214, 160, 0.4);
         }
         .score-circle.good {
-            background: rgba(136, 145, 255, 0.15);
+            background: linear-gradient(135deg, rgba(136, 145, 255, 0.15), rgba(136, 145, 255, 0.05));
             color: var(--accent);
             border: 2px solid rgba(136, 145, 255, 0.4);
         }
         .score-circle.average {
-            background: rgba(229, 188, 114, 0.15);
+            background: linear-gradient(135deg, rgba(229, 188, 114, 0.15), rgba(229, 188, 114, 0.05));
             color: var(--accent-4);
             border: 2px solid rgba(229, 188, 114, 0.4);
         }
         .score-circle.poor {
-            background: rgba(242, 92, 92, 0.15);
+            background: linear-gradient(135deg, rgba(242, 92, 92, 0.15), rgba(242, 92, 92, 0.05));
             color: var(--error);
             border: 2px solid rgba(242, 92, 92, 0.4);
+        }
+        .score-circle .pct {
+            font-size: 0.9rem;
+            line-height: 1;
+        }
+        .score-circle .sym {
+            font-size: 0.5rem;
+            opacity: 0.7;
         }
         .score-details {
             text-align: right;
         }
         .score-fraction {
-            font-size: 0.82rem;
-            font-weight: 600;
+            font-size: 0.85rem;
+            font-weight: 700;
             color: var(--text);
         }
         .score-label {
-            font-size: 0.68rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-        .student-card-tags {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-        .student-tag {
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.68rem;
-            font-weight: 600;
-            background: rgba(136, 145, 255, 0.1);
-            color: var(--accent);
-            border: 1px solid rgba(136, 145, 255, 0.2);
+            letter-spacing: 0.3px;
+            margin-top: 2px;
         }
         .student-empty-state {
             text-align: center;
@@ -1807,29 +2313,40 @@
         .empty-icon {
             font-size: 4rem;
             margin-bottom: 16px;
-            opacity: 0.6;
+            opacity: 0.4;
         }
         .student-empty-state h3 {
             font-size: 1.1rem;
             margin-bottom: 8px;
-            color: var(--text);
         }
         .student-empty-state p {
-            font-size: 0.84rem;
+            font-size: 0.82rem;
             color: var(--text-muted);
         }
-        @media(max-width:700px) {
+
+        @media(max-width:900px) {
+            .students-main-grid {
+                grid-template-columns: 1fr;
+            }
+            .students-filters-panel {
+                position: static;
+            }
+        }
+        @media(max-width:600px) {
+            .students-hero-left {
+                flex-direction: column;
+                gap: 16px;
+            }
+            .hero-divider {
+                width: 60px;
+                height: 1px;
+            }
             .student-cards-grid {
                 grid-template-columns: 1fr;
             }
-            .students-toolbar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .students-toolbar-right {
-                justify-content: flex-start;
-            }
         }
+
+
     </style>
 </head>
 
@@ -1941,63 +2458,130 @@
         <div class="section active" id="section-dashboard">
             <div class="page-header">
                 <h1>Dashboard</h1>
-                <p>Overview of all student activity</p>
+                <p>Overview of all student activity and performance</p>
             </div>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-num" id="stat-total">—</div>
-                    <div class="stat-label">Total Students</div>
+            
+            <div class="dashboard-hero">
+                <div class="hero-left">
+                    <div class="hero-welcome">
+                        <h2>Welcome Back!</h2>
+                        <p>Here's what's happening with your students today</p>
+                    </div>
+                    <div class="hero-time" id="heroTime"></div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">✅</div>
-                    <div class="stat-num" id="stat-correct">—</div>
-                    <div class="stat-label">Correct</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">❌</div>
-                    <div class="stat-num" id="stat-wrong">—</div>
-                    <div class="stat-label">Wrong</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📚</div>
-                    <div class="stat-num" id="stat-lectures">—</div>
-                    <div class="stat-label">Lectures</div>
+                <div class="hero-actions">
+                    <button class="btn btn-primary" onclick="showSection('addQuestion')">➕ Add Question</button>
+                    <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export Report</button>
                 </div>
             </div>
-            <div class="panel">
-                <div class="panel-title">📈 Correct vs Wrong per Lecture</div>
-                <div class="chart-wrap"><canvas id="lectureChart"></canvas></div>
-            </div>
-            <div class="panel">
-                <div class="panel-title">🔍 Drill-down</div>
-                <div class="form-row">
-                    <div class="field"><label>Chapter</label><select id="drillChapter" onchange="loadDrillLectures()">
-                            <option value="">— All —</option>
-                        </select></div>
-                    <div class="field"><label>Lecture</label><select id="drillLecture" onchange="loadDrillData()">
-                            <option value="">— Select —</option>
-                        </select></div>
+
+            <div class="dashboard-grid">
+                <div class="dash-main-col">
+                    <div class="stats-cards-row">
+                        <div class="mini-stat-card gradient-1">
+                            <div class="mini-stat-icon">👥</div>
+                            <div class="mini-stat-body">
+                                <div class="mini-stat-num" id="stat-total">—</div>
+                                <div class="mini-stat-label">Total Students</div>
+                            </div>
+                        </div>
+                        <div class="mini-stat-card gradient-2">
+                            <div class="mini-stat-icon">✅</div>
+                            <div class="mini-stat-body">
+                                <div class="mini-stat-num" id="stat-correct">—</div>
+                                <div class="mini-stat-label">Correct</div>
+                            </div>
+                        </div>
+                        <div class="mini-stat-card gradient-3">
+                            <div class="mini-stat-icon">❌</div>
+                            <div class="mini-stat-body">
+                                <div class="mini-stat-num" id="stat-wrong">—</div>
+                                <div class="mini-stat-label">Wrong</div>
+                            </div>
+                        </div>
+                        <div class="mini-stat-card gradient-4">
+                            <div class="mini-stat-icon">📚</div>
+                            <div class="mini-stat-body">
+                                <div class="mini-stat-num" id="stat-lectures">—</div>
+                                <div class="mini-stat-label">Lectures</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel chart-panel">
+                        <div class="chart-header">
+                            <div class="panel-title">📊 Performance Overview</div>
+                            <div class="chart-legend">
+                                <span class="legend-item"><span class="legend-dot" style="background:#39c8a5"></span>Correct</span>
+                                <span class="legend-item"><span class="legend-dot" style="background:#ec7c7c"></span>Wrong</span>
+                            </div>
+                        </div>
+                        <div class="chart-wrap"><canvas id="lectureChart"></canvas></div>
+                    </div>
+
+                    <div class="panel recent-panel">
+                        <div class="panel-title">🚀 Recent Activity</div>
+                        <div id="recentActivityList" class="activity-list"></div>
+                    </div>
                 </div>
-                <div id="drillResults" style="display:none">
-                    <div class="stats-grid mt-12" id="drillStats"></div>
-                    <div class="table-wrap mt-12">
-                        <table id="drillTable">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Mobile</th>
-                                    <th>Correct</th>
-                                    <th>Total</th>
-                                    <th>Score</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+
+                <div class="dash-side-col">
+                    <div class="panel score-overview-panel">
+                        <div class="panel-title">🎯 Score Distribution</div>
+                        <div class="score-rings">
+                            <div class="score-ring-container">
+                                <svg viewBox="0 0 120 120" class="score-ring-svg">
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg-input)" stroke-width="10"/>
+                                    <circle id="accuracyRing" cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314" transform="rotate(-90 60 60)"/>
+                                </svg>
+                                <div class="score-ring-text">
+                                    <span id="accuracyPercent">0%</span>
+                                    <small>Accuracy</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="score-breakdown">
+                            <div class="score-item">
+                                <span class="score-dot" style="background:#39c8a5"></span>
+                                <span>Correct Answers</span>
+                                <strong id="sidebar-correct">0</strong>
+                            </div>
+                            <div class="score-item">
+                                <span class="score-dot" style="background:#ec7c7c"></span>
+                                <span>Wrong Answers</span>
+                                <strong id="sidebar-wrong">0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel quick-actions-panel">
+                        <div class="panel-title">⚡ Quick Actions</div>
+                        <div class="quick-actions-grid">
+                            <button class="quick-action-btn" onclick="showSection('addQuestion')">
+                                <span class="qa-icon">📝</span>
+                                <span>Add Question</span>
+                            </button>
+                            <button class="quick-action-btn" onclick="showSection('importQuestion')">
+                                <span class="qa-icon">📷</span>
+                                <span>Import</span>
+                            </button>
+                            <button class="quick-action-btn" onclick="showSection('manageQuestions')">
+                                <span class="qa-icon">📋</span>
+                                <span>Manage</span>
+                            </button>
+                            <button class="quick-action-btn" onclick="showSection('students')">
+                                <span class="qa-icon">👥</span>
+                                <span>Students</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="panel chapter-breakdown-panel">
+                        <div class="panel-title">📚 Chapters Overview</div>
+                        <div id="chapterBreakdownList" class="chapter-list"></div>
                     </div>
                 </div>
             </div>
-            <div class="flex-end"><button class="btn btn-ghost" onclick="exportCSV()">⬇ Export CSV</button></div>
         </div>
 
         <!-- ADD QUESTION -->
@@ -2171,85 +2755,108 @@
         <div class="section" id="section-students">
             <div class="page-header">
                 <h1>Student Records</h1>
-                <p>All registered students and their performance</p>
+                <p>Track and analyze student performance across all lectures</p>
             </div>
-            <div class="stats-grid" id="studentStatsRow">
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-num" id="stu-stat-total">0</div>
-                    <div class="stat-label">Total Students</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-num" id="stu-stat-attempts">0</div>
-                    <div class="stat-label">Attempts</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🏆</div>
-                    <div class="stat-num" id="stu-stat-avg">0%</div>
-                    <div class="stat-label">Avg Score</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⭐</div>
-                    <div class="stat-num" id="stu-stat-top">0%</div>
-                    <div class="stat-label">Top Score</div>
-                </div>
-            </div>
-            <div class="panel">
-                <div class="students-toolbar">
-                    <div class="students-toolbar-left">
-                        <input class="table-search" placeholder="🔍 Search name, mobile, chapter..."
-                            id="studentSearch" oninput="filterStudents(this.value)" style="margin:0">
+
+            <div class="students-hero">
+                <div class="students-hero-left">
+                    <div class="hero-stat">
+                        <span class="hero-stat-num" id="stu-stat-total">0</span>
+                        <span class="hero-stat-label">Total Students</span>
                     </div>
-                    <div class="students-toolbar-right">
-                        <div class="filter-group">
-                            <select id="stu-chapter-filter" class="admin-select" onchange="filterStudents(document.getElementById('studentSearch').value)" style="padding:9px 32px 9px 12px;font-size:0.82rem">
-                                <option value="">All Chapters</option>
-                            </select>
+                    <div class="hero-divider"></div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-num" id="stu-stat-avg">0%</span>
+                        <span class="hero-stat-label">Avg Score</span>
+                    </div>
+                    <div class="hero-divider"></div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-num" id="stu-stat-top">0%</span>
+                        <span class="hero-stat-label">Top Score</span>
+                    </div>
+                </div>
+                <div class="students-hero-right">
+                    <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export Report</button>
+                </div>
+            </div>
+
+            <div class="students-main-grid">
+                <div class="students-filters-panel panel">
+                    <div class="filters-header">
+                        <div class="panel-title">🔍 Filters</div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <label class="filter-label">Search</label>
+                        <div class="search-input-wrap">
+                            <span class="search-icon">🔍</span>
+                            <input class="table-search" placeholder="Name, mobile, chapter..."
+                                id="studentSearch" oninput="filterStudents(this.value)">
                         </div>
-                        <div class="filter-group">
-                            <select id="stu-sort-filter" class="admin-select" onchange="filterStudents(document.getElementById('studentSearch').value)" style="padding:9px 32px 9px 12px;font-size:0.82rem">
-                                <option value="recent">Recent First</option>
-                                <option value="name">Name A-Z</option>
-                                <option value="score-desc">Score High→Low</option>
-                                <option value="score-asc">Score Low→High</option>
-                            </select>
-                        </div>
-                        <div class="view-toggle">
-                            <button class="view-btn active" id="view-cards-btn" onclick="setStudentView('cards')" title="Card View">
+                    </div>
+
+                    <div class="filter-section">
+                        <label class="filter-label">Chapter</label>
+                        <select id="stu-chapter-filter" class="admin-select" onchange="filterStudents(document.getElementById('studentSearch').value)">
+                            <option value="">All Chapters</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-section">
+                        <label class="filter-label">Sort By</label>
+                        <select id="stu-sort-filter" class="admin-select" onchange="filterStudents(document.getElementById('studentSearch').value)">
+                            <option value="recent">Most Recent</option>
+                            <option value="name">Name (A-Z)</option>
+                            <option value="score-desc">Highest Score</option>
+                            <option value="score-asc">Lowest Score</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-section">
+                        <label class="filter-label">View</label>
+                        <div class="view-toggle full-width">
+                            <button class="view-btn active" id="view-cards-btn" onclick="setStudentView('cards')">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                                Cards
                             </button>
-                            <button class="view-btn" id="view-table-btn" onclick="setStudentView('table')" title="Table View">
+                            <button class="view-btn" id="view-table-btn" onclick="setStudentView('table')">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+                                Table
                             </button>
                         </div>
                     </div>
+
+                    <div class="filter-results" id="filterResults">
+                        <span id="filterCount">0</span> students found
+                    </div>
                 </div>
-                <div id="studentCardsContainer" class="student-cards-grid"></div>
-                <div id="studentTableContainer" class="table-wrap" style="display:none">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Mobile</th>
-                                <th>Place</th>
-                                <th>Class</th>
-                                <th>Chapter</th>
-                                <th>Lecture</th>
-                                <th>Score</th>
-                                <th>%</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentTableBody"></tbody>
-                    </table>
-                </div>
-                <div id="studentEmptyState" class="student-empty-state" style="display:none">
-                    <div class="empty-icon">📭</div>
-                    <h3>No Students Found</h3>
-                    <p>Try adjusting your search or filters</p>
+
+                <div class="students-content-area">
+                    <div id="studentCardsContainer" class="student-cards-grid"></div>
+                    <div id="studentTableContainer" class="table-wrap" style="display:none">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Mobile</th>
+                                    <th>Place</th>
+                                    <th>Class</th>
+                                    <th>Chapter</th>
+                                    <th>Lecture</th>
+                                    <th>Score</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="studentEmptyState" class="student-empty-state" style="display:none">
+                        <div class="empty-icon">📭</div>
+                        <h3>No Students Found</h3>
+                        <p>Try adjusting your search or filters</p>
+                    </div>
                 </div>
             </div>
-            <div class="flex-end" style="margin-top:0"><button class="btn btn-ghost" onclick="exportCSV()">⬇ Export CSV</button></div>
         </div>
 
         <!-- FIX DB -->
@@ -2520,6 +3127,14 @@
         /* ══════════════════════════════════════════════════════════════════
            DASHBOARD
         ══════════════════════════════════════════════════════════════════ */
+        function updateHeroTime() {
+            const el = document.getElementById("heroTime");
+            if (!el) return;
+            const now = new Date();
+            const opts = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            el.textContent = now.toLocaleDateString('en-US', opts);
+        }
+
         async function loadDashboard() {
             try {
                 const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
@@ -2527,16 +3142,79 @@
                 allStudents = await r.json();
                 const wa = allStudents.filter(s => s.answers && s.answers.length > 0);
                 const tc = wa.reduce((s, x) => s + (x.correctCount || 0), 0);
-                const tw = wa.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
+                const tw = wa.reduce((s, x) => s + ((x.totalQuestions || 0) - (s.correctCount || 0)), 0);
                 const lecs = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
+                
                 document.getElementById("stat-total").textContent = allStudents.length;
                 document.getElementById("stat-correct").textContent = tc;
                 document.getElementById("stat-wrong").textContent = tw;
                 document.getElementById("stat-lectures").textContent = lecs.size;
+                
+                const totalQ = tc + tw;
+                const accuracy = totalQ > 0 ? Math.round((tc / totalQ) * 100) : 0;
+                const ring = document.getElementById("accuracyRing");
+                const accText = document.getElementById("accuracyPercent");
+                if (ring && accText) {
+                    const offset = 314 - (314 * accuracy / 100);
+                    ring.style.strokeDashoffset = offset;
+                    ring.style.stroke = accuracy >= 70 ? '#39c8a5' : accuracy >= 40 ? '#e5bc72' : '#ec7c7c';
+                    accText.textContent = accuracy + '%';
+                }
+                document.getElementById("sidebar-correct").textContent = tc;
+                document.getElementById("sidebar-wrong").textContent = tw;
+
+                renderRecentActivity(wa.slice(-5).reverse());
+                renderChapterBreakdown();
+
                 _chartData = wa;
                 buildChart(wa);
                 populateDrillChapters();
+                updateHeroTime();
+                setInterval(updateHeroTime, 60000);
             } catch (e) { console.error(e); }
+        }
+
+        function renderRecentActivity(activities) {
+            const container = document.getElementById("recentActivityList");
+            if (!container || !activities.length) {
+                if (container) container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">No recent activity</div>';
+                return;
+            }
+            container.innerHTML = activities.map(s => {
+                const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
+                const initials = getInitials(s.name);
+                const scoreClass = pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--accent-4)' : 'var(--error)';
+                return `<div class="activity-item">
+                    <div class="activity-avatar">${initials}</div>
+                    <div class="activity-info">
+                        <div class="activity-name">${s.name || 'Unknown'}</div>
+                        <div class="activity-meta">${s.chapter || 'Unknown'} • Lecture ${s.lecture || '?'}</div>
+                    </div>
+                    <div class="activity-score" style="color:${scoreClass}">${pct}%</div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderChapterBreakdown() {
+            const container = document.getElementById("chapterBreakdownList");
+            if (!container) return;
+            const chapters = {};
+            allStudents.forEach(s => {
+                if (!chapters[s.chapter]) chapters[s.chapter] = { count: 0, students: new Set() };
+                chapters[s.chapter].count++;
+                chapters[s.chapter].students.add(s.mobile);
+            });
+            const sorted = Object.entries(chapters).sort((a, b) => b[1].count - a[1].count);
+            const icons = ["⚡", "🔥", "🌊", "🔭", "⚗️", "🧲", "🔬", "🌡️", "🌍", "💡", "🪐"];
+            container.innerHTML = sorted.slice(0, 6).map(([name, data], i) => `
+                <div class="chapter-item">
+                    <span class="chapter-icon">${icons[i % icons.length]}</span>
+                    <div class="chapter-info">
+                        <div class="chapter-name">${name}</div>
+                        <div class="chapter-count">${data.students.size} student(s)</div>
+                    </div>
+                </div>
+            `).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted)">No chapters yet</div>';
         }
 
         function buildChart(data) {
@@ -2563,18 +3241,38 @@
         function populateDrillChapters() {
             const chs = [...new Set(allStudents.map(s => s.chapter).filter(Boolean))].sort();
             const sel = document.getElementById("drillChapter");
-            sel.innerHTML = '<option value="">— All —</option>' + chs.map(c => `<option value="${c}">${c}</option>`).join("");
+            if (sel) sel.innerHTML = '<option value="">— All —</option>' + chs.map(c => `<option value="${c}">${c}</option>`).join("");
         }
 
         function loadDrillLectures() {
-            const ch = document.getElementById("drillChapter").value;
+            const ch = document.getElementById("drillChapter")?.value || '';
             const lecs = [...new Set(allStudents.filter(s => !ch || s.chapter === ch).map(s => s.lecture).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
-            document.getElementById("drillLecture").innerHTML = '<option value="">— Select —</option>' + lecs.map(l => `<option value="${l}">Lecture ${l}</option>`).join("");
-            document.getElementById("drillResults").style.display = "none";
+            const sel = document.getElementById("drillLecture");
+            if (sel) sel.innerHTML = '<option value="">— Select —</option>' + lecs.map(l => `<option value="${l}">Lecture ${l}</option>`).join("");
+            const results = document.getElementById("drillResults");
+            if (results) results.style.display = "none";
         }
 
         function loadDrillData() {
-            const ch = document.getElementById("drillChapter").value, lec = document.getElementById("drillLecture").value;
+            const ch = document.getElementById("drillChapter")?.value || '';
+            const lec = document.getElementById("drillLecture")?.value || '';
+            const results = document.getElementById("drillResults");
+            if (!results) return;
+            if (!lec) { results.style.display = "none"; return; }
+            const f = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lec && (!ch || s.chapter === ch));
+            const tc = f.reduce((s, x) => s + (x.correctCount || 0), 0);
+            const tw = f.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
+            document.getElementById("drillStats").innerHTML = `<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${f.length}</div><div class="stat-label">Attempted</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${tc}</div><div class="stat-label">Correct</div></div><div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num">${tw}</div><div class="stat-label">Wrong</div></div>`;
+            const tbody = document.querySelector("#drillTable tbody");
+            if (tbody) {
+                tbody.innerHTML = "";
+                f.forEach(s => {
+                    const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
+                    tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${s.mobile}</td><td>${s.correctCount || 0}</td><td>${s.totalQuestions || 0}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`);
+                });
+            }
+            results.style.display = "block";
+        }
             if (!lec) { document.getElementById("drillResults").style.display = "none"; return; }
             const f = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lec && (!ch || s.chapter === ch));
             const tc = f.reduce((s, x) => s + (x.correctCount || 0), 0);
@@ -3945,6 +4643,10 @@
             document.getElementById('stu-stat-attempts').textContent = stats.attempts;
             document.getElementById('stu-stat-avg').textContent = stats.avgScore + '%';
             document.getElementById('stu-stat-top').textContent = stats.topScore + '%';
+            const avgBar = document.getElementById('avg-bar');
+            const topBar = document.getElementById('top-bar');
+            if (avgBar) avgBar.style.width = stats.avgScore + '%';
+            if (topBar) topBar.style.width = stats.topScore + '%';
         }
 
         function getScoreClass(pct) {
@@ -3998,11 +4700,14 @@
                     </div>
                     <div class="student-card-score">
                         <div class="score-badge">
-                            <div class="score-circle ${scoreClass}">${pct}%</div>
+                            <div class="score-circle ${scoreClass}">
+                                <span class="pct">${pct}</span>
+                                <span class="sym">%</span>
+                            </div>
                         </div>
                         <div class="score-details">
-                            <div class="score-fraction">${correct}/${total} correct</div>
-                            <div class="score-label">Score</div>
+                            <div class="score-fraction">${correct}/${total}</div>
+                            <div class="score-label">Correct</div>
                         </div>
                     </div>
                 </div>`;
