@@ -2781,185 +2781,147 @@
         async function scanCorrupted() { const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults"); st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = ""; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = ""; if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:var(--success);font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); } else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);color:var(--error);margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); } } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } }
         async function deleteCorrupted() { askConfirmModal({ title: "Delete corrupted records?", text: "Permanently delete corrupted records? This cannot be undone.", confirmText: "Delete", onConfirm: async () => { const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#057a55;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } } }); }
 
-        // ── Multi-diagram detection: find ALL diagram regions on a screenshot ──
-        // Uses OpenCV contour detection + density filtering (no position bias)
-        async function detectAllDiagramsFromScreenshot(b64, expectedCount) {
-            if (cvReady) {
-                try {
-                    const { canvas, ctx } = await loadImageToCanvas(b64);
-                    const W = canvas.width, H = canvas.height;
-                    const src = cv.imread(canvas);
-                    const gray = new cv.Mat();
-                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-                    const inv = new cv.Mat();
-                    cv.bitwise_not(gray, inv);
-                    const thresh = new cv.Mat();
-                    cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
-                    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-                    const dilated = new cv.Mat();
-                    cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
-                    const contours = new cv.MatVector();
-                    const hierarchy = new cv.Mat();
-                    cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-                    const rawCandidates = [];
-                    for (let i = 0; i < contours.size(); i++) {
-                        const rect = cv.boundingRect(contours.get(i));
-                        const areaRatio = (rect.width * rect.height) / (W * H);
-                        const aspect = rect.width / rect.height;
-                        if (areaRatio < 0.008 || areaRatio > 0.75) continue;
-                        if (rect.width < 40 || rect.height < 30) continue;
-                        if (rect.width > W * 0.98) continue;
-                        if (aspect < 0.2 || aspect > 8) continue;
-                        rawCandidates.push({ ...rect, areaRatio });
-                    }
-
-                    src.delete(); gray.delete(); inv.delete(); thresh.delete();
-                    kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
-
-                    // Density filter: reject text-heavy regions, keep diagram-like regions
-                    const fullImageData = ctx.getImageData(0, 0, W, H).data;
-                    const candidates = [];
-                    for (const c of rawCandidates) {
-                        let darkPx = 0, totalPx = 0;
-                        const step = Math.max(1, Math.floor(Math.min(c.width, c.height) / 30));
-                        for (let py = c.y; py < c.y + c.height && py < H; py += step) {
-                            for (let px = c.x; px < c.x + c.width && px < W; px += step) {
-                                const idx = (py * W + px) * 4;
-                                const lum = 0.299 * fullImageData[idx] + 0.587 * fullImageData[idx + 1] + 0.114 * fullImageData[idx + 2];
-                                if (lum < 180) darkPx++;
-                                totalPx++;
-                            }
-                        }
-                        const density = totalPx > 0 ? darkPx / totalPx : 1;
-                        if (density > 0.35) continue; // too dense = text block, skip
-                        candidates.push({ ...c, density });
-                    }
-
-                    if (candidates.length > 0) {
-                        candidates.sort((a, b) => a.y - b.y);
-                        const merged = [];
-                        for (const c of candidates) {
-                            let didMerge = false;
-                            for (const m of merged) {
-                                const pad = 20;
-                                const overlapX = c.x < m.x + m.width + pad && c.x + c.width > m.x - pad;
-                                const overlapY = c.y < m.y + m.height + pad && c.y + c.height > m.y - pad;
-                                if (overlapX && overlapY) {
-                                    const nx = Math.min(m.x, c.x);
-                                    const ny = Math.min(m.y, c.y);
-                                    m.width = Math.max(m.x + m.width, c.x + c.width) - nx;
-                                    m.height = Math.max(m.y + m.height, c.y + c.height) - ny;
-                                    m.x = nx; m.y = ny;
-                                    didMerge = true;
-                                    break;
-                                }
-                            }
-                            if (!didMerge) merged.push({ ...c });
-                        }
-                        merged.sort((a, b) => a.y - b.y);
-                        const results = merged.map(r => cropCanvas(canvas, r.x, r.y, r.width, r.height));
-                        if (results.length >= expectedCount) return results;
-                        if (results.length > 0) return results;
-                    }
-                } catch (e) {
-                    console.warn("Multi-diagram OpenCV error:", e);
-                }
-            }
-
-            // Fallback: try single detection
-            const single = await detectDiagram(b64);
-            return single ? [single] : [];
-        }
-
-        // Smart fallback: split page into N sections, find the diagram half in each
-        // Analyzes left vs right density — the LESS dense half contains the diagram
-        async function cropDiagramSections(b64, count) {
-            try {
-                const { canvas, ctx } = await loadImageToCanvas(b64);
-                const W = canvas.width, H = canvas.height;
-                const sliceH = Math.floor(H / count);
-                const midX = Math.floor(W / 2);
-                const results = [];
-
-                for (let i = 0; i < count; i++) {
-                    const y = i * sliceH;
-                    const h = Math.min(sliceH, H - y);
-                    const imageData = ctx.getImageData(0, y, W, h).data;
-
-                    // Sample pixel density for left vs right half
-                    let leftDark = 0, rightDark = 0, leftTotal = 0, rightTotal = 0;
-                    const step = 3;
-                    for (let py = 0; py < h; py += step) {
-                        for (let px = 0; px < W; px += step) {
-                            const idx = (py * W + px) * 4;
-                            const lum = 0.299 * imageData[idx] + 0.587 * imageData[idx + 1] + 0.114 * imageData[idx + 2];
-                            if (px < midX) { leftTotal++; if (lum < 180) leftDark++; }
-                            else { rightTotal++; if (lum < 180) rightDark++; }
-                        }
-                    }
-
-                    const leftDensity = leftTotal > 0 ? leftDark / leftTotal : 0;
-                    const rightDensity = rightTotal > 0 ? rightDark / rightTotal : 0;
-
-                    // Less dense half with some content = diagram area
-                    if (leftDensity > 0.005 && leftDensity < rightDensity) {
-                        // Diagram is on the LEFT (like Figure 10-Q5)
-                        results.push(cropCanvas(canvas, 0, y, midX, h, 4));
-                    } else if (rightDensity > 0.005) {
-                        // Diagram is on the RIGHT (like Figure 5-Q3)
-                        results.push(cropCanvas(canvas, midX, y, W - midX, h, 4));
-                    } else {
-                        results.push(cropCanvas(canvas, 0, y, W, h, 4));
-                    }
-                }
-                return results;
-            } catch (e) {
-                console.warn("Diagram section crop error:", e);
-                return [];
-            }
-        }
-
-        // Override: detect all diagrams per screenshot, then map to questions in order
-        // Falls back to density-based section cropping when OpenCV doesn't find enough
+        // Override image slicing logic: map crops by image-question index,
+        // not by overall question index. This avoids duplicate figure crops.
         async function extractImagesForQuestions(questions, screenshotB64Array) {
             if (!screenshotB64Array || !screenshotB64Array.length) return;
             const imgQuestions = questions.filter(q => q.hasImage);
             if (!imgQuestions.length) return;
 
-            const allDiagrams = [];
-            const imgCountPerScreen = Math.ceil(imgQuestions.length / screenshotB64Array.length);
-
-            for (let si = 0; si < screenshotB64Array.length; si++) {
-                const b64 = screenshotB64Array[si];
-                const expectedOnThis = Math.min(imgCountPerScreen, imgQuestions.length - allDiagrams.length);
-                const diagrams = await detectAllDiagramsFromScreenshot(b64, expectedOnThis);
-
-                if (diagrams.length >= expectedOnThis) {
-                    allDiagrams.push(...diagrams);
-                } else {
-                    const fallbacks = await cropDiagramSections(b64, expectedOnThis);
-                    if (diagrams.length > 0) {
-                        allDiagrams.push(...diagrams);
-                        const startIdx = diagrams.length;
-                        for (let fi = startIdx; fi < fallbacks.length && fi < expectedOnThis; fi++) {
-                            allDiagrams.push(fallbacks[fi]);
-                        }
-                    } else {
-                        // No OpenCV results at all — use all fallback crops
-                        allDiagrams.push(...fallbacks.slice(0, expectedOnThis));
-                    }
-                }
-            }
-
-            // Assign detected diagrams to image-questions in order (top-to-bottom)
+            const imgsPerScreen = Math.max(1, Math.ceil(imgQuestions.length / screenshotB64Array.length));
             let imgIdx = 0;
+
             for (let qi = 0; qi < questions.length; qi++) {
                 const q = questions[qi];
                 if (!q.hasImage) continue;
-                q.extractedImageB64 = (imgIdx < allDiagrams.length) ? allDiagrams[imgIdx] : null;
+
+                const screenIdx = Math.min(Math.floor(imgIdx / imgsPerScreen), screenshotB64Array.length - 1);
+                const b64 = screenshotB64Array[screenIdx];
+
+                try {
+                    const localImgIdx = imgIdx % imgsPerScreen;
+                    const cropped = await getImageFromScreenshot(b64, localImgIdx, imgsPerScreen);
+                    q.extractedImageB64 = cropped || null;
+                } catch (e) {
+                    q.extractedImageB64 = null;
+                }
+
                 imgIdx++;
             }
+        }
+
+        async function getImageFromScreenshot(b64, localImgIdx, imgsOnScreen) {
+            return new Promise(resolve => {
+                const img = new Image();
+                const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+
+                img.onload = () => {
+                    try {
+                        const w = img.naturalWidth, h = img.naturalHeight;
+                        const srcCanvas = document.createElement("canvas");
+                        srcCanvas.width = w;
+                        srcCanvas.height = h;
+                        const srcCtx = srcCanvas.getContext("2d");
+                        srcCtx.drawImage(img, 0, 0);
+
+                        // Prefer OpenCV multi-candidate detection (more accurate than equal slicing).
+                        if (cvReady && typeof cv !== "undefined") {
+                            const src = cv.imread(srcCanvas);
+                            const gray = new cv.Mat();
+                            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                            const inv = new cv.Mat();
+                            cv.bitwise_not(gray, inv);
+
+                            const thresh = new cv.Mat();
+                            cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
+
+                            const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+                            const dilated = new cv.Mat();
+                            cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
+
+                            const contours = new cv.MatVector();
+                            const hierarchy = new cv.Mat();
+                            cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                            const candidates = [];
+                            const imgArea = w * h;
+                            for (let i = 0; i < contours.size(); i++) {
+                                const rect = cv.boundingRect(contours.get(i));
+                                const area = rect.width * rect.height;
+                                const areaRatio = area / imgArea;
+                                const aspect = rect.width / rect.height;
+
+                                if (areaRatio < 0.01 || areaRatio > 0.7) continue;
+                                if (rect.width < 60 || rect.height < 40) continue;
+                                if (rect.width > w * 0.98) continue;
+                                if (aspect < 0.3 || aspect > 6.5) continue;
+
+                                // In textbook pages, figures are often to the right; bias those slightly.
+                                const centerX = rect.x + rect.width / 2;
+                                const rightBias = centerX > w * 0.4 ? 1.2 : 1.0;
+                                candidates.push({ ...rect, score: areaRatio * rightBias });
+                            }
+
+                            src.delete(); gray.delete(); inv.delete(); thresh.delete();
+                            kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
+
+                            if (candidates.length) {
+                                // Sort top-to-bottom so Q4 gets upper figure, Q5 lower figure.
+                                candidates.sort((a, b) => (a.y - b.y) || (b.score - a.score));
+
+                                // Keep a compact set of non-overlapping candidates.
+                                const chosen = [];
+                                const overlaps = (a, b) => {
+                                    const x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y);
+                                    const x2 = Math.min(a.x + a.width, b.x + b.width), y2 = Math.min(a.y + a.height, b.y + b.height);
+                                    if (x2 <= x1 || y2 <= y1) return 0;
+                                    const inter = (x2 - x1) * (y2 - y1);
+                                    const minArea = Math.min(a.width * a.height, b.width * b.height);
+                                    return inter / minArea;
+                                };
+                                for (const c of candidates) {
+                                    if (chosen.every(x => overlaps(x, c) < 0.35)) chosen.push(c);
+                                }
+
+                                const idx = Math.min(localImgIdx, Math.max(0, chosen.length - 1));
+                                const pick = chosen[idx];
+                                const pad = 8;
+                                const cx = Math.max(0, pick.x - pad);
+                                const cy = Math.max(0, pick.y - pad);
+                                const cw = Math.min(w - cx, pick.width + pad * 2);
+                                const ch = Math.min(h - cy, pick.height + pad * 2);
+
+                                const out = document.createElement("canvas");
+                                out.width = cw;
+                                out.height = ch;
+                                out.getContext("2d").drawImage(srcCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+                                resolve(out.toDataURL("image/jpeg", 0.9).split(",")[1]);
+                                return;
+                            }
+                        }
+                        // Fallback: split screenshot vertically among image questions.
+                        const out = document.createElement("canvas");
+                        if (imgsOnScreen > 1) {
+                            const sliceH = Math.floor(h / imgsOnScreen);
+                            const startY = localImgIdx * sliceH;
+                            out.width = w;
+                            out.height = sliceH;
+                            out.getContext("2d").drawImage(srcCanvas, 0, startY, w, sliceH, 0, 0, w, sliceH);
+                        } else {
+                            out.width = w;
+                            out.height = h;
+                            out.getContext("2d").drawImage(srcCanvas, 0, 0);
+                        }
+                        resolve(out.toDataURL("image/jpeg", 0.85).split(",")[1]);
+                    } catch (e) {
+                        resolve(null);
+                    }
+                };
+
+                img.onerror = () => resolve(null);
+                img.src = `data:${mime};base64,${b64}`;
+            });
         }
 
         /* ── MODALS ── */
