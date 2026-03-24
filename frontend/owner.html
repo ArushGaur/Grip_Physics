@@ -20,8 +20,12 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <!-- OpenCV.js for client-side diagram detection fallback -->
-    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady()"
-        onerror="onOpenCvError()"></script>
+    <script>
+        window.cvReady = false;
+        function onOpenCvReady() { window.cvReady = true; console.log("OpenCV loaded"); }
+        function onOpenCvError() { window.cvReady = false; console.warn("OpenCV failed"); }
+    </script>
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js"></script>
     <style>
         /* THEME TOKENS */
         :root {
@@ -3079,10 +3083,7 @@
             cvReady = true;
             console.log("✅ OpenCV.js loaded — diagram detection enhanced");
         }
-        function onOpenCvError() {
-            cvReady = false;
-            console.warn("⚠️ OpenCV.js failed to load — using pixel-analysis fallback only");
-        }
+        // OpenCV functions are defined in head for async script loading
 
         (function() {
             const debugInfo = document.getElementById("apiDebugInfo");
@@ -4738,42 +4739,6 @@
             
             // Update data attributes
             buttons.forEach(btn => btn.dataset.multi = isMulti);
-        }
-            
-            // First collect which ones are currently checked
-            const checkedValues = [];
-            inputs.forEach(input => {
-                if (input.checked) checkedValues.push(parseInt(input.value));
-            });
-            
-            // If switching to single and multiple are checked, keep only the first one
-            let firstChecked = checkedValues[0];
-            if (!isMulti && checkedValues.length > 1) {
-                firstChecked = checkedValues[0];
-            }
-            
-            // Rebuild the correct answers section
-            correctLabels.forEach((label, idx) => {
-                const oi = idx;
-                const isChecked = isMulti ? checkedValues.includes(oi) : (oi === firstChecked);
-                
-                // Update input type and checked state
-                const input = label.querySelector('input');
-                if (input) {
-                    input.type = isMulti ? 'checkbox' : 'radio';
-                    input.name = `iqe_correct_single_${si}`;
-                    input.checked = isChecked;
-                }
-                
-                // Update styling based on checked state
-                if (isChecked) {
-                    label.style.background = "rgba(6,214,160,0.1)";
-                    label.style.border = "1px solid rgba(6,214,160,0.3)";
-                } else {
-                    label.style.background = "var(--bg-card)";
-                    label.style.border = "1px solid var(--border)";
-                }
-            });
         }
 
         function showSavingOverlay(text = "Saving...", subtext = "Please wait") {
