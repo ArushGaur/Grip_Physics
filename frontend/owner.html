@@ -1334,7 +1334,7 @@
 
         .stu-detail-progress {
             height: 8px;
-            background: var(--bg-input);
+            background: rgba(0, 0, 0, 0.1);
             border-radius: 10px;
             overflow: hidden;
             margin-bottom: 6px;
@@ -2341,7 +2341,7 @@
             align-items: center;
             justify-content: space-between;
             padding-top: 14px;
-            border-top: 1px solid var(--border);
+            border-top: 1px solid rgba(128, 128, 128, 0.2);
         }
         .stu-score {
             display: flex;
@@ -2354,7 +2354,7 @@
         .stu-score-hp-bar {
             width: 100%;
             height: 10px;
-            background: var(--bg-input);
+            background: rgba(0, 0, 0, 0.12);
             border-radius: 5px;
             overflow: hidden;
             margin-bottom: 6px;
@@ -2495,6 +2495,7 @@
                 Dashboard</button>
             <p id="loginError" style="color:var(--error);font-size:0.8rem;margin-top:12px;display:none">Invalid
                 passcode. Try again.</p>
+            <p id="apiDebugInfo" style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;opacity:0.5"></p>
         </div>
     </div>
 
@@ -3053,7 +3054,7 @@
         /* ══════════════════════════════════════════════════════════════════
            GLOBALS
         ══════════════════════════════════════════════════════════════════ */
-        const API_BASE = "https://grip-physics.onrender.com";
+        const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? `http://${window.location.host}` : "https://grip-physics.onrender.com";
         const LETTERS = ["A", "B", "C", "D"];
         const CHAPTER_ICONS = ["⚡", "🔥", "🌊", "🔭", "⚗️", "🧲", "🔬", "🌡️", "🌍", "💡", "🪐", "☄️", "🔋", "💻", "🎯", "🔌", "🌌", "⚛️", "⚙️", "🪫", "🔩", "📡"];
 
@@ -3082,6 +3083,13 @@
             cvReady = false;
             console.warn("⚠️ OpenCV.js failed to load — using pixel-analysis fallback only");
         }
+
+        (function() {
+            const debugInfo = document.getElementById("apiDebugInfo");
+            if (debugInfo) {
+                debugInfo.textContent = `API: ${API_BASE}`;
+            }
+        })();
 
         /* ══════════════════════════════════════════════════════════════════
            THEME
@@ -3154,12 +3162,15 @@
         ══════════════════════════════════════════════════════════════════ */
         (async function checkSession() {
             try {
+                console.log("Checking session at:", `${API_BASE}/api/admin/students`);
                 const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include", cache: "no-store" });
+                console.log("Session check status:", r.status);
                 if (r.ok) {
+                    console.log("Session valid - logging in");
                     enterDashboard();
                 }
             } catch (e) {
-                console.log("Session check failed - showing login screen");
+                console.log("Session check failed:", e.message, "- showing login screen");
             }
         })();
 
@@ -3176,13 +3187,30 @@
         async function login() {
             const p = document.getElementById("passcode").value.trim();
             const e = document.getElementById("loginError");
+            const btn = document.querySelector("button[onclick='login()']");
             e.style.display = "none";
             if (!p) { e.textContent = "Please enter a passcode."; e.style.display = "block"; return; }
+            
+            if (btn) { btn.textContent = "Logging in..."; btn.disabled = true; }
+            
             try {
-                const r = await fetch(`${API_BASE}/api/admin/login`, { method: "POST", credentials: "include", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: p }) });
+                const url = `${API_BASE}/api/admin/login`;
+                console.log("Attempting login to:", url);
+                const r = await fetch(url, { 
+                    method: "POST", 
+                    credentials: "include", 
+                    cache: "no-store", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ passcode: p }) 
+                });
+                console.log("Login response status:", r.status);
+                const data = await r.json().catch(() => null);
+                console.log("Login response data:", data);
+                
+                if (btn) { btn.textContent = "Login to Dashboard"; btn.disabled = false; }
+                
                 if (!r.ok) { 
-                    const data = await r.json().catch(() => ({}));
-                    e.textContent = data.error || "Invalid passcode. Try again.";
+                    e.textContent = data?.error || `Login failed (${r.status}). Check console.`;
                     e.style.display = "block"; 
                     return; 
                 }
@@ -3190,7 +3218,8 @@
                 enterDashboard();
             } catch (err) {
                 console.error("Login error:", err);
-                e.textContent = "Connection error. Please try again.";
+                if (btn) { btn.textContent = "Login to Dashboard"; btn.disabled = false; }
+                e.textContent = "Connection error. Is the server running?";
                 e.style.display = "block";
             }
         }
