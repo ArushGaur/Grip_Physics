@@ -3180,13 +3180,16 @@
             }
         })();
 
-        function enterDashboard() {
+        async function enterDashboard() {
             document.getElementById("loginOverlay").style.display = "none";
             document.getElementById("sidebar").classList.remove("hidden");
             document.getElementById("mainContent").classList.remove("hidden");
-            loadDashboard();
-            loadChaptersAdmin();
-            loadQuestionsAdmin();
+            console.log("Cookies before dashboard load:", document.cookie);
+            await new Promise(r => setTimeout(r, 500));
+            console.log("Cookies after delay:", document.cookie);
+            await loadDashboard();
+            await loadChaptersAdmin();
+            await loadQuestionsAdmin();
             history.replaceState({ type: "section", name: "dashboard" }, "", "");
         }
 
@@ -3279,7 +3282,10 @@
                 console.log("Fetching:", url);
                 const r = await fetch(url, { credentials: "include" });
                 console.log("Dashboard API status:", r.status);
-                if (r.status === 403) { console.log("Not authorized - session issue"); return; }
+                if (r.status === 403) { 
+                    console.log("Not authorized - session issue");
+                    return; 
+                }
                 if (!r.ok) { console.log("API error:", r.status); return; }
                 const data = await r.json();
                 console.log("Raw API response:", data);
@@ -3420,7 +3426,7 @@
         ══════════════════════════════════════════════════════════════════ */
         async function loadChaptersAdmin() {
             try {
-                const r = await fetch(`${API_BASE}/api/chapters`);
+                const r = await fetch(`${API_BASE}/api/chapters`, { credentials: "include" });
                 if (!r.ok) { console.error("Failed to load chapters:", r.status); return; }
                 const chs = await r.json();
                 console.log("Chapters loaded:", chs.length);
