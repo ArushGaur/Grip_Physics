@@ -2781,67 +2781,103 @@
         async function scanCorrupted() { const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults"); st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = ""; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = ""; if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:var(--success);font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); } else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);color:var(--error);margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); } } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } }
         async function deleteCorrupted() { askConfirmModal({ title: "Delete corrupted records?", text: "Permanently delete corrupted records? This cannot be undone.", confirmText: "Delete", onConfirm: async () => { const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#057a55;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } } }); }
 
-        // Override image slicing logic: map crops by image-question index,
-        // not by overall question index. This avoids duplicate figure crops.
+        // ── Multi-diagram detection: find ALL diagram regions on a screenshot ──
+        // Returns array of base64 cropped images, sorted top-to-bottom by position
+        async function detectAllDiagramsFromScreenshot(b64) {
+            // Try OpenCV multi-detection first
+            if (cvReady) {
+                try {
+                    const { canvas } = await loadImageToCanvas(b64);
+                    const W = canvas.width, H = canvas.height;
+                    const src = cv.imread(canvas);
+                    const gray = new cv.Mat();
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    const inv = new cv.Mat();
+                    cv.bitwise_not(gray, inv);
+                    const thresh = new cv.Mat();
+                    cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
+                    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+                    const dilated = new cv.Mat();
+                    cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
+                    const contours = new cv.MatVector();
+                    const hierarchy = new cv.Mat();
+                    cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                    const candidates = [];
+                    for (let i = 0; i < contours.size(); i++) {
+                        const rect = cv.boundingRect(contours.get(i));
+                        const area = rect.width * rect.height;
+                        const imgArea = W * H;
+                        const areaRatio = area / imgArea;
+                        const aspect = rect.width / rect.height;
+                        if (areaRatio < 0.02 || areaRatio > 0.75) continue;
+                        if (rect.width < 60 || rect.height < 40) continue;
+                        if (rect.width > W * 0.98) continue;
+                        if (aspect < 0.3 || aspect > 6) continue;
+                        if (areaRatio < 0.03) continue;
+                        candidates.push({ ...rect, areaRatio });
+                    }
+
+                    src.delete(); gray.delete(); inv.delete(); thresh.delete();
+                    kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
+
+                    if (candidates.length > 0) {
+                        // Merge overlapping/nearby regions
+                        candidates.sort((a, b) => a.y - b.y);
+                        const merged = [];
+                        for (const c of candidates) {
+                            let didMerge = false;
+                            for (const m of merged) {
+                                const overlapX = c.x < m.x + m.width && c.x + c.width > m.x;
+                                const overlapY = c.y < m.y + m.height && c.y + c.height > m.y;
+                                if (overlapX && overlapY) {
+                                    const nx = Math.min(m.x, c.x);
+                                    const ny = Math.min(m.y, c.y);
+                                    m.width = Math.max(m.x + m.width, c.x + c.width) - nx;
+                                    m.height = Math.max(m.y + m.height, c.y + c.height) - ny;
+                                    m.x = nx; m.y = ny;
+                                    didMerge = true;
+                                    break;
+                                }
+                            }
+                            if (!didMerge) merged.push({ ...c });
+                        }
+                        // Sort top-to-bottom by Y position
+                        merged.sort((a, b) => a.y - b.y);
+                        const results = merged.map(r => cropCanvas(canvas, r.x, r.y, r.width, r.height));
+                        if (results.length > 0) return results;
+                    }
+                } catch (e) {
+                    console.warn("Multi-diagram OpenCV error:", e);
+                }
+            }
+
+            // Fallback: try single detection
+            const single = await detectDiagram(b64);
+            return single ? [single] : [];
+        }
+
+        // Override: detect all diagrams per screenshot, then map to questions in order
         async function extractImagesForQuestions(questions, screenshotB64Array) {
             if (!screenshotB64Array || !screenshotB64Array.length) return;
             const imgQuestions = questions.filter(q => q.hasImage);
             if (!imgQuestions.length) return;
 
-            const imgsPerScreen = Math.max(1, Math.ceil(imgQuestions.length / screenshotB64Array.length));
-            let imgIdx = 0;
+            // Detect all diagrams from each screenshot
+            const allDiagrams = [];
+            for (const b64 of screenshotB64Array) {
+                const diagrams = await detectAllDiagramsFromScreenshot(b64);
+                allDiagrams.push(...diagrams);
+            }
 
+            // Assign detected diagrams to image-questions in order (top-to-bottom)
+            let imgIdx = 0;
             for (let qi = 0; qi < questions.length; qi++) {
                 const q = questions[qi];
                 if (!q.hasImage) continue;
-
-                const screenIdx = Math.min(Math.floor(imgIdx / imgsPerScreen), screenshotB64Array.length - 1);
-                const b64 = screenshotB64Array[screenIdx];
-
-                try {
-                    const localImgIdx = imgIdx % imgsPerScreen;
-                    const cropped = await getImageFromScreenshot(b64, localImgIdx, imgsPerScreen);
-                    q.extractedImageB64 = cropped || null;
-                } catch (e) {
-                    q.extractedImageB64 = null;
-                }
-
+                q.extractedImageB64 = (imgIdx < allDiagrams.length) ? allDiagrams[imgIdx] : null;
                 imgIdx++;
             }
-        }
-
-        async function getImageFromScreenshot(b64, localImgIdx, imgsOnScreen) {
-            return new Promise(resolve => {
-                const img = new Image();
-                const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
-
-                img.onload = () => {
-                    try {
-                        const canvas = document.createElement("canvas");
-                        const ctx = canvas.getContext("2d");
-                        const w = img.naturalWidth, h = img.naturalHeight;
-
-                        if (imgsOnScreen > 1) {
-                            const sliceH = Math.floor(h / imgsOnScreen);
-                            const startY = localImgIdx * sliceH;
-                            canvas.width = w;
-                            canvas.height = sliceH;
-                            ctx.drawImage(img, 0, startY, w, sliceH, 0, 0, w, sliceH);
-                        } else {
-                            canvas.width = w;
-                            canvas.height = h;
-                            ctx.drawImage(img, 0, 0);
-                        }
-
-                        resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
-                    } catch (e) {
-                        resolve(null);
-                    }
-                };
-
-                img.onerror = () => resolve(null);
-                img.src = `data:${mime};base64,${b64}`;
-            });
         }
 
         /* ── MODALS ── */
