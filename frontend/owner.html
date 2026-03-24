@@ -2550,9 +2550,12 @@
 
         <!-- DASHBOARD -->
         <div class="section active" id="section-dashboard">
-            <div class="page-header">
-                <h1>Dashboard</h1>
-                <p>Overview of all student activity and performance</p>
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p>Overview of all student activity and performance</p>
+                </div>
+                <button onclick="loadDashboard();loadChaptersAdmin();loadQuestionsAdmin();" style="padding:8px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:0.8rem">↻ Refresh</button>
             </div>
             
             <div class="dash-stats-row">
@@ -3059,6 +3062,8 @@
            GLOBALS
         ══════════════════════════════════════════════════════════════════ */
         const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? `http://${window.location.host}` : "https://grip-physics.onrender.com";
+        console.log("API_BASE set to:", API_BASE);
+        console.log("Location:", window.location.href);
         const LETTERS = ["A", "B", "C", "D"];
         const CHAPTER_ICONS = ["⚡", "🔥", "🌊", "🔭", "⚗️", "🧲", "🔬", "🌡️", "🌍", "💡", "🪐", "☄️", "🔋", "💻", "🎯", "🔌", "🌌", "⚛️", "⚙️", "🪫", "🔩", "📡"];
 
@@ -3268,10 +3273,18 @@
            DASHBOARD
         ══════════════════════════════════════════════════════════════════ */
         async function loadDashboard() {
+            console.log("Loading dashboard...");
             try {
-                const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include" });
-                if (r.status === 403) return;
-                allStudents = await r.json();
+                const url = `${API_BASE}/api/admin/students`;
+                console.log("Fetching:", url);
+                const r = await fetch(url, { credentials: "include" });
+                console.log("Dashboard API status:", r.status);
+                if (r.status === 403) { console.log("Not authorized - session issue"); return; }
+                if (!r.ok) { console.log("API error:", r.status); return; }
+                const data = await r.json();
+                console.log("Raw API response:", data);
+                allStudents = data;
+                console.log("Students loaded:", allStudents.length);
                 const wa = allStudents.filter(s => s.answers && s.answers.length > 0);
                 const tc = wa.reduce((sum, x) => sum + (x.correctCount || 0), 0);
                 const tw = wa.reduce((sum, x) => sum + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
@@ -3296,7 +3309,7 @@
 
                 _chartData = wa;
                 buildChart(wa);
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Dashboard error:", e); }
         }
 
         function renderRecentActivity(activities) {
