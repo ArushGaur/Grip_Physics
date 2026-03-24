@@ -3053,7 +3053,7 @@
         /* ══════════════════════════════════════════════════════════════════
            GLOBALS
         ══════════════════════════════════════════════════════════════════ */
-        const API_BASE = "";
+        const API_BASE = "https://grip-physics.onrender.com";
         const LETTERS = ["A", "B", "C", "D"];
         const CHAPTER_ICONS = ["⚡", "🔥", "🌊", "🔭", "⚗️", "🧲", "🔬", "🌡️", "🌍", "💡", "🪐", "☄️", "🔋", "💻", "🎯", "🔌", "🌌", "⚛️", "⚙️", "🪫", "🔩", "📡"];
 
@@ -3155,8 +3155,12 @@
         (async function checkSession() {
             try {
                 const r = await fetch(`${API_BASE}/api/admin/students`, { credentials: "include", cache: "no-store" });
-                if (r.ok) enterDashboard();
-            } catch (e) { }
+                if (r.ok) {
+                    enterDashboard();
+                }
+            } catch (e) {
+                console.log("Session check failed - showing login screen");
+            }
         })();
 
         function enterDashboard() {
@@ -3173,11 +3177,22 @@
             const p = document.getElementById("passcode").value.trim();
             const e = document.getElementById("loginError");
             e.style.display = "none";
-            if (!p) { e.style.display = "block"; return; }
-            const r = await fetch(`${API_BASE}/api/admin/login`, { method: "POST", credentials: "include", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: p }) });
-            if (!r.ok) { e.style.display = "block"; return; }
-            document.getElementById("passcode").value = "";
-            enterDashboard();
+            if (!p) { e.textContent = "Please enter a passcode."; e.style.display = "block"; return; }
+            try {
+                const r = await fetch(`${API_BASE}/api/admin/login`, { method: "POST", credentials: "include", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: p }) });
+                if (!r.ok) { 
+                    const data = await r.json().catch(() => ({}));
+                    e.textContent = data.error || "Invalid passcode. Try again.";
+                    e.style.display = "block"; 
+                    return; 
+                }
+                document.getElementById("passcode").value = "";
+                enterDashboard();
+            } catch (err) {
+                console.error("Login error:", err);
+                e.textContent = "Connection error. Please try again.";
+                e.style.display = "block";
+            }
         }
 
         function confirmLogout() { closeMobileDrawer(); openModal('logoutModal'); }
