@@ -247,7 +247,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         for (const img of questionImages) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
         for (const img of (answerImages || [])) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
         contentParts.push({ type: "text", text: prompt });
-        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY }, body: JSON.stringify({ model: "meta-llama/llama-4-scout-17b-16e-instruct", max_tokens: 6000, temperature: 0.1, messages: [{ role: "user", content: contentParts }] }) });
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY }, body: JSON.stringify({ model: "llama-3.2-90b-vision-preview", max_tokens: 6000, temperature: 0.1, messages: [{ role: "user", content: contentParts }] }) });
         if (!r.ok) { const e = await r.json(); return res.status(502).json({ error: (e.error && e.error.message) || "Groq error" }); }
         const data = await r.json();
         let text = ((data.choices?.[0]?.message?.content) || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
@@ -297,7 +297,7 @@ Be tight — do not include text rows above or below the drawing.`;
                 "Authorization": "Bearer " + process.env.GROQ_API_KEY
             },
             body: JSON.stringify({
-                model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                model: "llama-3.2-90b-vision-preview",
                 max_tokens: 100,
                 temperature: 0.0,
                 messages: [{
