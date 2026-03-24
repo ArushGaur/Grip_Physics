@@ -1411,6 +1411,34 @@
             color: var(--accent);
         }
 
+        .correct-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.87rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .correct-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .correct-btn.selected {
+            background: rgba(6, 214, 160, 0.15);
+            border-color: rgba(6, 214, 160, 0.5);
+            color: var(--success);
+        }
+
         .saving-overlay {
             position: fixed;
             bottom: 24px;
@@ -2320,6 +2348,32 @@
             align-items: center;
             gap: 10px;
         }
+        .stu-score-hp-wrap {
+            width: 100%;
+        }
+        .stu-score-hp-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--bg-input);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        .stu-score-hp-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.4s ease;
+        }
+        .stu-score-hp-text {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stu-score-pct {
+            font-size: 0.8rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
         .stu-score-circle {
             width: 44px;
             height: 44px;
@@ -2341,6 +2395,7 @@
         }
         .stu-score-num {
             font-weight: 700;
+            font-size: 0.75rem;
         }
 
         .stu-empty {
@@ -4542,7 +4597,7 @@
                         </div>
                         <div style="margin-top:10px" id="iqe_correct_wrap_${si}"><label style="font-size:0.75rem;color:var(--text-dim);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px">Correct Answer(s):</label>
                             <div style="display:flex;gap:10px;flex-wrap:wrap">
-                                ${LETTERS.map((l, oi) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.87rem;padding:6px 14px;border-radius:var(--radius-sm);background:${ci.includes(oi) ? "rgba(6,214,160,0.1);border:1px solid rgba(6,214,160,0.3)" : "var(--bg-card);border:1px solid var(--border)"}><input type="${isMulti ? "checkbox" : "radio"}" name="iqe_correct_single_${si}" class="iqe_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""} style="width:auto;cursor:pointer;accent-color:var(--success)"> ${l}</label>`).join("")}
+                                ${LETTERS.map((l, oi) => `<button type="button" class="correct-btn ${ci.includes(oi) ? "selected" : ""}" data-si="${si}" data-oi="${oi}" data-multi="${isMulti}" onclick="toggleCorrectAnswer(${si}, ${oi}, ${isMulti})">${l}</button>`).join("")}
                             </div>
                         </div>
                     </div>`;
@@ -4570,6 +4625,48 @@
             if (inp && rend) { rend.textContent = inp.value; renderMath(rend); }
         }
 
+        function toggleCorrectAnswer(si, oi, isMulti) {
+            const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
+            if (!wrap) return;
+            
+            const buttons = wrap.querySelectorAll('.correct-btn');
+            const selected = [];
+            
+            // Toggle the clicked button
+            const clickedBtn = wrap.querySelector(`.correct-btn[data-si="${si}"][data-oi="${oi}"]`);
+            const wasSelected = clickedBtn?.classList.contains('selected');
+            
+            if (isMulti) {
+                // Multi-correct: toggle the clicked option
+                if (wasSelected) {
+                    clickedBtn?.classList.remove('selected');
+                } else {
+                    clickedBtn?.classList.add('selected');
+                }
+            } else {
+                // Single-correct: deselect all, then select only the clicked one
+                buttons.forEach(btn => btn.classList.remove('selected'));
+                clickedBtn?.classList.add('selected');
+            }
+            
+            // Update rendered options styling
+            const optRenderRows = document.querySelectorAll(`#iqe_opt_render_${si}_${oi}`)?.closest('.opt-render-row') || [];
+        }
+
+        function updateCorrectBtnStyles(si, selectedIndexes) {
+            const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
+            if (!wrap) return;
+            
+            const buttons = wrap.querySelectorAll('.correct-btn');
+            buttons.forEach((btn, idx) => {
+                if (selectedIndexes.includes(idx)) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
         function toggleMultiCorrect(si) {
             const isMulti = document.getElementById(`iqe_multi_${si}`)?.checked || false;
             const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
@@ -4581,8 +4678,23 @@
                 toggleText.textContent = isMulti ? "✦ Multi-correct" : "○ Single-correct";
             }
             
-            const correctLabels = wrap.querySelectorAll('label');
-            const inputs = wrap.querySelectorAll('input');
+            const buttons = wrap.querySelectorAll('.correct-btn');
+            const selected = [];
+            buttons.forEach((btn, idx) => {
+                if (btn.classList.contains('selected')) selected.push(idx);
+            });
+            
+            // If switching to single and multiple selected, keep only first
+            if (!isMulti && selected.length > 1) {
+                const firstSelected = selected[0];
+                buttons.forEach((btn, idx) => {
+                    if (idx !== firstSelected) btn.classList.remove('selected');
+                });
+            }
+            
+            // Update data attributes
+            buttons.forEach(btn => btn.dataset.multi = isMulti);
+        }
             
             // First collect which ones are currently checked
             const checkedValues = [];
@@ -4640,8 +4752,13 @@
                 const text = document.getElementById(`iqe_qt_${si}`)?.value.trim();
                 const opts = LETTERS.map((_, oi) => document.getElementById(`iqe_opt_${si}_${oi}`)?.value.trim() || "");
                 const isMulti = document.getElementById(`iqe_multi_${si}`)?.checked || false;
-                const checked = [...c.querySelectorAll(`[class*="iqe_correct_"]:checked`)].map(x => parseInt(x.value));
+                
+                // Get selected correct answers from buttons
+                const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
+                const selectedBtns = wrap?.querySelectorAll('.correct-btn.selected') || [];
+                const checked = Array.from(selectedBtns).map(btn => parseInt(btn.dataset.oi));
                 const ci = checked.length ? checked : [0];
+                
                 if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: isMulti });
             });
             if (!questions.length) { showErrorModal("No complete questions found to save.", "Incomplete data"); return; }
@@ -4794,10 +4911,13 @@
                         <span class="stu-tag">Lecture ${s.lecture || '—'}</span>
                     </div>
                     <div class="stu-card-footer">
-                        <div class="stu-score">
-                            <div class="stu-score-circle" style="background: linear-gradient(135deg, hsl(${pct * 1.2}, 80%, 45%), hsl(${pct * 1.2 + 60}, 80%, 55%)); border: 2px solid rgba(255,255,255,0.15);">${pct}</div>
-                            <div class="stu-score-text">
-                                <span class="stu-score-num">${correct}/${total}</span> correct
+                        <div class="stu-score-hp-wrap">
+                            <div class="stu-score-hp-bar">
+                                <div class="stu-score-hp-fill" style="width: ${pct}%; background: linear-gradient(90deg, #ef4444, #f59e0b 50%, #22c55e);"></div>
+                            </div>
+                            <div class="stu-score-hp-text">
+                                <span class="stu-score-num">${correct}/${total}</span>
+                                <span class="stu-score-pct">${pct}%</span>
                             </div>
                         </div>
                     </div>
