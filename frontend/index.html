@@ -1,119 +1,183 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grip Physics | Interactive Portal</title>
+    <title>Grip Physics | Student Portal</title>
     <link rel="stylesheet" href="style.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 </head>
-
 <body>
     <button id="themeToggle" class="theme-toggle" onclick="togglePortalTheme()" title="Toggle Theme">🌙</button>
-
-    <div id="loader">
-        <div class="loader-content">
-            <div class="loader-logo-wrap">
-                <span class="loader-icon">⚛</span>
-                <h1 class="loader-logo">GRIP PHYSICS</h1>
-            </div>
-            <div class="loader-bar">
-                <div class="loader-bar-fill"></div>
-            </div>
-            <p id="quote">"The important thing is not to stop questioning."</p>
-        </div>
-    </div>
     <div id="particles-js"></div>
     <main id="main-content" class="hidden">
-        <div class="step-tracker" id="stepTracker">
-            <div class="step active" id="step1"><span class="step-num">1</span><span class="step-label">Register</span>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" id="step2"><span class="step-num">2</span><span class="step-label">Answer</span></div>
-            <div class="step-line"></div>
-            <div class="step" id="step3"><span class="step-num">3</span><span class="step-label">Result</span></div>
-        </div>
-        <div id="login-page" class="container slide-in">
-            <div class="brand">
-                <span class="brand-icon">⚛</span>
-                <div>
-                    <h2>Grip Physics</h2>
-                    <p class="subtitle">Student Enrollment Portal</p>
+        <!-- STEP 1: REGISTRATION -->
+        <section id="login-page" class="page slide-in">
+            <div class="portal-card">
+                <div class="portal-header">
+                    <div class="portal-logo">
+                        <span class="logo-icon">⚛</span>
+                        <div>
+                            <h1>Grip Physics</h1>
+                            <p>Student Portal</p>
+                        </div>
+                    </div>
+                    <div class="portal-badge">Quiz Portal</div>
+                </div>
+                <form id="loginForm" novalidate>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label>Full Name</label>
+                            <div class="input-wrap">
+                                <span class="input-icon">👤</span>
+                                <input type="text" id="userName" placeholder="Enter your full name" required autocomplete="name">
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label>Mobile Number</label>
+                            <div class="input-wrap">
+                                <span class="input-icon">📞</span>
+                                <input type="tel" id="userMobile" placeholder="10-digit number" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" required>
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label>Place / City</label>
+                            <div class="input-wrap">
+                                <span class="input-icon">📍</span>
+                                <input type="text" id="userPlace" placeholder="Your city" required>
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label>Class</label>
+                            <div class="input-wrap">
+                                <span class="input-icon">🎓</span>
+                                <input type="text" id="userClass" placeholder="e.g. 11th Science" required>
+                            </div>
+                        </div>
+                        <div class="form-field full-width">
+                            <label>Select Chapter</label>
+                            <div class="input-wrap select-wrap">
+                                <span class="input-icon">📚</span>
+                                <select id="chapterSelect" required>
+                                    <option value="">Choose Chapter</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-field full-width">
+                            <label>Select Lecture</label>
+                            <div class="input-wrap select-wrap" id="lectureWrap">
+                                <span class="input-icon">🎬</span>
+                                <select id="lectureSelect" required disabled>
+                                    <option value="">Choose Chapter First</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="form-error" class="form-error hidden"></div>
+                    <div id="already-msg" class="already-msg hidden"></div>
+                    <button type="submit" id="submitBtn" class="btn-primary">
+                        <span id="submitBtnText">Start Quiz</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </form>
+                <div class="portal-footer">
+                    <p>Enter a lecture to unlock your quiz</p>
                 </div>
             </div>
-            <form id="loginForm" novalidate>
-                <div class="input-group"><span class="input-icon">👤</span><input type="text" id="userName"
-                        placeholder="Full Name" required autocomplete="name"></div>
-                <div class="input-group"><span class="input-icon">📞</span><input type="tel" id="userMobile"
-                        placeholder="Mobile No." pattern="[0-9]{10}" maxlength="10" inputmode="numeric" required></div>
-                <div class="input-group"><span class="input-icon">📍</span><input type="text" id="userPlace"
-                        placeholder="Place / City" required></div>
-                <div class="input-group"><span class="input-icon">🎓</span><input type="text" id="userClass"
-                        placeholder="Class (e.g. 11th Science)" required></div>
-                <div class="select-group"><span class="input-icon">📚</span><select id="chapterSelect" required>
-                        <option value="">Select Chapter</option>
-                    </select></div>
-                <div class="select-group" id="lectureWrap" style="opacity:0.4;pointer-events:none;"><span
-                        class="input-icon">🎬</span><select id="lectureSelect" required>
-                        <option value="">Select Lecture</option>
-                    </select></div>
-                <button type="submit" id="submitBtn"><span id="submitBtnText">Unlock Question</span><span
-                        class="btn-icon">→</span></button>
-            </form>
-        </div>
-        <div id="quiz-page" class="container hidden">
-            <div class="quiz-header">
-                <div class="quiz-meta">
-                    <span id="quiz-chapter-label" class="badge">Chapter</span>
-                    <span id="quiz-lecture-label" class="badge accent">Lecture</span>
+        </section>
+        <!-- STEP 2: QUIZ -->
+        <section id="quiz-page" class="page hidden">
+            <div class="quiz-container">
+                <div class="quiz-top-bar">
+                    <div class="quiz-info">
+                        <span id="quiz-chapter-label" class="quiz-chip">Chapter</span>
+                        <span id="quiz-lecture-label" class="quiz-chip accent">Lecture</span>
+                    </div>
+                    <button class="quiz-exit" onclick="location.reload()" title="Exit Quiz">
+                        <span>✕</span>
+                    </button>
                 </div>
-                <button class="quiz-exit-btn" onclick="location.reload()" title="Exit Quiz">✕</button>
+                <div class="progress-indicator">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span>Question <span id="q-current">1</span> of <span id="q-total">10</span></span>
+                    </div>
+                </div>
+                <div class="question-card">
+                    <div id="multi-correct-notice" class="multi-badge hidden">
+                        <span>✦</span> Multi-correct — select ALL correct answers
+                    </div>
+                    <div id="question-image-wrap" class="question-img-wrap hidden">
+                        <img id="question-image" class="question-img" src="" alt="Question Diagram">
+                    </div>
+                    <div id="question-text" class="question-content">Loading...</div>
+                </div>
+                <div id="options-container" class="options-grid"></div>
+                <div class="quiz-nav">
+                    <button id="prevBtn" class="btn-nav" onclick="prevQuestion()" disabled>
+                        <span>←</span> Previous
+                    </button>
+                    <button id="nextBtn" class="btn-nav" onclick="nextQuestion()">
+                        Next <span>→</span>
+                    </button>
+                </div>
+                <button id="submitAnswerBtn" class="btn-submit" onclick="submitAnswer()" disabled>
+                    Submit Answers
+                </button>
+                <p class="sync-text hidden" id="sync-text">Syncing with dashboard...</p>
             </div>
-            <div id="question-progress" class="question-progress"><span id="q-current">1</span> / <span
-                    id="q-total">1</span></div>
-            <div id="multi-correct-notice" class="multi-correct-badge hidden">✦ Multi-correct — select ALL correct
-                options</div>
-            <div id="question-image-wrap" class="question-image-wrap" style="display: none; margin-bottom: 16px;">
-                <img id="question-image" class="question-image" src="" alt="Question Diagram">
+        </section>
+        <!-- STEP 3: RESULTS -->
+        <section id="result-page" class="page hidden">
+            <div class="result-container">
+                <div id="result-icon" class="result-emoji">🎉</div>
+                <h2 id="result-title" class="result-title">Great Job!</h2>
+                
+                <div class="score-display">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="score-ring-bg" cx="50" cy="50" r="45"/>
+                            <circle class="score-ring-fill" id="scoreRingFill" cx="50" cy="50" r="45"/>
+                        </svg>
+                        <div class="score-inner">
+                            <span id="result-correct" class="score-num">0</span>
+                            <span class="score-sep">/</span>
+                            <span id="result-total" class="score-total">0</span>
+                        </div>
+                    </div>
+                </div>
+                <p id="result-subtitle" class="result-subtitle">Keep up the great work!</p>
+                <div class="result-meta">
+                    <div class="meta-item">
+                        <span class="meta-icon">👤</span>
+                        <span id="result-name">Student</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-icon">📚</span>
+                        <span id="result-chapter">Chapter</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-icon">🎬</span>
+                        <span id="result-lecture-meta">Lecture</span>
+                    </div>
+                </div>
+                <div class="result-breakdown">
+                    <h3>Answer Breakdown</h3>
+                    <div id="result-breakdown" class="breakdown-list"></div>
+                </div>
+                <button onclick="location.reload()" class="btn-primary">
+                    Try Another Lecture <span>→</span>
+                </button>
             </div>
-            <div id="question-text" class="question-text">Loading...</div>
-            <div class="options-container" id="options-container"></div>
-            <div id="quiz-nav" class="quiz-nav hidden">
-                <button id="prevBtn" class="nav-btn" onclick="prevQuestion()" disabled>← Prev</button>
-                <button id="nextBtn" class="nav-btn" onclick="nextQuestion()">Next →</button>
-            </div>
-            <div id="feedback"></div>
-            <button id="submitAnswerBtn" class="submit-answer-btn" onclick="submitAnswer()" disabled>Submit All
-                Answers</button>
-            <p class="sync-text" id="sync-text" style="display:none;">Syncing with Grip Physics Dashboard...</p>
-        </div>
-        <div id="result-page" class="container hidden">
-            <div id="result-icon" class="result-icon">🎉</div>
-            <h2 id="result-title" class="result-title">Well Done!</h2>
-            <div class="result-score">
-                <span id="result-correct" class="score-num">0</span>
-                <span class="score-sep">/</span>
-                <span id="result-total" class="score-den">0</span>
-            </div>
-            <p id="result-subtitle" class="result-subtitle">Keep up the great work!</p>
-            <div id="result-breakdown" class="result-breakdown"></div>
-            <div class="result-meta">
-                <span id="result-name" class="meta-chip">👤</span>
-                <span id="result-chapter" class="meta-chip">📚</span>
-                <span id="result-lecture-meta" class="meta-chip">🎬</span>
-            </div>
-            <button onclick="location.reload()" class="restart-btn">Try Another Lecture →</button>
-        </div>
+        </section>
     </main>
     <script src="script.js"></script>
 </body>
-
 </html>
