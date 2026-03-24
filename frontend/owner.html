@@ -358,90 +358,7 @@
             margin-bottom: 24px;
         }
 
-        /* ENHANCED DASHBOARD STATS */
-        .dashboard-stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-bottom: 24px;
-        }
-        .dash-stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 22px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow-card);
-            transition: var(--transition);
-        }
-        .dash-stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
-        }
-        .dash-stat-glow {
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            opacity: 0.15;
-            filter: blur(40px);
-        }
-        .dash-total .dash-stat-glow { background: var(--accent); }
-        .dash-correct .dash-stat-glow { background: var(--success); }
-        .dash-wrong .dash-stat-glow { background: var(--error); }
-        .dash-lectures .dash-stat-glow { background: var(--accent-3); }
-        .dash-stat-icon {
-            font-size: 2rem;
-            margin-bottom: 12px;
-        }
-        .dash-stat-content {
-            margin-bottom: 12px;
-        }
-        .dash-stat-num {
-            font-size: 2.2rem;
-            font-weight: 800;
-            font-family: 'JetBrains Mono', monospace;
-            line-height: 1.1;
-        }
-        .dash-total .dash-stat-num { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .dash-correct .dash-stat-num { background: linear-gradient(135deg, var(--success), #2ba88a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .dash-wrong .dash-stat-num { background: linear-gradient(135deg, var(--error), #c53030); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .dash-lectures .dash-stat-num { background: linear-gradient(135deg, var(--accent-3), #0a7a60); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .dash-stat-label {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 4px;
-        }
-        .dash-stat-trend {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 20px;
-            width: fit-content;
-        }
-        .dash-stat-trend.up { background: rgba(6, 214, 160, 0.12); color: var(--success); }
-        .dash-stat-trend.down { background: rgba(242, 92, 92, 0.12); color: var(--error); }
-        .dash-stat-trend.neutral { background: rgba(136, 145, 255, 0.12); color: var(--accent); }
 
-        @media(max-width:1000px) {
-            .dashboard-stats-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        @media(max-width:600px) {
-            .dashboard-stats-row {
-                grid-template-columns: 1fr;
-            }
-        }
 
         .stat-card {
             background: var(--bg-card);
@@ -2580,6 +2497,35 @@
                         <div class="panel-title">📚 Chapters Overview</div>
                         <div id="chapterBreakdownList" class="chapter-list"></div>
                     </div>
+
+                    <div class="panel drill-down-panel">
+                        <div class="panel-title">🔍 Drill-down Analysis</div>
+                        <div class="form-row">
+                            <div class="field"><label>Chapter</label><select id="drillChapter" onchange="loadDrillLectures()">
+                                    <option value="">— All Chapters —</option>
+                                </select></div>
+                            <div class="field"><label>Lecture</label><select id="drillLecture" onchange="loadDrillData()">
+                                    <option value="">— Select Lecture —</option>
+                                </select></div>
+                        </div>
+                        <div id="drillResults" style="display:none">
+                            <div class="stats-grid mt-12" id="drillStats"></div>
+                            <div class="table-wrap mt-12">
+                                <table id="drillTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Mobile</th>
+                                            <th>Correct</th>
+                                            <th>Total</th>
+                                            <th>Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3141,8 +3087,8 @@
                 if (r.status === 403) return;
                 allStudents = await r.json();
                 const wa = allStudents.filter(s => s.answers && s.answers.length > 0);
-                const tc = wa.reduce((s, x) => s + (x.correctCount || 0), 0);
-                const tw = wa.reduce((s, x) => s + ((x.totalQuestions || 0) - (s.correctCount || 0)), 0);
+                const tc = wa.reduce((sum, x) => sum + (x.correctCount || 0), 0);
+                const tw = wa.reduce((sum, x) => sum + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
                 const lecs = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
                 
                 document.getElementById("stat-total").textContent = allStudents.length;
@@ -3260,31 +3206,18 @@
             if (!results) return;
             if (!lec) { results.style.display = "none"; return; }
             const f = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lec && (!ch || s.chapter === ch));
-            const tc = f.reduce((s, x) => s + (x.correctCount || 0), 0);
-            const tw = f.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
+            const tc = f.reduce((sum, x) => sum + (x.correctCount || 0), 0);
+            const tw = f.reduce((sum, x) => sum + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
             document.getElementById("drillStats").innerHTML = `<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${f.length}</div><div class="stat-label">Attempted</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${tc}</div><div class="stat-label">Correct</div></div><div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num">${tw}</div><div class="stat-label">Wrong</div></div>`;
             const tbody = document.querySelector("#drillTable tbody");
             if (tbody) {
                 tbody.innerHTML = "";
-                f.forEach(s => {
-                    const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
-                    tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${s.mobile}</td><td>${s.correctCount || 0}</td><td>${s.totalQuestions || 0}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`);
+                f.forEach(student => {
+                    const pct = student.totalQuestions ? Math.round((student.correctCount / student.totalQuestions) * 100) : 0;
+                    tbody.insertAdjacentHTML("beforeend", `<tr><td>${student.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${student.mobile}</td><td>${student.correctCount || 0}</td><td>${student.totalQuestions || 0}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`);
                 });
             }
             results.style.display = "block";
-        }
-            if (!lec) { document.getElementById("drillResults").style.display = "none"; return; }
-            const f = allStudents.filter(s => s.answers && s.answers.length > 0 && s.lecture === lec && (!ch || s.chapter === ch));
-            const tc = f.reduce((s, x) => s + (x.correctCount || 0), 0);
-            const tw = f.reduce((s, x) => s + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
-            document.getElementById("drillStats").innerHTML = `<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num">${f.length}</div><div class="stat-label">Attempted</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${tc}</div><div class="stat-label">Correct</div></div><div class="stat-card"><div class="stat-icon">❌</div><div class="stat-num">${tw}</div><div class="stat-label">Wrong</div></div>`;
-            const tbody = document.querySelector("#drillTable tbody");
-            tbody.innerHTML = "";
-            f.forEach(s => {
-                const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
-                tbody.insertAdjacentHTML("beforeend", `<tr><td>${s.name || "—"}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${s.mobile}</td><td>${s.correctCount || 0}</td><td>${s.totalQuestions || 0}</td><td><span class="badge-pill ${pct >= 50 ? "ok" : "wrong"}">${pct}%</span></td></tr>`);
-            });
-            document.getElementById("drillResults").style.display = "block";
         }
 
         /* ══════════════════════════════════════════════════════════════════
@@ -4639,14 +4572,14 @@
 
         function updateStudentStats(data) {
             const stats = getStudentStats(data);
-            document.getElementById('stu-stat-total').textContent = stats.total;
-            document.getElementById('stu-stat-attempts').textContent = stats.attempts;
-            document.getElementById('stu-stat-avg').textContent = stats.avgScore + '%';
-            document.getElementById('stu-stat-top').textContent = stats.topScore + '%';
-            const avgBar = document.getElementById('avg-bar');
-            const topBar = document.getElementById('top-bar');
-            if (avgBar) avgBar.style.width = stats.avgScore + '%';
-            if (topBar) topBar.style.width = stats.topScore + '%';
+            const el = document.getElementById('stu-stat-total');
+            if (el) el.textContent = stats.total;
+            const avgEl = document.getElementById('stu-stat-avg');
+            if (avgEl) avgEl.textContent = stats.avgScore + '%';
+            const topEl = document.getElementById('stu-stat-top');
+            if (topEl) topEl.textContent = stats.topScore + '%';
+            const countEl = document.getElementById('filterCount');
+            if (countEl) countEl.textContent = stats.total;
         }
 
         function getScoreClass(pct) {
