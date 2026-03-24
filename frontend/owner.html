@@ -2191,14 +2191,10 @@
         ["qZone", "aZone"].forEach(zid => { const z = document.getElementById(zid); if (!z) return; z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("dragover"); }); z.addEventListener("dragleave", () => z.classList.remove("dragover")); z.addEventListener("drop", async e => { e.preventDefault(); z.classList.remove("dragover"); for (const f of e.dataTransfer.files) { if (!f || !f.type.startsWith("image/")) continue; const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (zid === "qZone") qImagesBase64.push(b64); else aImagesBase64.push(b64); } refreshPreviews(); }); });
 
         /* ═══════════════════════════════════════════════════════════════
-           OpenCV.js DIAGRAM DETECTOR
-           Detects figures/diagrams in physics textbook screenshots
-           using contour detection + heuristics (no AI, no server call)
+           AI-BASED DIAGRAM EXTRACTION
+           Uses bounding box coordinates from the AI to crop diagrams
+           directly from uploaded screenshots — no OpenCV needed
            ═══════════════════════════════════════════════════════════════ */
-
-        let cvReady = false, cvFailed = false;
-        function onOpenCvReady() { cvReady = true; console.log("OpenCV.js ready"); }
-        function onOpenCvError() { cvFailed = true; console.warn("OpenCV.js failed to load — manual upload will be used"); }
 
         // Load image into canvas and return {canvas, ctx, img}
         function loadImageToCanvas(b64) {
@@ -2228,182 +2224,36 @@
             return out.toDataURL("image/jpeg", 0.92).split(",")[1];
         }
 
-        // OpenCV-based diagram region detector
-        // Strategy:
-        //   1. Convert to grayscale
-        //   2. Threshold to find dark-on-white regions (figures are usually enclosed)
-        //   3. Find contours, filter by size and aspect ratio
-        //   4. Merge overlapping boxes, pick the best candidate
-        //   5. Fallback: detect enclosed white rectangle (figure box) by finding
-        //      the largest nearly-white rectangular region that is NOT full-width
-        async function detectDiagramWithOpenCV(b64) {
-            if (!cvReady) return null;
+        // Crop diagram from screenshot using AI-provided fractional coordinates
+        async function cropDiagramFromAI(screenshotB64, imageRegion) {
             try {
-                const { canvas } = await loadImageToCanvas(b64);
+                const { canvas } = await loadImageToCanvas(screenshotB64);
                 const W = canvas.width, H = canvas.height;
-
-                // Read image into OpenCV Mat
-                const src = cv.imread(canvas);
-                const gray = new cv.Mat();
-                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-                // ── Step 1: Find enclosed figure boxes (white/light rectangles)
-                // Invert so figures (light background) become dark blobs
-                const inv = new cv.Mat();
-                cv.bitwise_not(gray, inv);
-
-                // Threshold
-                const thresh = new cv.Mat();
-                cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
-
-                // Dilate to close gaps in figure borders
-                const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-                const dilated = new cv.Mat();
-                cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
-
-                // Find contours
-                const contours = new cv.MatVector();
-                const hierarchy = new cv.Mat();
-                cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-                const candidates = [];
-                for (let i = 0; i < contours.size(); i++) {
-                    const rect = cv.boundingRect(contours.get(i));
-                    const area = rect.width * rect.height;
-                    const imgArea = W * H;
-                    const areaRatio = area / imgArea;
-                    const aspect = rect.width / rect.height;
-
-                    // Filter: must be a meaningful region, not full image, not tiny
-                    if (areaRatio < 0.02 || areaRatio > 0.75) continue;  // too small or too large
-                    if (rect.width < 60 || rect.height < 40) continue;   // too tiny
-                    if (rect.width > W * 0.98) continue;                  // full-width = text block
-                    if (aspect < 0.3 || aspect > 6) continue;            // weird shape
-
-                    // Score: prefer medium-sized, more square-ish regions
-                    // and regions in the right half of the image (figures often on right)
-                    const centerX = rect.x + rect.width / 2;
-                    const rightBias = centerX > W * 0.4 ? 1.3 : 1.0;
-                    const score = areaRatio * rightBias;
-                    candidates.push({ ...rect, score, areaRatio });
-                }
-
-                // Clean up OpenCV mats
-                src.delete(); gray.delete(); inv.delete(); thresh.delete();
-                kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
-
-                if (!candidates.length) return null;
-
-                // Sort by score, take best candidate
-                candidates.sort((a, b) => b.score - a.score);
-                const best = candidates[0];
-
-                // Validate: area ratio should be in useful range
-                if (best.areaRatio < 0.03) return null;
-
-                return cropCanvas(canvas, best.x, best.y, best.width, best.height);
+                const x = Math.round(imageRegion.x * W);
+                const y = Math.round(imageRegion.y * H);
+                const w = Math.round(imageRegion.w * W);
+                const h = Math.round(imageRegion.h * H);
+                return cropCanvas(canvas, x, y, w, h, 4);
             } catch (e) {
-                console.warn("OpenCV detection error:", e);
+                console.warn("AI diagram crop error:", e);
                 return null;
             }
         }
 
-        // ── Step 2: Fallback — text density analysis (no OpenCV needed)
-        // Splits the image into a grid, finds cells with LOW text density
-        // (few dark pixels in expected text rows = likely a figure area)
-        async function detectDiagramFallback(b64) {
-            try {
-                const { canvas, ctx } = await loadImageToCanvas(b64);
-                const W = canvas.width, H = canvas.height;
-                const imageData = ctx.getImageData(0, 0, W, H).data;
-
-                // Analyze rows — find consecutive rows that are mostly white (figure region)
-                const COLS = 8, ROWS = 40;
-                const cellW = Math.floor(W / COLS), cellH = Math.floor(H / ROWS);
-
-                // For each grid cell, compute dark pixel ratio
-                const grid = [];
-                for (let row = 0; row < ROWS; row++) {
-                    grid[row] = [];
-                    for (let col = 0; col < COLS; col++) {
-                        let dark = 0, total = 0;
-                        const x0 = col * cellW, y0 = row * cellH;
-                        for (let y = y0; y < y0 + cellH && y < H; y++) {
-                            for (let x = x0; x < x0 + cellW && x < W; x++) {
-                                const idx = (y * W + x) * 4;
-                                const lum = 0.299 * imageData[idx] + 0.587 * imageData[idx + 1] + 0.114 * imageData[idx + 2];
-                                if (lum < 180) dark++;
-                                total++;
-                            }
-                        }
-                        grid[row][col] = dark / total; // darkness ratio
-                    }
-                }
-
-                // Find the column half with more enclosed whitespace (right half usually has figure)
-                // Find a rectangular block where darkness is very low (white figure area)
-                let bestBlock = null, bestScore = -1;
-                for (let r1 = 0; r1 < ROWS - 3; r1++) {
-                    for (let r2 = r1 + 3; r2 < ROWS; r2++) {
-                        for (let c1 = 1; c1 < COLS - 1; c1++) {
-                            for (let c2 = c1 + 1; c2 < COLS; c2++) {
-                                let avgDark = 0, cells = 0;
-                                for (let r = r1; r <= r2; r++)
-                                    for (let c = c1; c <= c2; c++) { avgDark += grid[r][c]; cells++; }
-                                avgDark /= cells;
-                                const size = (r2 - r1) * (c2 - c1);
-                                // Low darkness + reasonable size = figure candidate
-                                if (avgDark < 0.08 && size > 8) {
-                                    const score = size * (0.1 - avgDark);
-                                    if (score > bestScore) { bestScore = score; bestBlock = { r1, r2, c1, c2 }; }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!bestBlock) return null;
-                const { r1, r2, c1, c2 } = bestBlock;
-                const x = c1 * cellW, y = r1 * cellH;
-                const w = (c2 - c1 + 1) * cellW, h = (r2 - r1 + 1) * cellH;
-                // Must be meaningful size
-                if (w < W * 0.1 || h < H * 0.05) return null;
-                return cropCanvas(canvas, x, y, w, h);
-            } catch (e) {
-                console.warn("Fallback detection error:", e);
-                return null;
-            }
-        }
-
-        // Main entry: try OpenCV first, then fallback, then return null (→ manual upload)
-        async function detectDiagram(b64) {
-            let result = null;
-            if (cvReady) {
-                result = await detectDiagramWithOpenCV(b64);
-            }
-            if (!result) {
-                result = await detectDiagramFallback(b64);
-            }
-            return result; // null = show manual upload prompt
-        }
-
-        // Run detection on all questions that have diagrams, across uploaded screenshots
+        // Extract diagram images using AI-provided coordinates
         async function extractImagesForQuestions(questions, screenshotB64Array) {
             if (!screenshotB64Array || !screenshotB64Array.length) return;
-            const imgQuestions = questions.filter(q => q.hasImage);
-            if (!imgQuestions.length) return;
-            const totalQs = questions.length;
-            const qsPerScreen = Math.max(1, Math.ceil(totalQs / screenshotB64Array.length));
-            for (let qi = 0; qi < questions.length; qi++) {
-                const q = questions[qi];
-                if (!q.hasImage) continue;
-                const screenIdx = Math.min(Math.floor(qi / qsPerScreen), screenshotB64Array.length - 1);
-                const b64 = screenshotB64Array[screenIdx];
+            for (const q of questions) {
+                if (!q.hasImage || !q.imageRegion) continue;
+                const srcIdx = Math.min(q.imageSourceIndex || 0, screenshotB64Array.length - 1);
                 try {
-                    q.extractedImageB64 = await detectDiagram(b64) || null;
-                } catch (e) { q.extractedImageB64 = null; }
+                    q.extractedImageB64 = await cropDiagramFromAI(screenshotB64Array[srcIdx], q.imageRegion);
+                } catch (e) {
+                    q.extractedImageB64 = null;
+                }
             }
         }
+
 
         async function extractWithAI() {
             const chapter = document.getElementById("imp-chapter").value.trim(), startLec = parseInt(document.getElementById("imp-lecture").value);
@@ -2428,15 +2278,14 @@
                 pushUndo(snapshotState());
                 const imgCount = parsed.filter(q => q.hasImage).length;
                 if (imgCount > 0) {
-                    const cvStatus = cvReady ? "OpenCV" : cvFailed ? "fallback" : "fallback";
-                    status.innerHTML = `<span class="spinner"></span>&nbsp; Auto-detecting ${imgCount} diagram(s) using ${cvStatus} detector...`;
+                    status.innerHTML = `<span class="spinner"></span>&nbsp; Cropping ${imgCount} diagram(s) from AI coordinates...`;
                     await extractImagesForQuestions(parsed, qImagesBase64);
                 }
                 extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i, manualImageB64: null }));
                 const autoDetected = parsed.filter(q => q.hasImage && q.extractedImageB64).length;
                 const needManual = parsed.filter(q => q.hasImage && !q.extractedImageB64).length;
                 status.className = "extract-status success";
-                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${autoDetected} diagram(s) auto-detected${needManual > 0 ? ` · <strong>${needManual} need manual upload below</strong>` : ' ✓'}.` : ''}`;
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${autoDetected} diagram(s) auto-cropped${needManual > 0 ? ` · <strong>${needManual} need manual upload below</strong>` : ' ✓'}.` : ''}`;
                 renderExtractedQuestions(extractedQuestions); document.getElementById("extractedList").style.display = "block";
             } catch (err) { status.className = "extract-status error"; status.innerHTML = `❌ ${err.message}`; }
             document.getElementById("extractBtn").disabled = false;
@@ -2781,180 +2630,7 @@
         async function scanCorrupted() { const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults"); st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = ""; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = ""; if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:var(--success);font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); } else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);color:var(--error);margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); } } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } }
         async function deleteCorrupted() { askConfirmModal({ title: "Delete corrupted records?", text: "Permanently delete corrupted records? This cannot be undone.", confirmText: "Delete", onConfirm: async () => { const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#057a55;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } } }); }
 
-        // ── Multi-diagram detection: find ALL diagram regions on a screenshot ──
-        // Uses OpenCV contour detection + density filtering (no position bias)
-        async function detectAllDiagramsFromScreenshot(b64, expectedCount) {
-            if (cvReady) {
-                try {
-                    const { canvas, ctx } = await loadImageToCanvas(b64);
-                    const W = canvas.width, H = canvas.height;
-                    const src = cv.imread(canvas);
-                    const gray = new cv.Mat();
-                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-                    const inv = new cv.Mat();
-                    cv.bitwise_not(gray, inv);
-                    const thresh = new cv.Mat();
-                    cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
-                    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-                    const dilated = new cv.Mat();
-                    cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
-                    const contours = new cv.MatVector();
-                    const hierarchy = new cv.Mat();
-                    cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-                    const rawCandidates = [];
-                    for (let i = 0; i < contours.size(); i++) {
-                        const rect = cv.boundingRect(contours.get(i));
-                        const areaRatio = (rect.width * rect.height) / (W * H);
-                        const aspect = rect.width / rect.height;
-                        if (areaRatio < 0.008 || areaRatio > 0.75) continue;
-                        if (rect.width < 40 || rect.height < 30) continue;
-                        if (rect.width > W * 0.98) continue;
-                        if (aspect < 0.2 || aspect > 8) continue;
-                        rawCandidates.push({ ...rect, areaRatio });
-                    }
-
-                    src.delete(); gray.delete(); inv.delete(); thresh.delete();
-                    kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
-
-                    // Density filter: reject text-heavy regions, keep diagram-like regions
-                    const fullImageData = ctx.getImageData(0, 0, W, H).data;
-                    const candidates = [];
-                    for (const c of rawCandidates) {
-                        let darkPx = 0, totalPx = 0;
-                        const step = Math.max(1, Math.floor(Math.min(c.width, c.height) / 30));
-                        for (let py = c.y; py < c.y + c.height && py < H; py += step) {
-                            for (let px = c.x; px < c.x + c.width && px < W; px += step) {
-                                const idx = (py * W + px) * 4;
-                                const lum = 0.299 * fullImageData[idx] + 0.587 * fullImageData[idx + 1] + 0.114 * fullImageData[idx + 2];
-                                if (lum < 180) darkPx++;
-                                totalPx++;
-                            }
-                        }
-                        const density = totalPx > 0 ? darkPx / totalPx : 1;
-                        if (density > 0.35) continue; // too dense = text block, skip
-                        candidates.push({ ...c, density });
-                    }
-
-                    if (candidates.length > 0) {
-                        candidates.sort((a, b) => a.y - b.y);
-                        const merged = [];
-                        for (const c of candidates) {
-                            let didMerge = false;
-                            for (const m of merged) {
-                                const pad = 20;
-                                const overlapX = c.x < m.x + m.width + pad && c.x + c.width > m.x - pad;
-                                const overlapY = c.y < m.y + m.height + pad && c.y + c.height > m.y - pad;
-                                if (overlapX && overlapY) {
-                                    const nx = Math.min(m.x, c.x);
-                                    const ny = Math.min(m.y, c.y);
-                                    m.width = Math.max(m.x + m.width, c.x + c.width) - nx;
-                                    m.height = Math.max(m.y + m.height, c.y + c.height) - ny;
-                                    m.x = nx; m.y = ny;
-                                    didMerge = true;
-                                    break;
-                                }
-                            }
-                            if (!didMerge) merged.push({ ...c });
-                        }
-                        merged.sort((a, b) => a.y - b.y);
-                        const results = merged.map(r => cropCanvas(canvas, r.x, r.y, r.width, r.height));
-                        if (results.length >= expectedCount) return results;
-                        if (results.length > 0) return results;
-                    }
-                } catch (e) {
-                    console.warn("Multi-diagram OpenCV error:", e);
-                }
-            }
-
-            // Fallback: try single detection
-            const single = await detectDiagram(b64);
-            return single ? [single] : [];
-        }
-
-        // Smart fallback: split page into N sections, run detectDiagram on EACH section
-        // This handles diagrams on either side of the page in any layout
-        async function cropDiagramSections(b64, count) {
-            try {
-                const { canvas } = await loadImageToCanvas(b64);
-                const W = canvas.width, H = canvas.height;
-                const sliceH = Math.floor(H / count);
-                const results = [];
-
-                for (let i = 0; i < count; i++) {
-                    const y = i * sliceH;
-                    const h = Math.min(sliceH, H - y);
-                    // Crop this section of the page
-                    const sectionB64 = cropCanvas(canvas, 0, y, W, h, 0);
-                    // Run full diagram detection (OpenCV + fallback) on just this section
-                    const diagram = await detectDiagram(sectionB64);
-                    results.push(diagram || sectionB64); // use section as-is if detection fails
-                }
-                return results;
-            } catch (e) {
-                console.warn("Diagram section crop error:", e);
-                return [];
-            }
-        }
-
-        // Extract figure number from question text (e.g. "figure 10-Q5" → 5, "Figure (5-Q3)" → 3)
-        function extractFigureNumber(text) {
-            if (!text) return null;
-            const m = text.match(/figure\s*\(?\s*[\d]+\s*[-–.]\s*Q?(\d+)/i);
-            return m ? parseInt(m[1]) : null;
-        }
-
-        // Override: detect all diagrams per screenshot, then map to questions
-        // Uses figure-number sorting to correctly match diagrams to questions
-        async function extractImagesForQuestions(questions, screenshotB64Array) {
-            if (!screenshotB64Array || !screenshotB64Array.length) return;
-
-            // Collect image-questions with their original indices
-            const imgQEntries = [];
-            questions.forEach((q, qi) => { if (q.hasImage) imgQEntries.push({ q, qi }); });
-            if (!imgQEntries.length) return;
-
-            // Detect all diagrams from all screenshots (sorted top-to-bottom)
-            const allDiagrams = [];
-            const imgCountPerScreen = Math.ceil(imgQEntries.length / screenshotB64Array.length);
-
-            for (let si = 0; si < screenshotB64Array.length; si++) {
-                const b64 = screenshotB64Array[si];
-                const expectedOnThis = Math.min(imgCountPerScreen, imgQEntries.length - allDiagrams.length);
-                const diagrams = await detectAllDiagramsFromScreenshot(b64, expectedOnThis);
-
-                if (diagrams.length >= expectedOnThis) {
-                    allDiagrams.push(...diagrams);
-                } else {
-                    const fallbacks = await cropDiagramSections(b64, expectedOnThis);
-                    if (diagrams.length > 0) {
-                        allDiagrams.push(...diagrams);
-                        for (let fi = diagrams.length; fi < fallbacks.length && fi < expectedOnThis; fi++) {
-                            allDiagrams.push(fallbacks[fi]);
-                        }
-                    } else {
-                        allDiagrams.push(...fallbacks.slice(0, expectedOnThis));
-                    }
-                }
-            }
-
-            // Sort image-questions by figure reference number for correct matching
-            // e.g. "figure 10-Q5" → 5, "Figure (10-Q6)" → 6
-            // This ensures the first diagram (top of page) maps to the lowest figure number
-            const sorted = [...imgQEntries].sort((a, b) => {
-                const figA = extractFigureNumber(a.q.question);
-                const figB = extractFigureNumber(b.q.question);
-                if (figA !== null && figB !== null) return figA - figB;
-                if (figA !== null) return -1;
-                if (figB !== null) return 1;
-                return a.qi - b.qi; // fallback: original question order
-            });
-
-            // Assign diagrams (top-to-bottom) to questions (sorted by figure number)
-            sorted.forEach((entry, idx) => {
-                entry.q.extractedImageB64 = (idx < allDiagrams.length) ? allDiagrams[idx] : null;
-            });
-        }
 
         /* ── MODALS ── */
         function openModal(id) { document.getElementById(id).style.display = "flex"; }
