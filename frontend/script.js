@@ -55,20 +55,20 @@ async function loadChapters(){
         const res=await fetch(`${API_BASE}/api/chapters`);
         const chapters=await res.json();
         const sel=document.getElementById("chapterSelect");
-        sel.innerHTML='<option value="">Select Chapter</option>';
+        sel.innerHTML='<option value="">Choose Chapter</option>';
         chapters.forEach(ch=>{const o=document.createElement("option");o.value=ch;o.textContent=ch;sel.appendChild(o);});
     }catch(e){console.error("chapters:",e);}
 }
 
 document.getElementById("chapterSelect").addEventListener("change",async function(){
     const chapter=this.value, wrap=document.getElementById("lectureWrap"), sel=document.getElementById("lectureSelect");
-    sel.innerHTML='<option value="">Select Lecture</option>';
-    if(!chapter){wrap.style.opacity="0.35";wrap.style.pointerEvents="none";return;}
+    sel.innerHTML='<option value="">Choose Lecture</option>';
+    if(!chapter){sel.disabled=true;sel.value="";return;}
     try{
         const res=await fetch(`${API_BASE}/api/lectures/${encodeURIComponent(chapter)}`);
         const lectures=await res.json();
         lectures.forEach(l=>{const o=document.createElement("option");o.value=l;o.textContent=`Lecture ${l}`;sel.appendChild(o);});
-        wrap.style.opacity="1";wrap.style.pointerEvents="all";wrap.style.transition="opacity 0.3s";
+        sel.disabled=false;
     }catch(e){console.error("lectures:",e);}
 });
 
