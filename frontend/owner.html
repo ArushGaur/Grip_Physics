@@ -19,6 +19,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <!-- OpenCV.js for client-side diagram detection -->
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady()"
+        onerror="onOpenCvError()"></script>
     <style>
         /* THEME TOKENS */
         :root {
@@ -2163,92 +2166,224 @@
         document.addEventListener("paste", async function (e) { if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return; const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return; for (const item of items) { if (!item.type.startsWith("image/")) continue; e.preventDefault(); const f = item.getAsFile(); const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (document.getElementById("ak-tab-screenshot").classList.contains("active") && qImagesBase64.length > 0 && aImagesBase64.length === 0) { aImagesBase64.push(b64); } else { qImagesBase64.push(b64); } refreshPreviews(); break; } });
         ["qZone", "aZone"].forEach(zid => { const z = document.getElementById(zid); if (!z) return; z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("dragover"); }); z.addEventListener("dragleave", () => z.classList.remove("dragover")); z.addEventListener("drop", async e => { e.preventDefault(); z.classList.remove("dragover"); for (const f of e.dataTransfer.files) { if (!f || !f.type.startsWith("image/")) continue; const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (zid === "qZone") qImagesBase64.push(b64); else aImagesBase64.push(b64); } refreshPreviews(); }); });
 
-        /* ─── IMAGE EXTRACTION FROM SCREENSHOTS ─── */
-        async function extractImagesForQuestions(questions, screenshotB64Array) {
-            if (!screenshotB64Array || !screenshotB64Array.length) return;
-            const imgQuestions = questions.filter(q => q.hasImage);
-            if (!imgQuestions.length) return;
+        /* ═══════════════════════════════════════════════════════════════
+           DIAGRAM DETECTOR — Multi-image aware
+           Scans EACH screenshot and finds ALL diagram regions top→bottom.
+           Builds one ordered pool of detected diagrams across all screenshots,
+           then assigns them one-by-one to image-questions in order.
+           ═══════════════════════════════════════════════════════════════ */
 
-            const totalQs = questions.length;
-            const totalScreens = screenshotB64Array.length;
-            const qsPerScreen = Math.max(1, Math.ceil(totalQs / totalScreens));
+        let cvReady = false, cvFailed = false;
+        function onOpenCvReady() { cvReady = true; console.log("OpenCV.js ready"); }
+        function onOpenCvError() { cvFailed = true; console.warn("OpenCV.js failed — fallback detector will be used"); }
 
-            // Build a per-screenshot list of image-question local indices.
-            // e.g. if screen 0 has questions 0,1,2 and questions 0 & 2 have images,
-            // screen 0's image-question list = [{qi:0, localImgIdx:0}, {qi:2, localImgIdx:1}]
-            const screenImgLists = Array.from({ length: totalScreens }, () => []);
-            for (let qi = 0; qi < questions.length; qi++) {
-                if (!questions[qi].hasImage) continue;
-                const screenIdx = Math.min(Math.floor(qi / qsPerScreen), totalScreens - 1);
-                screenImgLists[screenIdx].push(qi);
-            }
-
-            for (let qi = 0; qi < questions.length; qi++) {
-                const q = questions[qi];
-                if (!q.hasImage) continue;
-                const screenIdx = Math.min(Math.floor(qi / qsPerScreen), totalScreens - 1);
-                const b64 = screenshotB64Array[screenIdx];
-
-                // Position of this question among image-questions on its screenshot
-                const imgListForScreen = screenImgLists[screenIdx];
-                const localImgIdx = imgListForScreen.indexOf(qi);        // 0, 1, 2 …
-                const totalImgsOnScreen = imgListForScreen.length;        // how many image-Qs on this screen
-
-                try {
-                    const cropped = await getImageFromScreenshot(
-                        b64, qi, totalQs, totalScreens,
-                        localImgIdx, totalImgsOnScreen
-                    );
-                    q.extractedImageB64 = cropped || null;
-                } catch (e) { q.extractedImageB64 = null; }
-            }
-        }
-
-        async function getImageFromScreenshot(b64, qi, totalQs, totalScreens, localImgIdx, totalImgsOnScreen) {
-            return new Promise(resolve => {
+        // Load a base64 image into an HTML canvas and return {canvas, ctx}
+        function loadImageToCanvas(b64) {
+            return new Promise((resolve, reject) => {
                 const img = new Image();
                 const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
                 img.onload = () => {
-                    try {
-                        const canvas = document.createElement("canvas");
-                        const ctx = canvas.getContext("2d");
-                        const w = img.naturalWidth, h = img.naturalHeight;
-
-                        if (totalQs > totalScreens) {
-                            // --- How many questions land on this screenshot ---
-                            const qsPerScreen = Math.ceil(totalQs / totalScreens);
-
-                            if (totalImgsOnScreen > 1) {
-                                // Multiple image-questions share this screenshot.
-                                // Divide the screenshot into equal bands by the number of
-                                // image-questions on this screen, and pick the right band.
-                                const bandH = Math.floor(h / totalImgsOnScreen);
-                                const startY = localImgIdx * bandH;
-                                const cropH = (localImgIdx === totalImgsOnScreen - 1)
-                                    ? h - startY   // last band gets any remainder pixels
-                                    : bandH;
-                                canvas.width = w; canvas.height = cropH;
-                                ctx.drawImage(img, 0, startY, w, cropH, 0, 0, w, cropH);
-                            } else {
-                                // Only one image-question on this screenshot — use the full
-                                // question's vertical slice within the screenshot.
-                                const localQi = qi % qsPerScreen;
-                                const sliceH = Math.floor(h / qsPerScreen);
-                                const startY = localQi * sliceH;
-                                canvas.width = w; canvas.height = sliceH;
-                                ctx.drawImage(img, 0, startY, w, sliceH, 0, 0, w, sliceH);
-                            }
-                        } else {
-                            // One screenshot per question — use the full image
-                            canvas.width = w; canvas.height = h;
-                            ctx.drawImage(img, 0, 0);
-                        }
-                        resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
-                    } catch (e) { resolve(null); }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+                    resolve({ canvas, ctx });
                 };
-                img.onerror = () => resolve(null);
+                img.onerror = reject;
                 img.src = `data:${mime};base64,${b64}`;
             });
+        }
+
+        // Crop a padded region from canvas → base64 JPEG string
+        function cropCanvas(srcCanvas, x, y, w, h, pad = 10) {
+            x = Math.max(0, x - pad);
+            y = Math.max(0, y - pad);
+            w = Math.min(srcCanvas.width - x, w + pad * 2);
+            h = Math.min(srcCanvas.height - y, h + pad * 2);
+            const out = document.createElement("canvas");
+            out.width = w; out.height = h;
+            out.getContext("2d").drawImage(srcCanvas, x, y, w, h, 0, 0, w, h);
+            return out.toDataURL("image/jpeg", 0.92).split(",")[1];
+        }
+
+        // Merge bounding boxes that are vertically close (same diagram in multiple contours)
+        function mergeBoxes(boxes) {
+            if (!boxes.length) return [];
+            boxes.sort((a, b) => a.y - b.y);
+            const merged = [{ ...boxes[0] }];
+            for (let i = 1; i < boxes.length; i++) {
+                const prev = merged[merged.length - 1];
+                const cur = boxes[i];
+                const gap = cur.y - (prev.y + prev.h);
+                if (gap < 40) {
+                    // Expand prev box to encompass cur
+                    const newRight = Math.max(prev.x + prev.w, cur.x + cur.w);
+                    const newBottom = Math.max(prev.y + prev.h, cur.y + cur.h);
+                    prev.x = Math.min(prev.x, cur.x);
+                    prev.y = Math.min(prev.y, cur.y);
+                    prev.w = newRight - prev.x;
+                    prev.h = newBottom - prev.y;
+                } else {
+                    merged.push({ ...cur });
+                }
+            }
+            return merged;
+        }
+
+        // OpenCV path: finds ALL diagrams in one screenshot, returns array of cropped base64 images
+        async function detectAllDiagramsOpenCV(b64) {
+            if (!cvReady) return [];
+            try {
+                const { canvas } = await loadImageToCanvas(b64);
+                const W = canvas.width, H = canvas.height;
+
+                const src = cv.imread(canvas);
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                // Invert: white page → black background, dark ink/figures → white blobs
+                const inv = new cv.Mat();
+                cv.bitwise_not(gray, inv);
+
+                // Threshold to get binary
+                const thresh = new cv.Mat();
+                cv.threshold(inv, thresh, 25, 255, cv.THRESH_BINARY);
+
+                // Dilate aggressively to fuse nearby content into solid blobs
+                const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(6, 6));
+                const dilated = new cv.Mat();
+                cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 5);
+
+                const contours = new cv.MatVector();
+                const hierarchy = new cv.Mat();
+                cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                const candidates = [];
+                for (let i = 0; i < contours.size(); i++) {
+                    const r = cv.boundingRect(contours.get(i));
+                    const areaRatio = (r.width * r.height) / (W * H);
+                    const aspect = r.width / r.height;
+
+                    if (areaRatio < 0.015 || areaRatio > 0.72) continue; // too tiny or too large
+                    if (r.width < 55 || r.height < 45) continue;          // too small in pixels
+                    if (r.width > W * 0.97) continue;                      // full-width = text block
+                    if (aspect > 9 || aspect < 0.12) continue;             // degenerate shapes
+
+                    candidates.push({ x: r.x, y: r.y, w: r.width, h: r.height });
+                }
+
+                src.delete(); gray.delete(); inv.delete(); thresh.delete();
+                kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
+
+                if (!candidates.length) return [];
+
+                // Merge close boxes, sort top-to-bottom, crop each
+                const merged = mergeBoxes(candidates);
+                merged.sort((a, b) => a.y - b.y);
+                return merged.map(r => cropCanvas(canvas, r.x, r.y, r.w, r.h));
+            } catch (e) {
+                console.warn("OpenCV detect error:", e);
+                return [];
+            }
+        }
+
+        // Fallback path (no OpenCV): row-darkness analysis to find low-ink regions = figures
+        async function detectAllDiagramsFallback(b64) {
+            try {
+                const { canvas, ctx } = await loadImageToCanvas(b64);
+                const W = canvas.width, H = canvas.height;
+                const data = ctx.getImageData(0, 0, W, H).data;
+
+                // Per-row average darkness (0 = white, 1 = black)
+                const rowDark = [];
+                for (let y = 0; y < H; y++) {
+                    let sum = 0;
+                    for (let x = 0; x < W; x++) {
+                        const i = (y * W + x) * 4;
+                        const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                        sum += (lum < 210 ? 1 : 0);
+                    }
+                    rowDark.push(sum / W);
+                }
+
+                // Smooth over ±4 rows
+                const smooth = rowDark.map((_, i) => {
+                    const s = Math.max(0, i - 4), e = Math.min(H - 1, i + 4);
+                    let t = 0; for (let j = s; j <= e; j++) t += rowDark[j];
+                    return t / (e - s + 1);
+                });
+
+                // Find contiguous bands where smoothed darkness is very low = figure areas
+                const LOW = 0.05;            // under 5% dark pixels per row
+                const MIN_H = H * 0.05;     // figure must be at least 5% of image height tall
+
+                const regions = [];
+                let inReg = false, startY = 0;
+                for (let y = 0; y < H; y++) {
+                    if (!inReg && smooth[y] < LOW) { inReg = true; startY = y; }
+                    else if (inReg && smooth[y] >= LOW) {
+                        inReg = false;
+                        if (y - startY >= MIN_H) regions.push({ startY, endY: y });
+                    }
+                }
+                if (inReg && H - startY >= MIN_H) regions.push({ startY, endY: H });
+
+                if (!regions.length) return [];
+
+                return regions.map(({ startY, endY }) => {
+                    // Trim horizontal whitespace
+                    let minX = W, maxX = 0;
+                    for (let y = startY; y < endY; y++) {
+                        for (let x = 0; x < W; x++) {
+                            const i = (y * W + x) * 4;
+                            const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                            if (lum < 220) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
+                        }
+                    }
+                    if (maxX <= minX || (maxX - minX) > W * 0.96) { minX = 0; maxX = W; }
+                    // Skip if nearly full-width (it's a text row, not a figure)
+                    if ((maxX - minX) > W * 0.94) return null;
+                    return cropCanvas(canvas, minX, startY, maxX - minX, endY - startY);
+                }).filter(Boolean);
+            } catch (e) {
+                console.warn("Fallback detect error:", e);
+                return [];
+            }
+        }
+
+        // Detect ALL diagrams in one screenshot — OpenCV first, then fallback
+        async function detectAllDiagrams(b64) {
+            let results = cvReady ? await detectAllDiagramsOpenCV(b64) : [];
+            if (!results.length) results = await detectAllDiagramsFallback(b64);
+            return results;
+        }
+
+        // ── MAIN ENTRY ──
+        // 1. Scan every uploaded screenshot and collect ALL detected diagrams (top→bottom order).
+        // 2. Assign diagrams to image-questions one-by-one in the order they appear.
+        //    1st image-question → 1st detected diagram, 2nd → 2nd, etc.
+        //    If fewer diagrams were found than image-questions, the rest get null (→ manual upload).
+        async function extractImagesForQuestions(questions, screenshotB64Array) {
+            if (!screenshotB64Array || !screenshotB64Array.length) return;
+            if (!questions.filter(q => q.hasImage).length) return;
+
+            // Collect all diagrams from all screenshots in upload order
+            const allDiagrams = [];
+            for (const b64 of screenshotB64Array) {
+                const found = await detectAllDiagrams(b64);
+                allDiagrams.push(...found);
+            }
+
+            console.log(`Detected ${allDiagrams.length} diagram(s) total for ${questions.filter(q => q.hasImage).length} image-question(s)`);
+
+            // Assign in order: 1st image-Q gets diagram[0], 2nd gets diagram[1], etc.
+            let di = 0;
+            for (const q of questions) {
+                if (!q.hasImage) continue;
+                q.extractedImageB64 = allDiagrams[di] || null;
+                di++;
+            }
         }
 
         async function extractWithAI() {
@@ -2275,7 +2410,7 @@
                 // Extract images for questions that have diagrams
                 const imgCount = parsed.filter(q => q.hasImage).length;
                 if (imgCount > 0) {
-                    status.innerHTML = '<span class="spinner"></span>&nbsp; Extracting diagram images from screenshots...';
+                    status.innerHTML = `<span class="spinner"></span>&nbsp; Detecting ${imgCount} diagram(s) from screenshot(s)...`;
                     await extractImagesForQuestions(parsed, qImagesBase64);
                 }
                 extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i }));
