@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,10 +13,34 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 </head>
+
 <body>
     <button id="themeToggle" class="theme-toggle" onclick="togglePortalTheme()" title="Toggle Theme">🌙</button>
+
+    <div id="loader">
+        <div class="loader-content">
+            <div class="loader-logo-wrap">
+                <span class="loader-icon">⚛</span>
+                <h1 class="loader-logo">GRIP PHYSICS</h1>
+            </div>
+            <div class="loader-bar">
+                <div class="loader-bar-fill"></div>
+            </div>
+            <p id="quote">"The important thing is not to stop questioning."</p>
+        </div>
+    </div>
+
     <div id="particles-js"></div>
+
     <main id="main-content" class="hidden">
+        <div class="step-tracker" id="stepTracker">
+            <div class="step active" id="step1"><span class="step-num">1</span><span class="step-label">Register</span></div>
+            <div class="step-line"></div>
+            <div class="step" id="step2"><span class="step-num">2</span><span class="step-label">Answer</span></div>
+            <div class="step-line"></div>
+            <div class="step" id="step3"><span class="step-num">3</span><span class="step-label">Result</span></div>
+        </div>
+
         <!-- STEP 1: REGISTRATION -->
         <section id="login-page" class="page slide-in">
             <div class="portal-card">
@@ -29,6 +54,7 @@
                     </div>
                     <div class="portal-badge">Quiz Portal</div>
                 </div>
+
                 <form id="loginForm" novalidate>
                     <div class="form-grid">
                         <div class="form-field">
@@ -85,11 +111,13 @@
                         <span class="btn-arrow">→</span>
                     </button>
                 </form>
+
                 <div class="portal-footer">
                     <p>Enter a lecture to unlock your quiz</p>
                 </div>
             </div>
         </section>
+
         <!-- STEP 2: QUIZ -->
         <section id="quiz-page" class="page hidden">
             <div class="quiz-container">
@@ -102,6 +130,7 @@
                         <span>✕</span>
                     </button>
                 </div>
+
                 <div class="progress-indicator">
                     <div class="progress-track">
                         <div class="progress-fill" id="progressFill"></div>
@@ -110,6 +139,7 @@
                         <span>Question <span id="q-current">1</span> of <span id="q-total">10</span></span>
                     </div>
                 </div>
+
                 <div class="question-card">
                     <div id="multi-correct-notice" class="multi-badge hidden">
                         <span>✦</span> Multi-correct — select ALL correct answers
@@ -119,7 +149,9 @@
                     </div>
                     <div id="question-text" class="question-content">Loading...</div>
                 </div>
+
                 <div id="options-container" class="options-grid"></div>
+
                 <div class="quiz-nav">
                     <button id="prevBtn" class="btn-nav" onclick="prevQuestion()" disabled>
                         <span>←</span> Previous
@@ -128,12 +160,14 @@
                         Next <span>→</span>
                     </button>
                 </div>
+
                 <button id="submitAnswerBtn" class="btn-submit" onclick="submitAnswer()" disabled>
                     Submit Answers
                 </button>
                 <p class="sync-text hidden" id="sync-text">Syncing with dashboard...</p>
             </div>
         </section>
+
         <!-- STEP 3: RESULTS -->
         <section id="result-page" class="page hidden">
             <div class="result-container">
@@ -143,6 +177,13 @@
                 <div class="score-display">
                     <div class="score-ring">
                         <svg viewBox="0 0 100 100">
+                            <defs>
+                                <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#ef4444"/>
+                                    <stop offset="50%" style="stop-color:#f59e0b"/>
+                                    <stop offset="100%" style="stop-color:#22c55e"/>
+                                </linearGradient>
+                            </defs>
                             <circle class="score-ring-bg" cx="50" cy="50" r="45"/>
                             <circle class="score-ring-fill" id="scoreRingFill" cx="50" cy="50" r="45"/>
                         </svg>
@@ -153,7 +194,9 @@
                         </div>
                     </div>
                 </div>
+
                 <p id="result-subtitle" class="result-subtitle">Keep up the great work!</p>
+
                 <div class="result-meta">
                     <div class="meta-item">
                         <span class="meta-icon">👤</span>
@@ -168,16 +211,20 @@
                         <span id="result-lecture-meta">Lecture</span>
                     </div>
                 </div>
+
                 <div class="result-breakdown">
                     <h3>Answer Breakdown</h3>
                     <div id="result-breakdown" class="breakdown-list"></div>
                 </div>
+
                 <button onclick="location.reload()" class="btn-primary">
                     Try Another Lecture <span>→</span>
                 </button>
             </div>
         </section>
     </main>
+
     <script src="script.js"></script>
 </body>
+
 </html>
