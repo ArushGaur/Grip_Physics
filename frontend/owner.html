@@ -19,6 +19,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <!-- OpenCV.js for client-side diagram detection -->
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady()"
+        onerror="onOpenCvError()"></script>
     <style>
         /* THEME TOKENS */
         :root {
@@ -797,6 +800,30 @@
         .eq-opt.correct {
             background: rgba(6, 214, 160, 0.12);
             border-color: rgba(6, 214, 160, 0.3);
+        }
+
+        /* ── OpenCV diagram detector drop zone ── */
+        .eq-img-dropzone {
+            border: 1.5px dashed rgba(99, 102, 241, 0.4);
+            border-radius: var(--radius-sm);
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: rgba(99, 102, 241, 0.03);
+            outline: none;
+        }
+
+        .eq-img-dropzone:hover,
+        .eq-img-dropzone:focus {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .eq-img-dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.14);
+            transform: scale(1.01);
         }
 
         .eq-image-preview {
@@ -2160,8 +2187,223 @@
         function switchAKTab(tab) { document.getElementById("ak-tab-screenshot").classList.toggle("active", tab === "screenshot"); document.getElementById("ak-tab-manual").classList.toggle("active", tab === "manual"); document.getElementById("ak-screenshot-panel").style.display = tab === "screenshot" ? "block" : "none"; document.getElementById("ak-manual-panel").style.display = tab === "manual" ? "block" : "none"; checkExtractReady(); }
         document.getElementById("manualAnswerKey").addEventListener("input", checkExtractReady);
 
-        // Drag and drop for upload zones
+        document.addEventListener("paste", async function (e) { if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return; const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return; for (const item of items) { if (!item.type.startsWith("image/")) continue; e.preventDefault(); const f = item.getAsFile(); const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (document.getElementById("ak-tab-screenshot").classList.contains("active") && qImagesBase64.length > 0 && aImagesBase64.length === 0) { aImagesBase64.push(b64); } else { qImagesBase64.push(b64); } refreshPreviews(); break; } });
         ["qZone", "aZone"].forEach(zid => { const z = document.getElementById(zid); if (!z) return; z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("dragover"); }); z.addEventListener("dragleave", () => z.classList.remove("dragover")); z.addEventListener("drop", async e => { e.preventDefault(); z.classList.remove("dragover"); for (const f of e.dataTransfer.files) { if (!f || !f.type.startsWith("image/")) continue; const b64 = await fileToBase64(f); pushUndo(snapshotState()); if (zid === "qZone") qImagesBase64.push(b64); else aImagesBase64.push(b64); } refreshPreviews(); }); });
+
+        /* ═══════════════════════════════════════════════════════════════
+           OpenCV.js DIAGRAM DETECTOR
+           Detects figures/diagrams in physics textbook screenshots
+           using contour detection + heuristics (no AI, no server call)
+           ═══════════════════════════════════════════════════════════════ */
+
+        let cvReady = false, cvFailed = false;
+        function onOpenCvReady() { cvReady = true; console.log("OpenCV.js ready"); }
+        function onOpenCvError() { cvFailed = true; console.warn("OpenCV.js failed to load — manual upload will be used"); }
+
+        // Load image into canvas and return {canvas, ctx, img}
+        function loadImageToCanvas(b64) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+                    resolve({ canvas, ctx, img });
+                };
+                img.onerror = reject;
+                img.src = `data:${mime};base64,${b64}`;
+            });
+        }
+
+        // Crop a rect from canvas and return base64 JPEG
+        function cropCanvas(srcCanvas, x, y, w, h, pad = 8) {
+            x = Math.max(0, x - pad); y = Math.max(0, y - pad);
+            w = Math.min(srcCanvas.width - x, w + pad * 2);
+            h = Math.min(srcCanvas.height - y, h + pad * 2);
+            const out = document.createElement("canvas");
+            out.width = w; out.height = h;
+            out.getContext("2d").drawImage(srcCanvas, x, y, w, h, 0, 0, w, h);
+            return out.toDataURL("image/jpeg", 0.92).split(",")[1];
+        }
+
+        // OpenCV-based diagram region detector
+        // Strategy:
+        //   1. Convert to grayscale
+        //   2. Threshold to find dark-on-white regions (figures are usually enclosed)
+        //   3. Find contours, filter by size and aspect ratio
+        //   4. Merge overlapping boxes, pick the best candidate
+        //   5. Fallback: detect enclosed white rectangle (figure box) by finding
+        //      the largest nearly-white rectangular region that is NOT full-width
+        async function detectDiagramWithOpenCV(b64) {
+            if (!cvReady) return null;
+            try {
+                const { canvas } = await loadImageToCanvas(b64);
+                const W = canvas.width, H = canvas.height;
+
+                // Read image into OpenCV Mat
+                const src = cv.imread(canvas);
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                // ── Step 1: Find enclosed figure boxes (white/light rectangles)
+                // Invert so figures (light background) become dark blobs
+                const inv = new cv.Mat();
+                cv.bitwise_not(gray, inv);
+
+                // Threshold
+                const thresh = new cv.Mat();
+                cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
+
+                // Dilate to close gaps in figure borders
+                const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+                const dilated = new cv.Mat();
+                cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
+
+                // Find contours
+                const contours = new cv.MatVector();
+                const hierarchy = new cv.Mat();
+                cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                const candidates = [];
+                for (let i = 0; i < contours.size(); i++) {
+                    const rect = cv.boundingRect(contours.get(i));
+                    const area = rect.width * rect.height;
+                    const imgArea = W * H;
+                    const areaRatio = area / imgArea;
+                    const aspect = rect.width / rect.height;
+
+                    // Filter: must be a meaningful region, not full image, not tiny
+                    if (areaRatio < 0.02 || areaRatio > 0.75) continue;  // too small or too large
+                    if (rect.width < 60 || rect.height < 40) continue;   // too tiny
+                    if (rect.width > W * 0.98) continue;                  // full-width = text block
+                    if (aspect < 0.3 || aspect > 6) continue;            // weird shape
+
+                    // Score: prefer medium-sized, more square-ish regions
+                    // and regions in the right half of the image (figures often on right)
+                    const centerX = rect.x + rect.width / 2;
+                    const rightBias = centerX > W * 0.4 ? 1.3 : 1.0;
+                    const score = areaRatio * rightBias;
+                    candidates.push({ ...rect, score, areaRatio });
+                }
+
+                // Clean up OpenCV mats
+                src.delete(); gray.delete(); inv.delete(); thresh.delete();
+                kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
+
+                if (!candidates.length) return null;
+
+                // Sort by score, take best candidate
+                candidates.sort((a, b) => b.score - a.score);
+                const best = candidates[0];
+
+                // Validate: area ratio should be in useful range
+                if (best.areaRatio < 0.03) return null;
+
+                return cropCanvas(canvas, best.x, best.y, best.width, best.height);
+            } catch (e) {
+                console.warn("OpenCV detection error:", e);
+                return null;
+            }
+        }
+
+        // ── Step 2: Fallback — text density analysis (no OpenCV needed)
+        // Splits the image into a grid, finds cells with LOW text density
+        // (few dark pixels in expected text rows = likely a figure area)
+        async function detectDiagramFallback(b64) {
+            try {
+                const { canvas, ctx } = await loadImageToCanvas(b64);
+                const W = canvas.width, H = canvas.height;
+                const imageData = ctx.getImageData(0, 0, W, H).data;
+
+                // Analyze rows — find consecutive rows that are mostly white (figure region)
+                const COLS = 8, ROWS = 40;
+                const cellW = Math.floor(W / COLS), cellH = Math.floor(H / ROWS);
+
+                // For each grid cell, compute dark pixel ratio
+                const grid = [];
+                for (let row = 0; row < ROWS; row++) {
+                    grid[row] = [];
+                    for (let col = 0; col < COLS; col++) {
+                        let dark = 0, total = 0;
+                        const x0 = col * cellW, y0 = row * cellH;
+                        for (let y = y0; y < y0 + cellH && y < H; y++) {
+                            for (let x = x0; x < x0 + cellW && x < W; x++) {
+                                const idx = (y * W + x) * 4;
+                                const lum = 0.299 * imageData[idx] + 0.587 * imageData[idx + 1] + 0.114 * imageData[idx + 2];
+                                if (lum < 180) dark++;
+                                total++;
+                            }
+                        }
+                        grid[row][col] = dark / total; // darkness ratio
+                    }
+                }
+
+                // Find the column half with more enclosed whitespace (right half usually has figure)
+                // Find a rectangular block where darkness is very low (white figure area)
+                let bestBlock = null, bestScore = -1;
+                for (let r1 = 0; r1 < ROWS - 3; r1++) {
+                    for (let r2 = r1 + 3; r2 < ROWS; r2++) {
+                        for (let c1 = 1; c1 < COLS - 1; c1++) {
+                            for (let c2 = c1 + 1; c2 < COLS; c2++) {
+                                let avgDark = 0, cells = 0;
+                                for (let r = r1; r <= r2; r++)
+                                    for (let c = c1; c <= c2; c++) { avgDark += grid[r][c]; cells++; }
+                                avgDark /= cells;
+                                const size = (r2 - r1) * (c2 - c1);
+                                // Low darkness + reasonable size = figure candidate
+                                if (avgDark < 0.08 && size > 8) {
+                                    const score = size * (0.1 - avgDark);
+                                    if (score > bestScore) { bestScore = score; bestBlock = { r1, r2, c1, c2 }; }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!bestBlock) return null;
+                const { r1, r2, c1, c2 } = bestBlock;
+                const x = c1 * cellW, y = r1 * cellH;
+                const w = (c2 - c1 + 1) * cellW, h = (r2 - r1 + 1) * cellH;
+                // Must be meaningful size
+                if (w < W * 0.1 || h < H * 0.05) return null;
+                return cropCanvas(canvas, x, y, w, h);
+            } catch (e) {
+                console.warn("Fallback detection error:", e);
+                return null;
+            }
+        }
+
+        // Main entry: try OpenCV first, then fallback, then return null (→ manual upload)
+        async function detectDiagram(b64) {
+            let result = null;
+            if (cvReady) {
+                result = await detectDiagramWithOpenCV(b64);
+            }
+            if (!result) {
+                result = await detectDiagramFallback(b64);
+            }
+            return result; // null = show manual upload prompt
+        }
+
+        // Run detection on all questions that have diagrams, across uploaded screenshots
+        async function extractImagesForQuestions(questions, screenshotB64Array) {
+            if (!screenshotB64Array || !screenshotB64Array.length) return;
+            const imgQuestions = questions.filter(q => q.hasImage);
+            if (!imgQuestions.length) return;
+            const totalQs = questions.length;
+            const qsPerScreen = Math.max(1, Math.ceil(totalQs / screenshotB64Array.length));
+            for (let qi = 0; qi < questions.length; qi++) {
+                const q = questions[qi];
+                if (!q.hasImage) continue;
+                const screenIdx = Math.min(Math.floor(qi / qsPerScreen), screenshotB64Array.length - 1);
+                const b64 = screenshotB64Array[screenIdx];
+                try {
+                    q.extractedImageB64 = await detectDiagram(b64) || null;
+                } catch (e) { q.extractedImageB64 = null; }
+            }
+        }
 
         async function extractWithAI() {
             const chapter = document.getElementById("imp-chapter").value.trim(), startLec = parseInt(document.getElementById("imp-lecture").value);
@@ -2185,9 +2427,16 @@
                 if (!Array.isArray(parsed) || !parsed.length) throw new Error("No questions found");
                 pushUndo(snapshotState());
                 const imgCount = parsed.filter(q => q.hasImage).length;
-                extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i }));
+                if (imgCount > 0) {
+                    const cvStatus = cvReady ? "OpenCV" : cvFailed ? "fallback" : "fallback";
+                    status.innerHTML = `<span class="spinner"></span>&nbsp; Auto-detecting ${imgCount} diagram(s) using ${cvStatus} detector...`;
+                    await extractImagesForQuestions(parsed, qImagesBase64);
+                }
+                extractedQuestions = parsed.map((q, i) => ({ ...q, assignedLecture: startLec + i, manualImageB64: null }));
+                const autoDetected = parsed.filter(q => q.hasImage && q.extractedImageB64).length;
+                const needManual = parsed.filter(q => q.hasImage && !q.extractedImageB64).length;
                 status.className = "extract-status success";
-                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${imgCount} question(s) flagged as having diagrams — upload images below.` : ''}`;
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${autoDetected} diagram(s) auto-detected${needManual > 0 ? ` · <strong>${needManual} need manual upload below</strong>` : ' ✓'}.` : ''}`;
                 renderExtractedQuestions(extractedQuestions); document.getElementById("extractedList").style.display = "block";
             } catch (err) { status.className = "extract-status error"; status.innerHTML = `❌ ${err.message}`; }
             document.getElementById("extractBtn").disabled = false;
@@ -2198,11 +2447,12 @@
             questions.forEach((q, qi) => {
                 const div = document.createElement("div"); div.className = "extracted-q-item"; div.id = `eq_${qi}`;
                 const ci = q.correctIndexes || (typeof q.correctIndex === "number" ? [q.correctIndex] : [0]);
+
                 div.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <strong>Q${qi + 1}</strong>
         ${q.isMultiCorrect ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:20px;color:var(--warn)">✦ Multi</span>' : ""}
-        ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Diagram</span>' : ""}
+        ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Image</span>' : ""}
         <div style="display:flex;align-items:center;gap:5px;background:rgba(91,95,239,0.08);border:1px solid rgba(91,95,239,0.2);border-radius:7px;padding:3px 10px">
           <span style="font-size:0.7rem;opacity:0.6">Lecture</span>
           <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
@@ -2211,19 +2461,41 @@
       <button class="btn btn-danger" style="padding:4px 10px;font-size:0.74rem" onclick="removeExtractedQ(${qi})">✕</button>
     </div>
     <div class="field"><label>Question Text</label><textarea id="eq_q_${qi}" rows="2" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:0.87rem;resize:vertical;outline:none">${q.question}</textarea></div>
-    <div class="eq-image-section" id="eq_img_section_${qi}">
-      <div id="eq_img_preview_${qi}" style="${q.extractedImageB64 ? '' : 'display:none'}">
-        ${q.extractedImageB64 ? `<div class="eq-image-preview"><img src="data:image/jpeg;base64,${q.extractedImageB64}" alt="Question diagram"><div class="eq-image-label">🖼 Diagram image — <button onclick="removeEqImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;font-family:inherit">✕ Remove</button></div></div>` : ''}
+    ${q.hasImage ? `
+    <div id="eq_imgwrap_${qi}" style="margin-bottom:12px">
+      <!-- Auto-detected image preview (shown if OpenCV found it) -->
+      <div id="eq_autoimg_${qi}" style="display:${q.extractedImageB64 ? 'block' : 'none'}">
+        ${q.extractedImageB64 ? `
+        <div class="eq-image-preview" style="position:relative">
+          <img id="eq_autoimg_el_${qi}" src="data:image/jpeg;base64,${q.extractedImageB64}" alt="Auto-detected diagram">
+          <div class="eq-image-label">🤖 Auto-detected by OpenCV — <button onclick="rejectAutoImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;text-decoration:underline;font-family:inherit">✕ Wrong? Upload manually</button></div>
+        </div>` : ''}
       </div>
-      <div id="eq_img_dropzone_${qi}" class="eq-img-dropzone" style="margin-top:8px;border:2px dashed ${q.extractedImageB64 ? 'rgba(91,95,239,0.2)' : q.hasImage ? 'rgba(245,158,11,0.5)' : 'rgba(91,95,239,0.18)'};border-radius:10px;padding:14px 12px;text-align:center;cursor:pointer;background:${q.hasImage && !q.extractedImageB64 ? 'rgba(245,158,11,0.04)' : 'rgba(255,255,255,0.02)'};transition:border-color 0.2s,background 0.2s;position:relative" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='rgba(91,95,239,0.08)'" ondragleave="this.style.borderColor='';this.style.background=''" ondrop="handleEqDrop(event,${qi})">
-        <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" onchange="handleEqManualImage(this,${qi})">
-        <div style="font-size:1.1rem;margin-bottom:4px">${q.extractedImageB64 ? '🔄' : q.hasImage ? '⚠️' : '🖼'}</div>
-        <div style="font-size:0.78rem;color:${q.hasImage && !q.extractedImageB64 ? 'var(--warn)' : 'var(--text-dim)'}">
-          ${q.hasImage && !q.extractedImageB64 ? '<strong>AI detected a diagram</strong> — ' : ''}
-          <strong style="color:var(--accent)">Click</strong>, drag & drop, or <strong style="color:var(--accent)">paste (Ctrl+V)</strong> to ${q.extractedImageB64 ? 'replace' : 'upload'} the diagram image
+      <!-- Manual upload zone (shown if auto-detection failed or user rejects it) -->
+      <div id="eq_manualzone_${qi}" style="display:${q.extractedImageB64 ? 'none' : 'block'}">
+        <div class="eq-img-dropzone" id="eq_dropzone_${qi}" tabindex="0"
+          ondragover="event.preventDefault();this.classList.add('dragover')"
+          ondragleave="this.classList.remove('dragover')"
+          ondrop="handleEqDrop(event,${qi})"
+          onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('eq_fileinput_${qi}').click()">
+          <input type="file" accept="image/*" id="eq_fileinput_${qi}" style="display:none" onchange="handleEqFile(this,${qi})">
+          <div style="font-size:1.6rem;margin-bottom:6px">${q.extractedImageB64 ? '✅' : '🖼'}</div>
+          <div style="font-size:0.82rem;font-weight:600;color:var(--text-dim)">
+            ${q.extractedImageB64 ? 'Diagram detected — click to replace' : 'Upload diagram image'}
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px">Click • Drag & Drop • Paste (Ctrl+V)</div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap">
+            <label onclick="document.getElementById('eq_fileinput_${qi}').click()" style="cursor:pointer;padding:7px 16px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--accent);font-family:'Outfit',sans-serif">📁 Browse</label>
+          </div>
+          <!-- Manual upload preview -->
+          <div id="eq_manualpreview_${qi}" style="display:none;margin-top:10px">
+            <img style="max-width:100%;max-height:180px;object-fit:contain;border-radius:6px;border:1px solid var(--border)">
+            <div style="font-size:0.72rem;color:var(--accent-3);margin-top:4px">✅ Manual image uploaded</div>
+            <button onclick="removeEqManualImage(${qi})" style="margin-top:4px;padding:4px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--error);cursor:pointer;font-family:'Outfit',sans-serif">✕ Remove</button>
+          </div>
         </div>
       </div>
-    </div>
+    </div>` : ''}
     <div class="extracted-q-opts">${q.options.map((opt, oi) => `<div class="eq-opt ${ci.includes(oi) ? "correct" : ""}"><span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:700">${LETTERS[oi]}</span><input value="${(opt || "").replace(/"/g, "&quot;")}" id="eq_opt_${qi}_${oi}" style="flex:1;background:transparent;border:none;color:var(--text);font-size:0.82rem;outline:none;font-family:'Outfit',sans-serif"></div>`).join("")}</div>
     <div style="margin-top:10px">${q.isMultiCorrect
                         ? `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answers:</label><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}</div>`
@@ -2234,64 +2506,71 @@
             renderMath(container);
         }
 
-        /* ── EXTRACTED Q IMAGE HELPERS ── */
-        function setEqImage(qi, b64) {
-            if (extractedQuestions[qi]) { extractedQuestions[qi].manualImageB64 = b64; extractedQuestions[qi].extractedImageB64 = b64; }
-            const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
-            const preview = document.getElementById(`eq_img_preview_${qi}`);
-            if (preview) {
-                preview.style.display = '';
-                preview.innerHTML = `<div class="eq-image-preview"><img src="data:${mime};base64,${b64}" alt="Question diagram"><div class="eq-image-label">🖼 Diagram image — <button onclick="removeEqImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;font-family:inherit">✕ Remove</button></div></div>`;
-            }
-            const dz = document.getElementById(`eq_img_dropzone_${qi}`);
-            if (dz) { dz.style.borderColor = 'rgba(6,214,160,0.4)'; dz.style.background = 'rgba(6,214,160,0.04)'; const txt = dz.querySelector('div:last-child'); if (txt) txt.innerHTML = '<strong style="color:var(--accent)">Click</strong>, drag & drop, or <strong style="color:var(--accent)">paste (Ctrl+V)</strong> to <strong>replace</strong> the diagram image'; }
-        }
-        async function handleEqManualImage(input, qi) {
-            const file = input.files[0]; if (!file) return;
-            const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
-            setEqImage(qi, b64);
-        }
-        async function handleEqDrop(event, qi) {
-            event.preventDefault();
-            const dz = document.getElementById(`eq_img_dropzone_${qi}`); if (dz) { dz.style.borderColor = ''; dz.style.background = ''; }
-            const file = [...event.dataTransfer.files].find(f => f.type.startsWith("image/")); if (!file) return;
-            const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
-            setEqImage(qi, b64);
-        }
-        function removeEqImage(qi) {
-            if (extractedQuestions[qi]) { extractedQuestions[qi].extractedImageB64 = null; extractedQuestions[qi].manualImageB64 = null; }
-            const preview = document.getElementById(`eq_img_preview_${qi}`); if (preview) { preview.innerHTML = ''; preview.style.display = 'none'; }
-            const dz = document.getElementById(`eq_img_dropzone_${qi}`); if (dz) { dz.style.borderColor = ''; dz.style.background = ''; }
+        /* ═══ IMAGE HELPER FUNCTIONS ═══════════════════════════════════════ */
+
+        // Convert file to base64
+        async function fileToB64(file) {
+            return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
         }
 
-        // Paste handler for per-question image paste (Ctrl+V anywhere on the page when import section is active)
-        document.addEventListener("paste", async function(e) {
-            if (!document.getElementById("section-importQuestion")?.classList.contains("active")) return;
-            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items; if (!items) return;
+        // Set a manually uploaded image on an extracted question
+        function setEqManualImage(qi, b64) {
+            if (extractedQuestions[qi]) extractedQuestions[qi].manualImageB64 = b64;
+            const preview = document.getElementById(`eq_manualpreview_${qi}`);
+            if (preview) {
+                const img = preview.querySelector('img');
+                if (img) img.src = `data:image/jpeg;base64,${b64}`;
+                preview.style.display = 'block';
+            }
+            // Hide auto-image section, show manual zone
+            document.getElementById(`eq_autoimg_${qi}`)?.style && (document.getElementById(`eq_autoimg_${qi}`).style.display = 'none');
+            const zone = document.getElementById(`eq_manualzone_${qi}`);
+            if (zone) zone.style.display = 'block';
+        }
+
+        // File input handler
+        async function handleEqFile(input, qi) {
+            const file = input.files[0]; if (!file) return;
+            setEqManualImage(qi, await fileToB64(file));
+        }
+
+        // Drag & drop handler
+        async function handleEqDrop(e, qi) {
+            e.preventDefault();
+            document.getElementById(`eq_dropzone_${qi}`)?.classList.remove('dragover');
+            const file = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
+            if (!file) return;
+            setEqManualImage(qi, await fileToB64(file));
+        }
+
+        // Remove manual image
+        function removeEqManualImage(qi) {
+            if (extractedQuestions[qi]) extractedQuestions[qi].manualImageB64 = null;
+            const preview = document.getElementById(`eq_manualpreview_${qi}`);
+            if (preview) preview.style.display = 'none';
+        }
+
+        // User rejected auto-detected image → show manual upload zone
+        function rejectAutoImage(qi) {
+            if (extractedQuestions[qi]) extractedQuestions[qi].extractedImageB64 = null;
+            const autoDiv = document.getElementById(`eq_autoimg_${qi}`);
+            if (autoDiv) autoDiv.style.display = 'none';
+            const manualDiv = document.getElementById(`eq_manualzone_${qi}`);
+            if (manualDiv) manualDiv.style.display = 'block';
+        }
+
+        // Global paste handler — pastes image into whichever dropzone is focused
+        document.addEventListener('paste', async function (e) {
+            if (!document.getElementById('section-importQuestion')?.classList.contains('active')) return;
+            const focused = document.activeElement?.closest('[id^="eq_dropzone_"]');
+            if (!focused) return; // only intercept if a dropzone is focused
+            const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+            if (!items) return;
             for (const item of items) {
-                if (!item.type.startsWith("image/")) continue;
-                e.preventDefault();
-                const f = item.getAsFile();
-                const b64 = await fileToBase64(f);
-                // If extracted list is visible, try to find focused/hovered question dropzone
-                const container = document.getElementById("extractedQContainer");
-                if (container && document.getElementById("extractedList").style.display !== "none") {
-                    // Find the last focused dropzone or fallback to adding as question screenshot
-                    const focused = document.activeElement?.closest(".extracted-q-item");
-                    if (focused) {
-                        const qi = parseInt(focused.id.replace("eq_", ""));
-                        if (!isNaN(qi)) { setEqImage(qi, b64); return; }
-                    }
-                    // If no question focused, treat as question screenshot upload
-                    pushUndo(snapshotState()); qImagesBase64.push(b64); refreshPreviews(); return;
-                }
-                pushUndo(snapshotState());
-                if (document.getElementById("ak-tab-screenshot").classList.contains("active") && qImagesBase64.length > 0 && aImagesBase64.length === 0) {
-                    aImagesBase64.push(b64);
-                } else {
-                    qImagesBase64.push(b64);
-                }
-                refreshPreviews();
+                if (!item.type.startsWith('image/')) continue;
+                e.preventDefault(); e.stopPropagation();
+                const qi = parseInt(focused.id.replace('eq_dropzone_', ''));
+                if (!isNaN(qi)) setEqManualImage(qi, await fileToB64(item.getAsFile()));
                 break;
             }
         });
@@ -2313,7 +2592,7 @@
                 if (!groups[lec]) groups[lec] = [];
                 const qi = parseInt(item.id.replace('eq_', ''));
                 const origQ = extractedQuestions[isNaN(qi) ? localIdx : qi] || {};
-                const finalImage = origQ.manualImageB64 || origQ.extractedImageB64 || null; groups[lec].push({ question: txt, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1, questionImage: finalImage });
+                const questionImage = origQ.manualImageB64 || origQ.extractedImageB64 || null; groups[lec].push({ question: txt, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1, questionImage });
             });
             if (hasError) { showErrorModal("Some questions are incomplete.", "Incomplete data"); return; }
             const lectures = Object.keys(groups); if (!lectures.length) { showErrorModal("No complete questions.", "Nothing to save"); return; }
@@ -2453,16 +2732,6 @@
             ${LETTERS.map((l, oi) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.87rem;padding:6px 14px;border-radius:var(--radius-sm);background:${ci.includes(oi) ? "rgba(6,214,160,0.1);border:1px solid rgba(6,214,160,0.3)" : "var(--bg-card);border:1px solid var(--border)"}"><input type="checkbox" class="iqe_correct_${si}" value="${oi}" ${ci.includes(oi) ? "checked" : ""} style="width:auto;cursor:pointer;accent-color:var(--success)"> ${l}</label>`).join("")}
           </div>
         </div>
-        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
-          <label style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);display:block;margin-bottom:8px">Question Image ${sub.questionImage ? '<span style="color:var(--accent-3);margin-left:6px">✓ Image attached</span>' : '<span style="color:var(--text-muted);margin-left:6px;font-weight:400">(optional)</span>'}</label>
-          ${sub.questionImage ? `<div style="margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,0.02);text-align:center"><img src="data:image/jpeg;base64,${sub.questionImage}" style="max-width:100%;max-height:220px;object-fit:contain;display:block;margin:0 auto" alt="Question image"></div>` : ""}
-          <input type="hidden" id="iqe_img_b64_${si}" value="${sub.questionImage || ""}">
-          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:8px 14px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--accent);transition:var(--transition)" onmouseover="this.style.background='rgba(99,102,241,0.16)'" onmouseout="this.style.background='rgba(99,102,241,0.08)'">
-            🖼 ${sub.questionImage ? "Replace Image" : "Upload Image"}
-            <input type="file" accept="image/*" style="display:none" onchange="handleIqeImageUpload(this, ${si})">
-          </label>
-          ${sub.questionImage ? `<button onclick="removeIqeImage(${si})" style="margin-left:8px;padding:8px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--error);cursor:pointer;font-family:'Outfit',sans-serif">✕ Remove</button>` : ""}
-        </div>
       </div>`;
             }).join("")}
   </div>`;
@@ -2480,49 +2749,12 @@
         function updatePreview(si) { const ta = document.getElementById(`iqe_qt_${si}`), prev = document.getElementById(`iqe_preview_${si}`); if (ta && prev) { prev.textContent = ta.value; renderMath(prev); } }
         function updateOptRender(si, oi) { const inp = document.getElementById(`iqe_opt_${si}_${oi}`), rend = document.getElementById(`iqe_opt_render_${si}_${oi}`); if (inp && rend) { rend.textContent = inp.value; renderMath(rend); } }
 
-        /* ── MANAGE PANEL IMAGE HELPERS ── */
-        async function handleIqeImageUpload(input, si) {
-            const file = input.files[0]; if (!file) return;
-            const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
-            const hidden = document.getElementById(`iqe_img_b64_${si}`); if (hidden) hidden.value = b64;
-            // Update the preview in place
-            const container = input.closest('[style*="border-top"]');
-            let preview = container.querySelector('img');
-            if (!preview) {
-                const wrap = document.createElement('div');
-                wrap.style.cssText = 'margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,0.02);text-align:center';
-                preview = document.createElement('img');
-                preview.style.cssText = 'max-width:100%;max-height:220px;object-fit:contain;display:block;margin:0 auto';
-                preview.alt = 'Question image';
-                wrap.appendChild(preview);
-                container.insertBefore(wrap, container.querySelector('label[style]'));
-            }
-            preview.src = `data:image/jpeg;base64,${b64}`;
-            // Show remove button
-            const removeBtn = container.querySelector('button');
-            if (!removeBtn) {
-                const btn = document.createElement('button');
-                btn.textContent = '✕ Remove'; btn.onclick = () => removeIqeImage(si);
-                btn.style.cssText = 'margin-left:8px;padding:8px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--error);cursor:pointer;font-family:\'Outfit\',sans-serif';
-                container.appendChild(btn);
-            }
-            // Update the label text
-            const lbl = container.querySelector('label[style]'); if (lbl && lbl.textContent.includes('Upload')) lbl.innerHTML = lbl.innerHTML.replace('Upload Image', 'Replace Image');
-        }
-        function removeIqeImage(si) {
-            const hidden = document.getElementById(`iqe_img_b64_${si}`); if (hidden) hidden.value = '';
-            const container = hidden?.closest('[style*="border-top"]'); if (!container) return;
-            container.querySelector('img')?.parentElement?.remove();
-            container.querySelector('button')?.remove();
-            const lbl = container.querySelector('label[style]'); if (lbl) lbl.innerHTML = lbl.innerHTML.replace('Replace Image', 'Upload Image');
-        }
-
         async function saveInlineEdit() {
             const chapter = document.getElementById("iqe-chapter")?.value.trim(), lecture = document.getElementById("iqe-lecture")?.value.trim();
             if (!chapter || !lecture) { showErrorModal("Chapter and lecture are required.", "Missing fields"); return; }
             const containers = document.querySelectorAll("#iqe-questions-container > div");
             const questions = [];
-            containers.forEach((c, si) => { const text = document.getElementById(`iqe_qt_${si}`)?.value.trim(); const opts = LETTERS.map((_, oi) => document.getElementById(`iqe_opt_${si}_${oi}`)?.value.trim() || ""); const checked = [...c.querySelectorAll(`[class*="iqe_correct_"]:checked`)].map(x => parseInt(x.value)); const ci = checked.length ? checked : [0]; const existingImg = allQuestions[mqCurrentLectureIdx]?.questions?.[si]?.questionImage || null; const manualImg = document.getElementById(`iqe_img_b64_${si}`)?.value || null; const imgToSave = manualImg || existingImg || null; if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1, questionImage: imgToSave }); });
+            containers.forEach((c, si) => { const text = document.getElementById(`iqe_qt_${si}`)?.value.trim(); const opts = LETTERS.map((_, oi) => document.getElementById(`iqe_opt_${si}_${oi}`)?.value.trim() || ""); const checked = [...c.querySelectorAll(`[class*="iqe_correct_"]:checked`)].map(x => parseInt(x.value)); const ci = checked.length ? checked : [0]; if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: ci.length > 1 }); });
             if (!questions.length) { showErrorModal("No complete questions found to save.", "Incomplete data"); return; }
             const q = allQuestions[mqCurrentLectureIdx]; const oldCh = q?.chapter || "_none_", oldLec = q?.lecture;
             const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace: true }) });
