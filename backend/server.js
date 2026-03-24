@@ -3,9 +3,11 @@ const mongoose = require("mongoose");
 const session = require("express-session");
 const cors = require("cors");
 const crypto = require("crypto");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.set("trust proxy", 1);
+
 // ── SECURITY: No hardcoded fallback password
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
 if (!ADMIN_PASSCODE || ADMIN_PASSCODE.length < 12) {
@@ -17,9 +19,11 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
     console.error("FATAL: SESSION_SECRET env var is missing or too short (min 32 chars). Set it in Render environment variables.");
     process.exit(1);
 }
+
 app.use(cors({ origin: ["https://grip-physics.onrender.com", "https://grip-physics.vercel.app", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"], credentials: true, methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization"] }));
 app.use(express.json({ limit: "20mb" }));
 app.use(session({ secret: SESSION_SECRET, resave: false, saveUninitialized: false, proxy: true, cookie: { secure: true, sameSite: "none", httpOnly: true, maxAge: 8 * 60 * 60 * 1000 } }));
+
 // ── SECURITY: Security headers on every response
 app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -28,9 +32,11 @@ app.use((req, res, next) => {
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     next();
 });
+
 // ── SECURITY: Rate limiter
 const rateLimitMap = new Map();
 const loginFailMap = new Map();
+
 function rateLimit(windowMs, max) {
     return (req, res, next) => {
         const key = req.ip + req.path, now = Date.now();
@@ -41,6 +47,7 @@ function rateLimit(windowMs, max) {
         next();
     };
 }
+
 // ── SECURITY: Login lockout — 5 attempts per 15 min, then 1 hour block
 function loginRateLimit(req, res, next) {
     const ip = req.ip, now = Date.now();
@@ -55,18 +62,22 @@ function loginRateLimit(req, res, next) {
     next();
 }
 function recordLoginFailure(ip) { if (!loginFailMap.has(ip)) loginFailMap.set(ip, []); loginFailMap.get(ip).push(Date.now()); }
+
 setInterval(() => {
     const c = Date.now() - 60 * 60 * 1000;
     for (const [k, v] of rateLimitMap.entries()) { const f = v.filter(t => t > c); if (!f.length) rateLimitMap.delete(k); else rateLimitMap.set(k, f); }
     for (const [k, v] of loginFailMap.entries()) { const f = v.filter(t => t > c); if (!f.length) loginFailMap.delete(k); else loginFailMap.set(k, f); }
 }, 10 * 60 * 1000);
+
 mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physics", { dbName: "grip_physics" })
     .then(() => console.log("MongoDB connected")).catch(err => console.error("MongoDB error:", err));
+
 const QuestionSchema = new mongoose.Schema({
     chapter: { type: String, index: true }, lecture: { type: String, index: true },
     questions: [{ question: String, options: [String], correctIndex: Number, correctIndexes: [Number], isMultiCorrect: Boolean, questionImage: String, optionImages: [String] }],
     question: String, options: [String], correctIndex: Number, updatedAt: { type: Number, default: Date.now }
 }, { strict: false });
+
 const StudentSchema = new mongoose.Schema({
     name: String, mobile: { type: String, index: true }, place: String, className: String,
     chapter: String, lecture: { type: String, index: true },
@@ -74,11 +85,14 @@ const StudentSchema = new mongoose.Schema({
     answer: Number, correct: Boolean, time: Number
 }, { strict: false });
 StudentSchema.index({ mobile: 1, lecture: 1 });
+
 const AttemptSchema = new mongoose.Schema({ mobile: { type: String, index: true }, chapter: String, lecture: { type: String, index: true }, time: Number }, { strict: false });
 AttemptSchema.index({ mobile: 1, lecture: 1 });
+
 const Question = mongoose.model("Question", QuestionSchema);
 const Student = mongoose.model("Student", StudentSchema);
 const Attempt = mongoose.model("Attempt", AttemptSchema);
+
 function normalizeQuestion(doc) {
     if (!doc) return null;
     const d = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
@@ -96,12 +110,14 @@ function normalizeQuestion(doc) {
     }
     d.questions = []; d._corrupted = true; return d;
 }
+
 function normalizeStudent(doc) {
     const s = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
     if (typeof s.correctCount === "number") return s;
     if (typeof s.answer === "number") { s.answers = [s.answer]; s.correctCount = s.correct === true ? 1 : 0; s.totalQuestions = 1; }
     return s;
 }
+
 function isCorrect(qItem, ans) {
     if (!qItem) return false;
     const correctIdxs = qItem.correctIndexes && qItem.correctIndexes.length ? qItem.correctIndexes : [qItem.correctIndex || 0];
@@ -112,6 +128,7 @@ function isCorrect(qItem, ans) {
     }
     return ans === correctIdxs[0];
 }
+
 let questionCache = {};
 async function loadQuestions() {
     const all = await Question.find().lean();
@@ -120,6 +137,7 @@ async function loadQuestions() {
     console.log(`Cached ${all.length} questions`);
 }
 mongoose.connection.once("open", loadQuestions);
+
 async function findQuestion(chapter, lecture) {
     const key = `${chapter || ""}::${lecture}`;
     const cached = questionCache[key];
@@ -130,12 +148,15 @@ async function findQuestion(chapter, lecture) {
     if (!n._corrupted) { questionCache[key] = n; return n; }
     return null;
 }
+
 async function refreshCache(chapter, lecture) {
     const updated = await Question.findOne(chapter ? { chapter, lecture } : { lecture }).lean();
     if (updated) { const n = normalizeQuestion(updated); if (!n._corrupted) questionCache[`${chapter || ""}::${lecture}`] = n; }
     else { delete questionCache[`${chapter || ""}::${lecture}`]; }
 }
+
 function requireAdmin(req, res, next) { if (!req.session.admin) return res.status(403).json({ error: "Unauthorized" }); next(); }
+
 // ── SECURITY: Constant-time password comparison (prevents timing attacks)
 function safeCompare(a, b) {
     try {
@@ -144,6 +165,7 @@ function safeCompare(a, b) {
         return crypto.timingSafeEqual(ba, bb);
     } catch { return false; }
 }
+
 // ── LOGIN
 app.post("/api/admin/login", loginRateLimit, (req, res) => {
     if (!safeCompare(req.body.passcode || "", ADMIN_PASSCODE)) {
@@ -159,6 +181,7 @@ app.post("/api/admin/login", loginRateLimit, (req, res) => {
     });
 });
 app.post("/api/admin/logout", (req, res) => req.session.destroy(() => res.json({ message: "Logged out" })));
+
 // ── PUBLIC ROUTES
 app.get("/api/chapters", async (req, res) => { try { const c = await Question.distinct("chapter"); res.json(c.filter(Boolean).sort()); } catch { res.status(500).json({ error: "Failed" }); } });
 app.get("/api/lectures/:chapter", async (req, res) => { try { const d = await Question.find({ chapter: req.params.chapter }, { lecture: 1 }).lean(); res.json(d.map(x => x.lecture).filter(Boolean).sort((a, b) => Number(a) - Number(b))); } catch { res.status(500).json({ error: "Failed" }); } });
@@ -179,6 +202,7 @@ app.post("/api/submit-attempt", rateLimit(60 * 1000, 5), async (req, res) => {
     res.json({ success: true, correctCount, totalQuestions: q.questions.length });
 });
 app.post("/api/student-register", async (req, res) => { const { name, mobile, place, className, chapter, lecture } = req.body; if (!name || !mobile || !lecture) return res.status(400).json({ error: "Missing" }); await Student.findOneAndUpdate({ mobile, lecture }, { $set: { name, mobile, place, className, chapter: chapter || null, lecture, time: Date.now() } }, { upsert: true, new: true }); res.json({ success: true }); });
+
 // ── ADMIN ROUTES
 app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
     const { chapter, lecture, questions, replace } = req.body;
@@ -207,6 +231,7 @@ app.post("/api/admin/mass-delete", requireAdmin, async (req, res) => {
 });
 app.get("/api/admin/students", requireAdmin, async (req, res) => { try { const all = await Student.find({}).lean(); res.json(all.map(normalizeStudent)); } catch { res.status(500).json({ error: "Failed" }); } });
 app.get("/api/admin/questions", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); res.json(all.map(normalizeQuestion)); } catch { res.status(500).json({ error: "Failed" }); } });
+
 app.post("/api/admin/reload-cache", requireAdmin, async (req, res) => { try { await loadQuestions(); res.json({ success: true, cached: Object.keys(questionCache).length }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const c = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())); res.json({ total: all.length, corrupted: c.length, corruptedLectures: c.map(q => ({ lecture: q.lecture, chapter: q.chapter || null, _id: q._id })) }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const ids = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(q => q._id); if (!ids.length) return res.json({ success: true, deleted: 0, message: "No corrupted records found." }); await Question.deleteMany({ _id: { $in: ids } }); await loadQuestions(); res.json({ success: true, deleted: ids.length, message: `Deleted ${ids.length} corrupted record(s).` }); } catch (e) { res.status(500).json({ error: e.message }); } });
@@ -237,24 +262,33 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         res.json({ questions: parsed });
     } catch (e) { console.error("Extract error:", e); res.status(500).json({ error: "Server error: " + e.message }); }
 });
+
 app.post("/api/admin/extract-diagram", requireAdmin, async (req, res) => {
     const { image, questionText } = req.body;
     if (!image) return res.status(400).json({ error: "No image provided" });
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set" });
+
     function getMime(b64) {
         if (b64.startsWith("/9j/")) return "image/jpeg";
         if (b64.startsWith("iVBORw")) return "image/png";
         return "image/jpeg";
     }
+
     try {
         const prompt = `This is a physics exam screenshot. The question "${questionText || "shown"}" has a diagram/figure in it.
+
 Your job: identify the bounding box of ONLY the diagram/figure (not the question text, not option text, not captions like "Figure 13-Q2").
+
 The diagram is the actual drawing — shapes, graphs, circuits, ray diagrams, vessel drawings, etc.
+
 Reply with ONLY a JSON object, no markdown:
 {"x": 0.12, "y": 0.35, "w": 0.76, "h": 0.28}
+
 Where x, y, w, h are fractions of the full image dimensions (0.0 to 1.0).
 x = left edge, y = top edge, w = width, h = height.
+
 Be tight — do not include text rows above or below the drawing.`;
+
         const mime = getMime(image);
         const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -275,34 +309,42 @@ Be tight — do not include text rows above or below the drawing.`;
                 }]
             })
         });
+
         if (!r.ok) {
             const e = await r.json();
             const msg = e.error?.message || "Groq error";
             console.error("Groq extract-diagram error:", msg);
             return res.status(502).json({ error: msg });
         }
+
         const data = await r.json();
         let text = (data.choices?.[0]?.message?.content || "").trim();
         text = text.replace(/```json|```/g, "").trim();
+
         // Extract JSON object from response
         const start = text.indexOf("{"), end = text.lastIndexOf("}");
         if (start === -1 || end === -1) return res.status(500).json({ error: "AI did not return coords" });
+
         const coords = JSON.parse(text.slice(start, end + 1));
         if (typeof coords.x !== "number") return res.status(500).json({ error: "Invalid coords" });
+
         // Clamp values to valid range
         coords.x = Math.max(0, Math.min(1, coords.x));
         coords.y = Math.max(0, Math.min(1, coords.y));
         coords.w = Math.max(0.05, Math.min(1 - coords.x, coords.w));
         coords.h = Math.max(0.05, Math.min(1 - coords.y, coords.h));
+
         res.json({ coords });
     } catch (e) {
         console.error("Extract diagram error:", e);
         res.status(500).json({ error: e.message });
     }
 });
+
 // ── Catch-all: no stack traces leaked to clients
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 app.use((err, req, res, next) => { console.error("Unhandled:", err); res.status(500).json({ error: "Internal server error" }); });
+
 app.listen(PORT, () => {
     console.log(`Server on port ${PORT}`);
     console.log("GROQ_API_KEY:", process.env.GROQ_API_KEY ? "set" : "MISSING");
