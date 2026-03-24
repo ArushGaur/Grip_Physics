@@ -20,16 +20,43 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
     process.exit(1);
 }
 
-app.use(cors({ origin: ["https://grip-physics.onrender.com", "https://grip-physics.vercel.app", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"], credentials: true, methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization"] }));
+app.use(cors({ 
+    origin: function(origin, callback) {
+        if (!origin || ["https://grip-physics.onrender.com", "https://grip-physics.vercel.app", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"].includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    }, 
+    credentials: true, 
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["set-cookie"],
+    maxAge: 86400
+}));
 app.use(express.json({ limit: "20mb" }));
-app.use(session({ secret: SESSION_SECRET, resave: false, saveUninitialized: false, proxy: true, cookie: { secure: true, sameSite: "none", httpOnly: true, maxAge: 8 * 60 * 60 * 1000 } }));
+app.use(session({ 
+    secret: SESSION_SECRET, 
+    resave: false, 
+    saveUninitialized: false, 
+    proxy: true, 
+    name: 'grip.sid',
+    cookie: { 
+        secure: true, 
+        sameSite: "none", 
+        httpOnly: true, 
+        maxAge: 8 * 60 * 60 * 1000
+    } 
+}));
 
 // ── SECURITY: Security headers on every response
 app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("X-XSS-Protection", "1; mode=block");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     next();
 });
 
@@ -155,7 +182,11 @@ async function refreshCache(chapter, lecture) {
     else { delete questionCache[`${chapter || ""}::${lecture}`]; }
 }
 
-function requireAdmin(req, res, next) { if (!req.session.admin) return res.status(403).json({ error: "Unauthorized" }); next(); }
+function requireAdmin(req, res, next) { 
+    console.log("requireAdmin check - sessionID:", req.sessionID, "admin:", req.session?.admin);
+    if (!req.session?.admin) return res.status(403).json({ error: "Unauthorized" }); 
+    next(); 
+}
 
 // ── SECURITY: Constant-time password comparison (prevents timing attacks)
 function safeCompare(a, b) {
@@ -168,6 +199,7 @@ function safeCompare(a, b) {
 
 // ── LOGIN
 app.post("/api/admin/login", loginRateLimit, (req, res) => {
+    console.log("Login attempt from origin:", req.headers.origin);
     if (!safeCompare(req.body.passcode || "", ADMIN_PASSCODE)) {
         recordLoginFailure(req.ip);
         return res.status(401).json({ error: "Invalid passcode" });
@@ -177,6 +209,7 @@ app.post("/api/admin/login", loginRateLimit, (req, res) => {
         if (err) return res.status(500).json({ error: "Session error" });
         req.session.admin = true;
         req.session.loginTime = Date.now();
+        console.log("Login successful, session ID:", req.sessionID);
         res.json({ success: true });
     });
 });
