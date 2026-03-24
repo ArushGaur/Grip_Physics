@@ -2781,6 +2781,69 @@
         async function scanCorrupted() { const st = document.getElementById("migrateStatus"), res = document.getElementById("migrateResults"); st.innerHTML = '<span class="spinner"></span>&nbsp; Scanning...'; res.innerHTML = ""; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { credentials: "include" }); const data = await r.json(); st.innerHTML = ""; if (data.corrupted === 0) { res.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:var(--success);font-size:0.82rem">✅ No corrupted records.</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); } else { const rows = data.corruptedLectures.map(l => `<tr><td>${l.chapter || "none"}</td><td>L${l.lecture}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;opacity:0.5">${l._id}</td></tr>`).join(""); res.innerHTML = `<div style="padding:12px;background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);color:var(--error);margin-bottom:12px;font-size:0.82rem">⚠️ Found <strong>${data.corrupted}</strong> corrupted record(s).</div><div class="table-wrap"><table><thead><tr><th>Chapter</th><th>Lecture</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>`; document.getElementById("deleteCorruptedBtn").classList.remove("hidden"); } } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } }
         async function deleteCorrupted() { askConfirmModal({ title: "Delete corrupted records?", text: "Permanently delete corrupted records? This cannot be undone.", confirmText: "Delete", onConfirm: async () => { const st = document.getElementById("migrateStatus"); st.innerHTML = '<span class="spinner"></span>&nbsp; Deleting...'; try { const r = await fetch(`${API_BASE}/api/admin/migrate`, { method: "POST", credentials: "include" }); const data = await r.json(); st.innerHTML = ""; document.getElementById("migrateResults").innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);color:#057a55;font-size:0.82rem">✅ ${data.message}</div>`; document.getElementById("deleteCorruptedBtn").classList.add("hidden"); await loadQuestionsAdmin(); } catch (e) { st.innerHTML = `<div style="color:var(--error)">Error: ${e.message}</div>`; } } }); }
 
+        // Override image slicing logic: map crops by image-question index,
+        // not by overall question index. This avoids duplicate figure crops.
+        async function extractImagesForQuestions(questions, screenshotB64Array) {
+            if (!screenshotB64Array || !screenshotB64Array.length) return;
+            const imgQuestions = questions.filter(q => q.hasImage);
+            if (!imgQuestions.length) return;
+
+            const imgsPerScreen = Math.max(1, Math.ceil(imgQuestions.length / screenshotB64Array.length));
+            let imgIdx = 0;
+
+            for (let qi = 0; qi < questions.length; qi++) {
+                const q = questions[qi];
+                if (!q.hasImage) continue;
+
+                const screenIdx = Math.min(Math.floor(imgIdx / imgsPerScreen), screenshotB64Array.length - 1);
+                const b64 = screenshotB64Array[screenIdx];
+
+                try {
+                    const localImgIdx = imgIdx % imgsPerScreen;
+                    const cropped = await getImageFromScreenshot(b64, localImgIdx, imgsPerScreen);
+                    q.extractedImageB64 = cropped || null;
+                } catch (e) {
+                    q.extractedImageB64 = null;
+                }
+
+                imgIdx++;
+            }
+        }
+
+        async function getImageFromScreenshot(b64, localImgIdx, imgsOnScreen) {
+            return new Promise(resolve => {
+                const img = new Image();
+                const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        const w = img.naturalWidth, h = img.naturalHeight;
+
+                        if (imgsOnScreen > 1) {
+                            const sliceH = Math.floor(h / imgsOnScreen);
+                            const startY = localImgIdx * sliceH;
+                            canvas.width = w;
+                            canvas.height = sliceH;
+                            ctx.drawImage(img, 0, startY, w, sliceH, 0, 0, w, sliceH);
+                        } else {
+                            canvas.width = w;
+                            canvas.height = h;
+                            ctx.drawImage(img, 0, 0);
+                        }
+
+                        resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+                    } catch (e) {
+                        resolve(null);
+                    }
+                };
+
+                img.onerror = () => resolve(null);
+                img.src = `data:${mime};base64,${b64}`;
+            });
+        }
+
         /* ── MODALS ── */
         function openModal(id) { document.getElementById(id).style.display = "flex"; }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
