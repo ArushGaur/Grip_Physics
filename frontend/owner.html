@@ -3285,7 +3285,9 @@
                 console.log("Raw API response:", data);
                 allStudents = data;
                 console.log("Students loaded:", allStudents.length);
+                console.log("Sample student:", JSON.stringify(allStudents[0]));
                 const wa = allStudents.filter(s => s.answers && s.answers.length > 0);
+                console.log("With answers:", wa.length);
                 const tc = wa.reduce((sum, x) => sum + (x.correctCount || 0), 0);
                 const tw = wa.reduce((sum, x) => sum + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
                 const lecs = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
@@ -3294,6 +3296,7 @@
                 document.getElementById("stat-correct").textContent = tc;
                 document.getElementById("stat-wrong").textContent = tw;
                 document.getElementById("stat-lectures").textContent = lecs.size;
+                console.log("Stats set - total:", allStudents.length, "correct:", tc, "wrong:", tw);
                 
                 const totalQ = tc + tw;
                 const accuracy = totalQ > 0 ? Math.round((tc / totalQ) * 100) : 0;
@@ -3418,14 +3421,16 @@
         async function loadChaptersAdmin() {
             try {
                 const r = await fetch(`${API_BASE}/api/chapters`);
+                if (!r.ok) { console.error("Failed to load chapters:", r.status); return; }
                 const chs = await r.json();
+                console.log("Chapters loaded:", chs.length);
                 ["existingChapters", "existingChapters2"].forEach(id => {
                     const dl = document.getElementById(id);
                     if (dl) dl.innerHTML = chs.map(c => `<option value="${c}">`).join("");
                 });
                 const dc = document.getElementById("drillChapter");
                 if (dc) dc.innerHTML = '<option value="">— All —</option>' + chs.map(c => `<option value="${c}">${c}</option>`).join("");
-            } catch (e) { }
+            } catch (e) { console.error("Error loading chapters:", e); }
         }
 
         /* ══════════════════════════════════════════════════════════════════
@@ -4443,10 +4448,13 @@
         async function loadQuestionsAdmin() {
             try {
                 const r = await fetch(`${API_BASE}/api/admin/questions`, { credentials: "include" });
-                if (r.status === 403) return;
+                console.log("Questions API status:", r.status);
+                if (r.status === 403) { console.log("Not authorized for questions"); return; }
+                if (!r.ok) { console.error("Questions API error:", r.status); return; }
                 allQuestions = await r.json();
+                console.log("Questions loaded:", allQuestions.length);
                 renderQuestionList(allQuestions);
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Error loading questions:", e); }
         }
 
         function renderQuestionList(questions) { renderChapterCards(questions); }
