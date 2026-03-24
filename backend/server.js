@@ -248,7 +248,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         for (const img of (answerImages || [])) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
         contentParts.push({ type: "text", text: prompt });
         const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY }, body: JSON.stringify({ model: "llama-3.2-90b-vision-preview", max_tokens: 6000, temperature: 0.1, messages: [{ role: "user", content: contentParts }] }) });
-        if (!r.ok) { const e = await r.json(); return res.status(502).json({ error: (e.error && e.error.message) || "Groq error" }); }
+        if (!r.ok) { const e = await r.json(); const msg = (e.error && e.error.message) || "Groq error"; console.error("Groq API error:", msg); return res.status(502).json({ error: msg }); }
         const data = await r.json();
         let text = ((data.choices?.[0]?.message?.content) || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
         text = text.replace(/\s*\$\\\$\s*"/g, '"').replace(/\s*\$\\s\$\s*"/g, '"');
@@ -312,7 +312,9 @@ Be tight — do not include text rows above or below the drawing.`;
 
         if (!r.ok) {
             const e = await r.json();
-            return res.status(502).json({ error: e.error?.message || "Groq error" });
+            const msg = e.error?.message || "Groq error";
+            console.error("Groq extract-diagram error:", msg);
+            return res.status(502).json({ error: msg });
         }
 
         const data = await r.json();
