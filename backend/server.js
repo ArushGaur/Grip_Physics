@@ -375,6 +375,14 @@ Be tight — do not include text rows above or below the drawing.`;
         coords.w = Math.max(0.05, Math.min(1 - coords.x, coords.w));
         coords.h = Math.max(0.05, Math.min(1 - coords.y, coords.h));
 
+        // Add 10% padding to prevent tight crops
+        const padX = coords.w * 0.10;
+        const padY = coords.h * 0.10;
+        coords.x = Math.max(0, coords.x - padX);
+        coords.y = Math.max(0, coords.y - padY);
+        coords.w = Math.min(1 - coords.x, coords.w + padX * 2);
+        coords.h = Math.min(1 - coords.y, coords.h + padY * 2);
+
         res.json({ coords });
     } catch (e) {
         console.error("Extract diagram error:", e);
