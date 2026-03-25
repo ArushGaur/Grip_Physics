@@ -1,5 +1,5 @@
 :root {
-    --glass-bg: rgba(255, 255, 255, 0.07);
+    --glass-bg: rgba(15, 12, 30, 0.85);
     --glass-border: rgba(255, 255, 255, 0.15);
     --accent: #00f2fe;
     --accent-2: #4facfe;
@@ -69,7 +69,7 @@ body {
 [data-theme="light"] .portal-card,
 [data-theme="light"] .quiz-container,
 [data-theme="light"] .result-container {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.97);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
     border-color: rgba(0, 0, 0, 0.1);
 }
@@ -360,21 +360,21 @@ body {
     width: 430px;
     max-width: 100%;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: transform 0.5s ease, opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease;
 }
 
 [data-theme="light"] .container {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
     border-color: rgba(0, 0, 0, 0.1);
 }
 
 /* Portal Card */
 .portal-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(15, 12, 30, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--glass-border);
     border-radius: 24px;
     padding: 32px;
@@ -729,9 +729,9 @@ button[type="submit"]:hover,
 
 /* Quiz Container */
 .quiz-container {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(15, 12, 30, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--glass-border);
     border-radius: 24px;
     padding: 28px;
@@ -906,9 +906,9 @@ button[type="submit"]:hover,
 
 /* Result Container */
 .result-container {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(15, 12, 30, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--glass-border);
     border-radius: 24px;
     padding: 32px;
