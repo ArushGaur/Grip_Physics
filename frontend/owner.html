@@ -19,6 +19,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <!-- OpenCV.js for client-side diagram detection fallback -->
     <script>
         window.cvReady = false;
@@ -3193,6 +3195,20 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="cropModal" style="display:none;z-index:9999">
+        <div class="modal-box" style="width:800px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;">
+            <h3>✂️ Crop Diagram from Screenshot</h3>
+            <p style="margin-bottom:10px">Drag boundaries to select the diagram exactly. Leave tight margins.</p>
+            <div style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:20px;display:flex;align-items:center;justify-content:center;">
+                <img id="cropTarget" style="max-width:100%;max-height:100%;display:block">
+            </div>
+            <div class="modal-actions" style="margin-top:auto;width:100%">
+                <button class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact Crop</button>
+                <button class="btn btn-ghost" onclick="closeCropper()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         /* ══════════════════════════════════════════════════════════════════
            GLOBALS
@@ -4327,6 +4343,7 @@
                                     <div class="eq-image-label">
                                         ${methodBadge}
                                         &nbsp;<button onclick="rejectAutoImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;text-decoration:underline;font-family:inherit">✕ Wrong? Upload manually</button>
+                                        &nbsp;<button onclick="openCropper(${qi})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.72rem;padding:0;text-decoration:underline;font-family:inherit;margin-left:8px">✂️ Crop exactly</button>
                                     </div>
                                 </div>
                             </div>
@@ -4405,7 +4422,8 @@
                 </div>
                 <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px">Click · Drag & Drop · Paste (Ctrl+V when focused)</div>
                 <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
-                    <label onclick="document.getElementById('eq_fileinput_${qi}').click()" style="cursor:pointer;padding:7px 16px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--accent);font-family:'Outfit',sans-serif">📁 Browse</label>
+                    <label onclick="document.getElementById('eq_fileinput_${qi}').click()" style="cursor:pointer;padding:7px 16px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--accent);font-family:'Outfit',sans-serif">📁 Browse file</label>
+                    <button type="button" onclick="openCropper(${qi})" style="padding:7px 16px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.35);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--success);font-family:'Outfit',sans-serif;font-weight:600;cursor:pointer">✂️ Crop from Screenshot</button>
                 </div>
                 <div id="eq_manualpreview_${qi}" style="display:none;margin-top:10px">
                     <img style="max-width:100%;max-height:180px;object-fit:contain;border-radius:6px;border:1px solid var(--border)">
@@ -4416,6 +4434,90 @@
         }
 
         /* ── Diagram manual upload helpers ── */
+        let currentCropper = null;
+        let currentCropQi = null;
+
+        function openCropper(qi) {
+            if (!qImagesBase64.length) {
+                showErrorModal("No screenshot images available to crop from.");
+                return;
+            }
+
+            // Find which screenshot this question belongs to
+            const q = extractedQuestions[qi] || {};
+            let screenIdx = 0;
+            if (q.imageSourceIndex !== undefined) {
+                screenIdx = Math.min(q.imageSourceIndex, qImagesBase64.length - 1);
+            } else {
+                // Estimate based on how many screenshots we have vs number of questions
+                const qsPerScreen = Math.max(1, Math.ceil(extractedQuestions.length / qImagesBase64.length));
+                screenIdx = Math.min(Math.floor(qi / qsPerScreen), qImagesBase64.length - 1);
+            }
+
+            const b64 = qImagesBase64[screenIdx];
+            const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+
+            currentCropQi = qi;
+            const img = document.getElementById("cropTarget");
+            img.src = `data:${mime};base64,${b64}`;
+
+            openModal("cropModal");
+
+            // Initialize Cropper after modal is visible to ensure correct dimensions
+            setTimeout(() => {
+                if (currentCropper) currentCropper.destroy();
+                currentCropper = new Cropper(img, {
+                    viewMode: 1, // Restrict crop box to not exceed canvas size
+                    autoCropArea: 0.4,
+                    background: false,
+                    zoomable: false, // Make it simple, just panning and cropping
+                    guides: true,
+                    highlight: true,
+                });
+            }, 50);
+        }
+
+        function closeCropper() {
+            closeModal("cropModal");
+            if (currentCropper) {
+                currentCropper.destroy();
+                currentCropper = null;
+            }
+            currentCropQi = null;
+            document.getElementById("cropTarget").src = "";
+        }
+
+        function saveCropperData() {
+            if (!currentCropper || currentCropQi === null) return;
+            
+            const btn = document.getElementById("saveCropBtn");
+            btn.innerHTML = '<span class="spinner"></span>&nbsp; Saving...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                try {
+                    // Get a reasonable resolution crop
+                    const canvas = currentCropper.getCroppedCanvas({
+                        maxWidth: 1200,
+                        maxHeight: 1200
+                    });
+
+                    // Convert to base64
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+                    const b64 = dataUrl.split(",")[1];
+
+                    // Set it as the manual image
+                    setEqManualImage(currentCropQi, b64);
+                    closeCropper();
+                } catch (e) {
+                    showErrorModal("Failed to crop image: " + e.message);
+                } finally {
+                    btn.innerHTML = '💾 Save Exact Crop';
+                    btn.disabled = false;
+                }
+            }, 10);
+        }
+
         function setEqManualImage(qi, b64) {
             if (extractedQuestions[qi]) extractedQuestions[qi].manualImageB64 = b64;
             const preview = document.getElementById(`eq_manualpreview_${qi}`);
