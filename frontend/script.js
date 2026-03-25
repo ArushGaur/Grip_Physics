@@ -286,7 +286,7 @@ window.addEventListener("popstate",function(e){
 function togglePortalTheme(){
     const html=document.documentElement;
     const isLight=html.getAttribute("data-theme")==="light";
-    html.setAttribute("data-theme",isLight?"":"light");
+    html.setAttribute("data-theme",isLight?"dark":"light");
     const btn=document.getElementById("themeToggle");
     if(btn) btn.textContent=isLight?"🌙":"☀️";
     localStorage.setItem("grip-theme",isLight?"dark":"light");
