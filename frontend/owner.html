@@ -3828,111 +3828,119 @@
          * @param {string} b64   — full-page screenshot base64
          * @returns {string|null}
          */
-        // async function detectDiagramWithOpenCV(b64) {
-        //     if (!cvReady) return null;
-        //     try {
-        //         const { canvas, ctx } = await loadImageToCanvas(b64);
-        //         const W = canvas.width, H = canvas.height;
+        async function detectDiagramWithOpenCV(b64) {
+            if (!cvReady) return null;
+            try {
+                const { canvas, ctx } = await loadImageToCanvas(b64);
+                const W = canvas.width, H = canvas.height;
 
-        //         // Read into OpenCV
-        //         const src = cv.imread(canvas);
-        //         const gray = new cv.Mat();
-        //         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                // Read into OpenCV
+                const src = cv.imread(canvas);
+                const gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-        //         // Invert so white regions (figures) → dark blobs for contour detection
-        //         const inv = new cv.Mat();
-        //         cv.bitwise_not(gray, inv);
+                // Invert so white regions (figures) → dark blobs for contour detection
+                const inv = new cv.Mat();
+                cv.bitwise_not(gray, inv);
 
-        //         const thresh = new cv.Mat();
-        //         cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
+                const thresh = new cv.Mat();
+                cv.threshold(inv, thresh, 30, 255, cv.THRESH_BINARY);
 
-        //         // Dilate to close small gaps in figure borders
-        //         const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-        //         const dilated = new cv.Mat();
-        //         cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
+                // Dilate to close small gaps in figure borders
+                const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+                const dilated = new cv.Mat();
+                cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
 
-        //         const contours = new cv.MatVector();
-        //         const hierarchy = new cv.Mat();
-        //         cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                const contours = new cv.MatVector();
+                const hierarchy = new cv.Mat();
+                cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-        //         // Collect raw candidates
-        //         const rawCandidates = [];
-        //         for (let i = 0; i < contours.size(); i++) {
-        //             const rect = cv.boundingRect(contours.get(i));
-        //             const areaRatio = (rect.width * rect.height) / (W * H);
-        //             const aspect = rect.width / rect.height;
-        //             if (areaRatio < 0.008 || areaRatio > 0.75) continue;   // too tiny or full-page
-        //             if (rect.width < 40 || rect.height < 30) continue;   // too tiny
-        //             if (rect.width > W * 0.98) continue;   // full-width = text block
-        //             if (aspect < 0.2 || aspect > 8) continue;   // extreme shape
-        //             rawCandidates.push({ ...rect, areaRatio });
-        //         }
+                // Collect raw candidates
+                const rawCandidates = [];
+                for (let i = 0; i < contours.size(); i++) {
+                    const rect = cv.boundingRect(contours.get(i));
+                    const areaRatio = (rect.width * rect.height) / (W * H);
+                    const aspect = rect.width / rect.height;
+                    if (areaRatio < 0.008 || areaRatio > 0.75) continue;   // too tiny or full-page
+                    if (rect.width < 40 || rect.height < 30) continue;   // too tiny
+                    if (rect.width > W * 0.98) continue;   // full-width = text block
+                    if (aspect < 0.2 || aspect > 8) continue;   // extreme shape
+                    rawCandidates.push({ ...rect, areaRatio });
+                }
 
-        //         // Clean up
-        //         src.delete(); gray.delete(); inv.delete(); thresh.delete();
-        //         kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
+                // Clean up
+                src.delete(); gray.delete(); inv.delete(); thresh.delete();
+                kernel.delete(); dilated.delete(); contours.delete(); hierarchy.delete();
 
-        //         if (!rawCandidates.length) return null;
+                if (!rawCandidates.length) return null;
 
-        //         // TIER 2b — pixel-density filter: skip text-heavy regions
-        //         const fullImageData = ctx.getImageData(0, 0, W, H).data;
-        //         const candidates = [];
-        //         for (const c of rawCandidates) {
-        //             let darkPx = 0, totalPx = 0;
-        //             const step = Math.max(1, Math.floor(Math.min(c.width, c.height) / 30));
-        //             for (let py = c.y; py < c.y + c.height && py < H; py += step) {
-        //                 for (let px = c.x; px < c.x + c.width && px < W; px += step) {
-        //                     const idx = (py * W + px) * 4;
-        //                     const lum = 0.299 * fullImageData[idx] + 0.587 * fullImageData[idx + 1] + 0.114 * fullImageData[idx + 2];
-        //                     if (lum < 180) darkPx++;
-        //                     totalPx++;
-        //                 }
-        //             }
-        //             const density = totalPx > 0 ? darkPx / totalPx : 1;
-        //             if (density > 0.18) continue;   // dense = text, skip
-        //             candidates.push({ ...c, density });
-        //         }
+                // TIER 2b — pixel-density filter: skip text-heavy regions
+                const fullImageData = ctx.getImageData(0, 0, W, H).data;
+                const candidates = [];
+                for (const c of rawCandidates) {
+                    let darkPx = 0, totalPx = 0;
+                    const step = Math.max(1, Math.floor(Math.min(c.width, c.height) / 30));
+                    for (let py = c.y; py < c.y + c.height && py < H; py += step) {
+                        for (let px = c.x; px < c.x + c.width && px < W; px += step) {
+                            const idx = (py * W + px) * 4;
+                            const lum = 0.299 * fullImageData[idx] + 0.587 * fullImageData[idx + 1] + 0.114 * fullImageData[idx + 2];
+                            if (lum < 180) darkPx++;
+                            totalPx++;
+                        }
+                    }
+                    const density = totalPx > 0 ? darkPx / totalPx : 1;
+                    if (density > 0.18) continue;   // dense = text, skip
+                    candidates.push({ ...c, density });
+                }
 
-        //         if (!candidates.length) return null;
+                if (!candidates.length) return null;
 
-        //         // Merge overlapping/adjacent boxes
-        //         candidates.sort((a, b) => a.y - b.y);
-        //         const merged = [];
-        //         for (const c of candidates) {
-        //             let didMerge = false;
-        //             for (const m of merged) {
-        //                 const pad = 20;
-        //                 const overlapX = c.x < m.x + m.width + pad && c.x + c.width > m.x - pad;
-        //                 const overlapY = c.y < m.y + m.height + pad && c.y + c.height > m.y - pad;
-        //                 if (overlapX && overlapY) {
-        //                     const nx = Math.min(m.x, c.x);
-        //                     const ny = Math.min(m.y, c.y);
-        //                     m.width = Math.max(m.x + m.width, c.x + c.width) - nx;
-        //                     m.height = Math.max(m.y + m.height, c.y + c.height) - ny;
-        //                     m.x = nx; m.y = ny;
-        //                     didMerge = true; break;
-        //                 }
-        //             }
-        //             if (!didMerge) merged.push({ ...c });
-        //         }
+                // Merge overlapping/adjacent boxes
+                candidates.sort((a, b) => a.y - b.y);
+                const merged = [];
+                for (const c of candidates) {
+                    let didMerge = false;
+                    for (const m of merged) {
+                        const pad = 20;
+                        const overlapX = c.x < m.x + m.width + pad && c.x + c.width > m.x - pad;
+                        const overlapY = c.y < m.y + m.height + pad && c.y + c.height > m.y - pad;
+                        if (overlapX && overlapY) {
+                            const nx = Math.min(m.x, c.x);
+                            const ny = Math.min(m.y, c.y);
+                            m.width = Math.max(m.x + m.width, c.x + c.width) - nx;
+                            m.height = Math.max(m.y + m.height, c.y + c.height) - ny;
+                            m.x = nx; m.y = ny;
+                            didMerge = true; break;
+                        }
+                    }
+                    if (!didMerge) merged.push({ ...c });
+                }
 
-        //         // Pick best: prefer medium-size, right-biased (figures usually on right)
-        //         let best = null, bestScore = -1;
-        //         for (const m of merged) {
-        //             const areaR = (m.width * m.height) / (W * H);
-        //             const centerX = m.x + m.width / 2;
-        //             const rightBias = centerX > W * 0.4 ? 1.3 : 1.0;
-        //             const score = areaR * rightBias;
-        //             if (score > bestScore && areaR >= 0.02) { bestScore = score; best = m; }
-        //         }
+                // Pick best: prefer medium-size, right-biased (figures usually on right)
+                let best = null, bestScore = -1;
+                for (const m of merged) {
+                    const areaR = (m.width * m.height) / (W * H);
+                    const centerX = m.x + m.width / 2;
+                    const rightBias = centerX > W * 0.4 ? 1.3 : 1.0;
+                    const score = areaR * rightBias;
+                    if (score > bestScore && areaR >= 0.02) { bestScore = score; best = m; }
+                }
 
-        //         if (!best) return null;
-        //         return cropCanvas(canvas, best.x, best.y, best.width, best.height);
-        //     } catch (e) {
-        //         console.warn("Tier-2 OpenCV error:", e);
-        //         return null;
-        //     }
-        // }
+                if (!best) return null;
+                // Add 10% padding
+                const padX = best.width * 0.10;
+                const padY = best.height * 0.10;
+                const finalX = Math.max(0, best.x - padX);
+                const finalY = Math.max(0, best.y - padY);
+                const finalW = Math.min(W - finalX, best.width + padX * 2);
+                const finalH = Math.min(H - finalY, best.height + padY * 2);
+
+                return cropCanvas(canvas, finalX, finalY, finalW, finalH);
+            } catch (e) {
+                console.warn("Tier-2 OpenCV error:", e);
+                return null;
+            }
+        }
 
         /**
          * TIER 3 — Pixel-density grid fallback (no OpenCV required).
@@ -3941,66 +3949,75 @@
          * @param {string} b64
          * @returns {string|null}
          */
-        // async function detectDiagramFallback(b64) {
-        //     try {
-        //         const { canvas, ctx } = await loadImageToCanvas(b64);
-        //         const W = canvas.width, H = canvas.height;
-        //         const imageData = ctx.getImageData(0, 0, W, H).data;
+        async function detectDiagramFallback(b64) {
+            try {
+                const { canvas, ctx } = await loadImageToCanvas(b64);
+                const W = canvas.width, H = canvas.height;
+                const imageData = ctx.getImageData(0, 0, W, H).data;
 
-        //         const COLS = 8, ROWS = 40;
-        //         const cellW = Math.floor(W / COLS);
-        //         const cellH = Math.floor(H / ROWS);
+                const COLS = 8, ROWS = 40;
+                const cellW = Math.floor(W / COLS);
+                const cellH = Math.floor(H / ROWS);
 
-        //         // Compute dark-pixel ratio for each grid cell
-        //         const grid = [];
-        //         for (let row = 0; row < ROWS; row++) {
-        //             grid[row] = [];
-        //             for (let col = 0; col < COLS; col++) {
-        //                 let dark = 0, total = 0;
-        //                 const x0 = col * cellW, y0 = row * cellH;
-        //                 for (let y = y0; y < y0 + cellH && y < H; y++) {
-        //                     for (let x = x0; x < x0 + cellW && x < W; x++) {
-        //                         const idx = (y * W + x) * 4;
-        //                         const lum = 0.299 * imageData[idx] + 0.587 * imageData[idx + 1] + 0.114 * imageData[idx + 2];
-        //                         if (lum < 180) dark++;
-        //                         total++;
-        //                     }
-        //                 }
-        //                 grid[row][col] = dark / (total || 1);
-        //             }
-        //         }
+                // Compute dark-pixel ratio for each grid cell
+                const grid = [];
+                for (let row = 0; row < ROWS; row++) {
+                    grid[row] = [];
+                    for (let col = 0; col < COLS; col++) {
+                        let dark = 0, total = 0;
+                        const x0 = col * cellW, y0 = row * cellH;
+                        for (let y = y0; y < y0 + cellH && y < H; y++) {
+                            for (let x = x0; x < x0 + cellW && x < W; x++) {
+                                const idx = (y * W + x) * 4;
+                                const lum = 0.299 * imageData[idx] + 0.587 * imageData[idx + 1] + 0.114 * imageData[idx + 2];
+                                if (lum < 180) dark++;
+                                total++;
+                            }
+                        }
+                        grid[row][col] = dark / (total || 1);
+                    }
+                }
 
-        //         // Find the best low-density rectangular block
-        //         let bestBlock = null, bestScore = -1;
-        //         for (let r1 = 0; r1 < ROWS - 3; r1++) {
-        //             for (let r2 = r1 + 3; r2 < ROWS; r2++) {
-        //                 for (let c1 = 1; c1 < COLS - 1; c1++) {
-        //                     for (let c2 = c1 + 1; c2 < COLS; c2++) {
-        //                         let avgDark = 0, cells = 0;
-        //                         for (let r = r1; r <= r2; r++)
-        //                             for (let c = c1; c <= c2; c++) { avgDark += grid[r][c]; cells++; }
-        //                         avgDark /= cells;
-        //                         const size = (r2 - r1) * (c2 - c1);
-        //                         if (avgDark < 0.04 && avgDark > 0.001 && size > 8) {
-        //                             const score = size * (0.1 - avgDark);
-        //                             if (score > bestScore) { bestScore = score; bestBlock = { r1, r2, c1, c2 }; }
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
+                // Find the best low-density rectangular block
+                let bestBlock = null, bestScore = -1;
+                for (let r1 = 0; r1 < ROWS - 3; r1++) {
+                    for (let r2 = r1 + 3; r2 < ROWS; r2++) {
+                        for (let c1 = 1; c1 < COLS - 1; c1++) {
+                            for (let c2 = c1 + 1; c2 < COLS; c2++) {
+                                let avgDark = 0, cells = 0;
+                                for (let r = r1; r <= r2; r++)
+                                    for (let c = c1; c <= c2; c++) { avgDark += grid[r][c]; cells++; }
+                                avgDark /= cells;
+                                const size = (r2 - r1) * (c2 - c1);
+                                if (avgDark < 0.04 && avgDark > 0.001 && size > 8) {
+                                    const score = size * (0.1 - avgDark);
+                                    if (score > bestScore) { bestScore = score; bestBlock = { r1, r2, c1, c2 }; }
+                                }
+                            }
+                        }
+                    }
+                }
 
-        //         if (!bestBlock) return null;
-        //         const { r1, r2, c1, c2 } = bestBlock;
-        //         const x = c1 * cellW, y = r1 * cellH;
-        //         const w = (c2 - c1 + 1) * cellW, h = (r2 - r1 + 1) * cellH;
-        //         if (w < W * 0.1 || h < H * 0.05) return null;   // too small to be a figure
-        //         return cropCanvas(canvas, x, y, w, h);
-        //     } catch (e) {
-        //         console.warn("Tier-3 fallback error:", e);
-        //         return null;
-        //     }
-        // }
+                if (!bestBlock) return null;
+                const { r1, r2, c1, c2 } = bestBlock;
+                const x = c1 * cellW, y = r1 * cellH;
+                const w = (c2 - c1 + 1) * cellW, h = (r2 - r1 + 1) * cellH;
+                if (w < W * 0.1 || h < H * 0.05) return null;   // too small to be a figure
+                
+                // Add padding
+                const padX = w * 0.10;
+                const padY = h * 0.10;
+                const finalX = Math.max(0, x - padX);
+                const finalY = Math.max(0, y - padY);
+                const finalW = Math.min(W - finalX, w + padX * 2);
+                const finalH = Math.min(H - finalY, h + padY * 2);
+
+                return cropCanvas(canvas, finalX, finalY, finalW, finalH);
+            } catch (e) {
+                console.warn("Tier-3 fallback error:", e);
+                return null;
+            }
+        }
 
         /**
          * Single-question diagram detection — tries all tiers in order.
@@ -4008,14 +4025,14 @@
          * @param {string} b64
          * @returns {string|null}
          */
-        // async function detectDiagram(b64) {
-        //     // Tier 2: OpenCV
-        //     let result = await detectDiagramWithOpenCV(b64);
-        //     if (result) return result;
-        //     // Tier 3: pixel-density fallback
-        //     result = await detectDiagramFallback(b64);
-        //     return result;   // may be null → Tier 4: manual upload UI
-        // }
+        async function detectDiagram(b64) {
+            // Tier 2: OpenCV
+            let result = await detectDiagramWithOpenCV(b64);
+            if (result) return result;
+            // Tier 3: pixel-density fallback
+            result = await detectDiagramFallback(b64);
+            return result;   // may be null → Tier 4: manual upload UI
+        }
 
         /* ══════════════════════════════════════════════════════════════════
            extractImagesForQuestions — THE SINGLE AUTHORITATIVE IMPLEMENTATION
@@ -4088,15 +4105,13 @@
                         }
                     }
 
-                    // TIER 2: Ask AI specifically to find the diagram
-                    const coords = await askAIForDiagramCoords(b64, q.question);
-                    if (coords) {
-                        const cropped = await cropDiagramFromAI(b64, coords);
-                        if (cropped) {
-                            q.extractedImageB64 = cropped;
-                            q._detectMethod = "ai";
-                            continue;
-                        }
+                    // TIER 2: OpenCV client-side detection instead of AI Server Endpoint
+                    const cvResult = await detectDiagram(b64);
+                    if (cvResult) {
+                        q.extractedImageB64 = cvResult;
+                        // The method can be cv or fallback
+                        q._detectMethod = "cv";
+                        continue;
                     }
 
                     // TIER 3: Manual upload
@@ -4468,11 +4483,16 @@
                 if (currentCropper) currentCropper.destroy();
                 currentCropper = new Cropper(img, {
                     viewMode: 1, // Restrict crop box to not exceed canvas size
-                    autoCropArea: 0.4,
-                    background: false,
-                    zoomable: false, // Make it simple, just panning and cropping
+                    dragMode: 'crop', // Let the user draw a new crop box anywhere
+                    autoCropArea: 0.5,
+                    background: true, // Show checkerboard for clear boundaries
+                    zoomable: true, // Allow zooming for precision
+                    zoomOnTouch: true,
                     guides: true,
                     highlight: true,
+                    cropBoxResizable: true,
+                    cropBoxMovable: true,
+                    wheelZoomRatio: 0.1,
                 });
             }, 50);
         }
@@ -4634,8 +4654,8 @@
             // Progress overlay
             const ov = document.createElement("div");
             ov.id = "saveProgressOverlay";
-            ov.style.cssText = "position:fixed;inset:0;background:rgba(11,13,24,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px";
-            ov.innerHTML = `<div style="font-size:2.2rem">💾</div><div style="font-size:1rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:260px;height:5px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 0.3s;width:0%"></div></div><div style="font-size:0.82rem;color:var(--text-dim)" id="progText">0 / ${lectures.length}</div>`;
+            ov.style.cssText = "position:fixed;inset:0;background:var(--bg-main);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px";
+            ov.innerHTML = `<div style="font-size:3rem;margin-bottom:10px">💾</div><div style="font-size:1.4rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:300px;height:6px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;margin:10px 0"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease-out;width:0%"></div></div><div style="font-size:0.9rem;color:var(--text-dim);font-weight:500" id="progText">0 / ${lectures.length} lectures saved</div>`;
             document.body.appendChild(ov);
 
             let saved = 0, failed = [];
