@@ -5191,7 +5191,7 @@
                 const scoreClass = getScoreClass(pct);
                 const initials = getInitials(s.name);
 
-                return `<div class="stu-card" onclick="showStudentDetail('${(s.mobile || s._id || '').replace(/'/g, "\\'")}')">
+                return `<div class="stu-card" onclick="showStudentDetail('${(s._id || s.mobile || '').toString().replace(/'/g, "\\'")}')">
                     <div class="stu-card-header">
                         <div class="stu-card-avatar">${initials}</div>
                         <div class="stu-card-info">
@@ -5260,7 +5260,7 @@
         }
 
         function showStudentDetail(id) {
-            const student = allStudents.find(s => (s.mobile || s._id) === id);
+            const student = allStudents.find(s => (s._id || s.mobile) === id) || allStudents.find(s => (s.mobile || s._id) === id);
             if (!student) return;
             let correct, total;
             if (typeof student.correctCount === "number") { correct = student.correctCount; total = student.totalQuestions || 1; }
