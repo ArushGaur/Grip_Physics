@@ -22,13 +22,7 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
 }
 
 app.use(cors({ 
-    origin: function(origin, callback) {
-        if (!origin || ["https://grip-physics.onrender.com", "https://grip-physics.vercel.app", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"].includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    }, 
+    origin: ["https://grip-physics.onrender.com", "https://grip-physics.vercel.app", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"],
     credentials: true, 
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -190,7 +184,11 @@ async function refreshCache(chapter, lecture) {
 }
 
 function requireAdmin(req, res, next) { 
-    console.log("requireAdmin check - sessionID:", req.sessionID, "admin:", req.session?.admin);
+    console.log("requireAdmin check - sessionID:", req.sessionID, "session:", req.session, "admin:", req.session?.admin);
+    if (!req.session) {
+        console.log("No session found!");
+        return res.status(403).json({ error: "No session" });
+    }
     if (!req.session?.admin) return res.status(403).json({ error: "Unauthorized" }); 
     next(); 
 }
