@@ -214,8 +214,11 @@ app.post("/api/admin/login", loginRateLimit, (req, res) => {
         if (err) return res.status(500).json({ error: "Session error" });
         req.session.admin = true;
         req.session.loginTime = Date.now();
-        console.log("Login successful, session ID:", req.sessionID);
-        res.json({ success: true });
+        req.session.save((saveErr) => {
+            if (saveErr) return res.status(500).json({ error: "Session save error" });
+            console.log("Login successful, session ID:", req.sessionID);
+            res.json({ success: true });
+        });
     });
 });
 app.post("/api/admin/logout", (req, res) => req.session.destroy(() => res.json({ message: "Logged out" })));
