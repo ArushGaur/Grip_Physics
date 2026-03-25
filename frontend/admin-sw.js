@@ -39,7 +39,9 @@ self.addEventListener("fetch", event => {
     // Always go to network for API calls — never serve stale data
     if (url.pathname.startsWith("/api/")) {
         event.respondWith(
-            fetch(event.request).catch(() =>
+            fetch(event.request, { 
+                credentials: "include"  // Explicitly include credentials
+            }).catch(() =>
                 new Response(JSON.stringify({ error: "You are offline. Please check your connection." }), {
                     status: 503,
                     headers: { "Content-Type": "application/json" }
@@ -64,6 +66,11 @@ self.addEventListener("fetch", event => {
     }
 
     // Network-first for everything else (owner.html etc)
+    // Only cache GET requests - Cache API doesn't support POST
+    if (event.request.method !== "GET") {
+        event.respondWith(fetch(event.request));
+        return;
+    }
     event.respondWith(
         fetch(event.request)
             .then(response => {
