@@ -3849,7 +3849,7 @@
                 // Dilate to close small gaps in figure borders
                 const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
                 const dilated = new cv.Mat();
-                cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 2);
+                cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 4);
 
                 const contours = new cv.MatVector();
                 const hierarchy = new cv.Mat();
@@ -3861,7 +3861,7 @@
                     const rect = cv.boundingRect(contours.get(i));
                     const areaRatio = (rect.width * rect.height) / (W * H);
                     const aspect = rect.width / rect.height;
-                    if (areaRatio < 0.008 || areaRatio > 0.75) continue;   // too tiny or full-page
+                    if (areaRatio < 0.005 || areaRatio > 0.75) continue;   // too tiny or full-page
                     if (rect.width < 40 || rect.height < 30) continue;   // too tiny
                     if (rect.width > W * 0.98) continue;   // full-width = text block
                     if (aspect < 0.2 || aspect > 8) continue;   // extreme shape
@@ -3889,7 +3889,7 @@
                         }
                     }
                     const density = totalPx > 0 ? darkPx / totalPx : 1;
-                    if (density > 0.18) continue;   // dense = text, skip
+                    if (density > 0.25) continue;   // dense = text, skip
                     candidates.push({ ...c, density });
                 }
 
@@ -4654,7 +4654,7 @@
             // Progress overlay
             const ov = document.createElement("div");
             ov.id = "saveProgressOverlay";
-            ov.style.cssText = "position:fixed;inset:0;background:var(--bg-main);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px";
+            ov.style.cssText = "position:fixed;inset:0;background:var(--bg-1);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px";
             ov.innerHTML = `<div style="font-size:3rem;margin-bottom:10px">💾</div><div style="font-size:1.4rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:300px;height:6px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;margin:10px 0"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease-out;width:0%"></div></div><div style="font-size:0.9rem;color:var(--text-dim);font-weight:500" id="progText">0 / ${lectures.length} lectures saved</div>`;
             document.body.appendChild(ov);
 
@@ -5005,7 +5005,7 @@
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
-                history.back();
+                showLectureView();
             }
         }
 
@@ -5014,7 +5014,7 @@
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
-                history.back();
+                showLectureView();
             }
         }
 
@@ -5027,7 +5027,7 @@
         function discardAndGoBack() {
             closeModal('unsavedModal');
             _hasUnsavedEdits = false;
-            history.back();
+            showLectureView();
         }
 
         function updatePreview(si) {
