@@ -3228,9 +3228,24 @@
         let selectModeOn = false, selectedLectures = new Set();
         let lecSelectModeOn = false, selectedLectureKeys = new Set();
         let _chartData = null;
-        let _pendingConfirmAction = null, _pendingConfirmResolver = null;
+        let _pendingConfirmAction = null, _pendingCancelAction = null;
         let _hasUnsavedEdits = false;
         let _originalEditSnapshot = null;
+
+        function askConfirmModalPromise({ title, text, confirmText }) {
+            return new Promise(resolve => {
+                document.getElementById("confirmModalTitle").textContent = title || "Confirm";
+                document.getElementById("confirmModalText").textContent = text || "Are you sure?";
+                document.getElementById("confirmModalOkBtn").textContent = confirmText || "Confirm";
+                
+                const cleanup = () => { _pendingConfirmAction = null; _pendingCancelAction = null; };
+                _pendingConfirmAction = () => { cleanup(); resolve(true); closeModal('confirmModal'); };
+                _pendingCancelAction = () => { cleanup(); resolve(false); closeModal('confirmModal'); };
+                openModal('confirmModal');
+            });
+        }
+        function confirmPromptAction() { if (_pendingConfirmAction) _pendingConfirmAction(); }
+        function cancelPromptAction() { if (_pendingCancelAction) _pendingCancelAction(); else closeModal('confirmModal'); }
 
         /* ══════════════════════════════════════════════════════════════════
            OPENCV STATE
@@ -4654,7 +4669,7 @@
             // Progress overlay
             const ov = document.createElement("div");
             ov.id = "saveProgressOverlay";
-            ov.style.cssText = "position:fixed;inset:0;background:var(--bg-1);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px";
+            ov.style.cssText = "position:fixed;inset:0;background:var(--bg-card);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px";
             ov.innerHTML = `<div style="font-size:3rem;margin-bottom:10px">💾</div><div style="font-size:1.4rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:300px;height:6px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;margin:10px 0"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease-out;width:0%"></div></div><div style="font-size:0.9rem;color:var(--text-dim);font-weight:500" id="progText">0 / ${lectures.length} lectures saved</div>`;
             document.body.appendChild(ov);
 
@@ -4757,6 +4772,25 @@
 
         function renderQuestionList(questions) { renderChapterCards(questions); }
 
+        function showToast(msg, type = 'success') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✅' : '⚠️'}</span><span>${msg}</span>`;
+            container.appendChild(t);
+            setTimeout(() => {
+                t.classList.add('fade-out');
+                setTimeout(() => t.remove(), 300);
+            }, 3000);
+        }
+
+        let lastSelectedChapterIdx = -1;
+
         function renderChapterCards(questions) {
             const grid = document.getElementById("chapterCardsGrid"); if (!grid) return;
             const chapters = {};
@@ -4767,8 +4801,8 @@
                 const qs = chapters[ch], lc = qs.length, qc = qs.reduce((s, q) => s + (q.questions || []).length, 0);
                 const hasMulti = qs.some(q => (q.questions || []).some(x => x.isMultiCorrect));
                 const isSelected = selectModeOn && [...selectedLectures].some(k => k.startsWith(ch + "::"));
-                return `<div class="chapter-card ${isSelected ? "selected-card" : ""}" data-ch="${encodeURIComponent(ch)}" onclick="chapterCardClick(event,decodeURIComponent(this.dataset.ch))">
-                    ${selectModeOn ? `<input type="checkbox" class="card-checkbox" onclick="event.stopPropagation();toggleChapterSelect('${encodeURIComponent(ch)}')" ${isSelected ? "checked" : ""}>` : ""}
+                return `<div class="chapter-card ${isSelected ? "selected-card" : ""}" data-ch="${encodeURIComponent(ch)}" data-idx="${i}" onclick="chapterCardClick(event,decodeURIComponent(this.dataset.ch))">
+                    ${selectModeOn ? `<input type="checkbox" class="card-checkbox" onclick="event.stopPropagation();toggleChapterSelect(event, '${encodeURIComponent(ch)}', ${i})" ${isSelected ? "checked" : ""}>` : ""}
                     <div class="chapter-card-icon">${CHAPTER_ICONS[i % CHAPTER_ICONS.length]}</div>
                     <div class="chapter-card-title">${ch}</div>
                     <div class="chapter-card-count">${lc} lecture${lc !== 1 ? "s" : ""} &middot; ${qc} Q${hasMulti ? ' <span style="color:var(--warn)">&#10022;</span>' : ""}</div>
@@ -4779,19 +4813,45 @@
         function chapterCardClick(e, ch) { if (selectModeOn) return; showLectureViewH(ch); }
 
         function toggleSelectMode() {
-            selectModeOn = !selectModeOn; selectedLectures.clear();
+            selectModeOn = !selectModeOn; selectedLectures.clear(); lastSelectedChapterIdx = -1;
             document.getElementById("selectModeBtn").textContent = selectModeOn ? "✓ Done" : "☐ Select";
             document.getElementById("mass-delete-bar").classList.toggle("visible", false);
             renderChapterCards(allQuestions);
         }
-        function toggleChapterSelect(encCh) {
+        function toggleChapterSelect(e, encCh, idx) {
             const ch = decodeURIComponent(encCh);
-            const lecturesForCh = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch);
-            if (lecturesForCh.every(q => selectedLectures.has(`${ch}::${q.lecture}`))) {
-                lecturesForCh.forEach(q => selectedLectures.delete(`${ch}::${q.lecture}`));
-            } else {
-                lecturesForCh.forEach(q => selectedLectures.add(`${ch}::${q.lecture}`));
+            
+            // Collect all unique chapter names exactly as rendered
+            const chaptersObj = {};
+            allQuestions.forEach(q => { const cName = q.chapter || "(No Chapter)"; chaptersObj[cName] = true; });
+            const allChapterNames = Object.keys(chaptersObj).sort();
+
+            let targetIndices = [idx];
+
+            if (e && e.shiftKey && lastSelectedChapterIdx !== -1) {
+                targetIndices = [];
+                const start = Math.min(lastSelectedChapterIdx, idx);
+                const end = Math.max(lastSelectedChapterIdx, idx);
+                for (let i = start; i <= end; i++) targetIndices.push(i);
             }
+
+            // Decide if we are selecting or deselecting based on target item
+            const lecturesForTargetCh = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch);
+            const isCurrentlySelected = lecturesForTargetCh.every(q => selectedLectures.has(`${ch}::${q.lecture}`));
+            const willSelect = !isCurrentlySelected;
+
+            targetIndices.forEach(i => {
+                const loopCh = allChapterNames[i];
+                if (!loopCh) return;
+                const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === loopCh);
+                if (willSelect) {
+                    lecs.forEach(q => selectedLectures.add(`${loopCh}::${q.lecture}`));
+                } else {
+                    lecs.forEach(q => selectedLectures.delete(`${loopCh}::${q.lecture}`));
+                }
+            });
+
+            lastSelectedChapterIdx = idx;
             updateMassDeleteBar(); renderChapterCards(allQuestions);
         }
         function clearSelection() {
@@ -4815,7 +4875,7 @@
             closeModal("massDeleteModal");
             const items = [...selectedLectures].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; });
             const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) });
-            if (r.ok) { const d = await r.json(); showSuccessModal("Deleted", `Deleted ${d.deleted} lecture(s).`); clearSelection(); await loadQuestionsAdmin(); }
+            if (r.ok) { const d = await r.json(); showToast(`Deleted ${d.deleted} lecture(s).`); clearSelection(); await loadQuestionsAdmin(); }
             else { showErrorModal(await extractErrorMessage(r, "Mass delete failed."), "Delete failed"); }
         }
         function filterChapterCards(q) {
@@ -4833,14 +4893,38 @@
             if (lecSelectModeOn) grid.classList.add("lec-select-mode");
             else grid.classList.remove("lec-select-mode");
         }
-        function toggleLectureSelect(chapter, lecture) {
-            const key = `${chapter}::${lecture}`;
-            if (selectedLectureKeys.has(key)) selectedLectureKeys.delete(key); else selectedLectureKeys.add(key);
+        let lastSelectedLectureIdx = -1;
+        function toggleLectureSelect(e, chapter, lecture, gridIdx) {
+            const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === chapter).sort((a, b) => Number(a.lecture) - Number(b.lecture));
+            let targetIndices = [gridIdx];
+
+            if (e && e.shiftKey && lastSelectedLectureIdx !== -1) {
+                targetIndices = [];
+                const start = Math.min(lastSelectedLectureIdx, gridIdx);
+                const end = Math.max(lastSelectedLectureIdx, gridIdx);
+                for (let i = start; i <= end; i++) targetIndices.push(i);
+            }
+
+            const targetKey = `${chapter}::${lecture}`;
+            const willSelect = !selectedLectureKeys.has(targetKey);
+
+            targetIndices.forEach(i => {
+                const l = lecs[i];
+                if (!l) return;
+                const k = `${chapter}::${l.lecture}`;
+                if (willSelect) selectedLectureKeys.add(k);
+                else selectedLectureKeys.delete(k);
+            });
+
+            lastSelectedLectureIdx = gridIdx;
             updateLecMassDeleteBar();
+            
             document.querySelectorAll(".lecture-card").forEach(c => {
-                if (c.dataset.ch === chapter && c.dataset.lec === String(lecture)) {
-                    c.classList.toggle("selected-lec", selectedLectureKeys.has(key));
-                    const cb = c.querySelector(".lec-checkbox"); if (cb) cb.checked = selectedLectureKeys.has(key);
+                if (c.dataset.ch === chapter) {
+                    const lk = `${chapter}::${c.dataset.lec}`;
+                    const isSel = selectedLectureKeys.has(lk);
+                    c.classList.toggle("selected-lec", isSel);
+                    const cb = c.querySelector(".lec-checkbox"); if (cb) cb.checked = isSel;
                 }
             });
         }
@@ -4867,7 +4951,7 @@
             closeModal("lecMassDeleteModal");
             const items = [...selectedLectureKeys].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; });
             const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) });
-            if (r.ok) { const d = await r.json(); showSuccessModal("Deleted", `Deleted ${d.deleted} lecture(s).`); clearLectureSelection(); await loadQuestionsAdmin(); if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); }
+            if (r.ok) { const d = await r.json(); showToast(`Deleted ${d.deleted} lecture(s).`); clearLectureSelection(); await loadQuestionsAdmin(); if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); }
             else { showErrorModal(await extractErrorMessage(r, "Mass delete failed."), "Delete failed"); }
         }
 
@@ -4897,8 +4981,8 @@
                 const gi = allQuestions.indexOf(q);
                 const key = `${ch}::${q.lecture}`;
                 const isSel = selectedLectureKeys.has(key);
-                return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSel ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" onclick="handleLecCardClick(event,this)">
-                    <input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect('${ch.replace(/'/g, "\\'")}','${q.lecture}')" ${isSel ? "checked" : ""}>
+                return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSel ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" data-idx="${lecs.indexOf(q)}" onclick="handleLecCardClick(event,this)">
+                    <input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect(event, '${ch.replace(/'/g, "\\'")}','${q.lecture}', ${lecs.indexOf(q)})" ${isSel ? "checked" : ""}>
                     <div class="lecture-card-num">L${q.lecture}</div>
                     <div style="font-size:0.78rem;margin-bottom:3px">${qc} Q</div>
                     <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
@@ -4909,7 +4993,8 @@
             const ch = el.dataset.ch;
             const lec = el.dataset.lec;
             const gi = parseInt(el.dataset.gi);
-            if (lecSelectModeOn) { toggleLectureSelect(ch, lec); return; }
+            const idx = parseInt(el.dataset.idx);
+            if (lecSelectModeOn) { toggleLectureSelect(e, ch, lec, idx); return; }
             showQuestionViewH(gi);
         }
         function showLectureView() {
@@ -4996,6 +5081,9 @@
             containers.forEach((c, si) => {
                 snap += (document.getElementById(`iqe_qt_${si}`)?.value || '') + '|';
                 LETTERS.forEach((_, oi) => { snap += (document.getElementById(`iqe_opt_${si}_${oi}`)?.value || '') + '|'; });
+                const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
+                const selectedBtns = wrap ? wrap.querySelectorAll('.correct-btn.selected') : [];
+                snap += 'ans:' + Array.from(selectedBtns).map(b => b.dataset.oi).join(',') + '|';
             });
             return snap;
         }
@@ -5219,7 +5307,7 @@
             closeModal("deleteModal");
             const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, { method: "DELETE", credentials: "include" });
             if (r.ok) {
-                showSuccessModal("Deleted", "Question deleted.");
+                showToast("Question deleted.");
                 await loadQuestionsAdmin();
                 if (window._deleteFromInline) { window._deleteFromInline = false; showLectureView(); }
             } else { showErrorModal(await extractErrorMessage(r, "Delete failed."), "Delete failed"); }
@@ -5504,6 +5592,66 @@
             _pendingConfirmAction = null;
             closeModal("confirmModal");
         }
+
+        /* ══════════════════════════════════════════════════════════════════
+           DRAG TO SELECT
+        ══════════════════════════════════════════════════════════════════ */
+        let _dragBox = null, _isDragging = false, _dragStartX = 0, _dragStartY = 0;
+        document.addEventListener('mousedown', e => {
+            if (!selectModeOn && !lecSelectModeOn) return;
+            if (e.target.closest('.chapter-card') || e.target.closest('.lecture-card') || e.target.closest('button') || e.target.closest('input')) return;
+            _isDragging = true;
+            _dragStartX = e.clientX; _dragStartY = e.clientY;
+            _dragBox = document.createElement('div');
+            _dragBox.className = 'selection-box';
+            _dragBox.style.left = _dragStartX + 'px';
+            _dragBox.style.top = _dragStartY + 'px';
+            _dragBox.style.width = '0px';
+            _dragBox.style.height = '0px';
+            document.body.appendChild(_dragBox);
+            
+            if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                if (selectModeOn) { selectedLectures.clear(); renderChapterCards(allQuestions); updateMassDeleteBar(); }
+                if (lecSelectModeOn) { 
+                    selectedLectureKeys.clear(); 
+                    document.querySelectorAll('.lecture-card').forEach(c => { c.classList.remove('selected-lec'); const cb = c.querySelector('.lec-checkbox'); if (cb) cb.checked = false; });
+                    updateLecMassDeleteBar();
+                }
+            }
+        });
+        document.addEventListener('mousemove', e => {
+            if (!_isDragging || !_dragBox) return;
+            const cx = e.clientX, cy = e.clientY;
+            _dragBox.style.left = Math.min(_dragStartX, cx) + 'px';
+            _dragBox.style.top = Math.min(_dragStartY, cy) + 'px';
+            _dragBox.style.width = Math.abs(cx - _dragStartX) + 'px';
+            _dragBox.style.height = Math.abs(cy - _dragStartY) + 'px';
+            const boxRect = _dragBox.getBoundingClientRect();
+            
+            if (selectModeOn) {
+                document.querySelectorAll('.chapter-card').forEach(card => {
+                    const rect = card.getBoundingClientRect();
+                    const intersect = !(rect.right < boxRect.left || rect.left > boxRect.right || rect.bottom < boxRect.top || rect.top > boxRect.bottom);
+                    const ch = decodeURIComponent(card.dataset.ch);
+                    const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch);
+                    if (intersect) lecs.forEach(q => selectedLectures.add(`${ch}::${q.lecture}`));
+                });
+                renderChapterCards(allQuestions); updateMassDeleteBar();
+            } else if (lecSelectModeOn) {
+                document.querySelectorAll('.lecture-card').forEach(card => {
+                    const rect = card.getBoundingClientRect();
+                    const intersect = !(rect.right < boxRect.left || rect.left > boxRect.right || rect.bottom < boxRect.top || rect.top > boxRect.bottom);
+                    if (intersect) {
+                        const k = `${card.dataset.ch}::${card.dataset.lec}`;
+                        selectedLectureKeys.add(k);
+                        card.classList.add('selected-lec');
+                        const cb = card.querySelector('.lec-checkbox'); if (cb) cb.checked = true;
+                    }
+                });
+                updateLecMassDeleteBar();
+            }
+        });
+        document.addEventListener('mouseup', () => { if (_isDragging) { _isDragging = false; if (_dragBox && _dragBox.parentNode) _dragBox.parentNode.removeChild(_dragBox); _dragBox = null; } });
 
         /* ══════════════════════════════════════════════════════════════════
            PWA
