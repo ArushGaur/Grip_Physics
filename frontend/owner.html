@@ -1476,7 +1476,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .saving-text {
@@ -1870,6 +1872,7 @@
             gap: 16px;
             margin-bottom: 24px;
         }
+
         .dash-stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1880,11 +1883,13 @@
             gap: 16px;
             transition: var(--transition);
         }
+
         .dash-stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
             border-color: rgba(91, 95, 239, 0.3);
         }
+
         .dash-stat-icon-bg {
             width: 52px;
             height: 52px;
@@ -1895,9 +1900,11 @@
             justify-content: center;
             font-size: 1.5rem;
         }
+
         .dash-stat-info {
             flex: 1;
         }
+
         .dash-stat-num {
             font-size: 1.8rem;
             font-weight: 800;
@@ -1908,6 +1915,7 @@
             background-clip: text;
             line-height: 1.1;
         }
+
         .dash-stat-label {
             font-size: 0.72rem;
             color: var(--text-muted);
@@ -1922,26 +1930,31 @@
             grid-template-columns: 1fr 300px;
             gap: 20px;
         }
+
         .dash-main-area {
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
+
         .dash-sidebar {
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
+
         .panel-header-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 16px;
         }
+
         .chart-legend {
             display: flex;
             gap: 16px;
         }
+
         .legend-item {
             display: flex;
             align-items: center;
@@ -1949,6 +1962,7 @@
             font-size: 0.75rem;
             color: var(--text-dim);
         }
+
         .legend-dot {
             width: 10px;
             height: 10px;
@@ -1962,6 +1976,7 @@
             max-height: 280px;
             overflow-y: auto;
         }
+
         .recent-item {
             display: flex;
             align-items: center;
@@ -1971,9 +1986,11 @@
             border-radius: var(--radius-sm);
             transition: var(--transition);
         }
+
         .recent-item:hover {
             background: var(--bg-hover);
         }
+
         .recent-avatar {
             width: 40px;
             height: 40px;
@@ -1987,10 +2004,12 @@
             color: white;
             flex-shrink: 0;
         }
+
         .recent-info {
             flex: 1;
             min-width: 0;
         }
+
         .recent-name {
             font-weight: 600;
             font-size: 0.88rem;
@@ -1998,19 +2017,33 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .recent-meta {
             font-size: 0.72rem;
             color: var(--text-muted);
         }
+
         .recent-score {
             font-weight: 700;
             font-size: 1rem;
             padding: 6px 12px;
             border-radius: 8px;
         }
-        .recent-score.high { background: rgba(6, 214, 160, 0.15); color: var(--success); }
-        .recent-score.med { background: rgba(229, 188, 114, 0.15); color: var(--accent-4); }
-        .recent-score.low { background: rgba(231, 76, 60, 0.15); color: var(--error); }
+
+        .recent-score.high {
+            background: rgba(6, 214, 160, 0.15);
+            color: var(--success);
+        }
+
+        .recent-score.med {
+            background: rgba(229, 188, 114, 0.15);
+            color: var(--accent-4);
+        }
+
+        .recent-score.low {
+            background: rgba(231, 76, 60, 0.15);
+            color: var(--error);
+        }
 
         .analysis-card {
             background: var(--bg-input);
@@ -2018,16 +2051,19 @@
             padding: 16px;
             margin-bottom: 16px;
         }
+
         .analysis-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         }
+
         .analysis-label {
             font-size: 0.8rem;
             color: var(--text-dim);
         }
+
         .analysis-value {
             font-size: 1.4rem;
             font-weight: 800;
@@ -2037,34 +2073,40 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+
         .analysis-bar {
             height: 6px;
             background: var(--bg-card);
             border-radius: 3px;
             overflow: hidden;
         }
+
         .analysis-bar-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--accent), var(--accent-2));
             border-radius: 3px;
             transition: width 0.6s ease;
         }
+
         .analysis-stats {
             display: flex;
             gap: 16px;
             padding-top: 12px;
             border-top: 1px solid var(--border);
         }
+
         .analysis-stat {
             flex: 1;
             text-align: center;
         }
+
         .analysis-stat-num {
             display: block;
             font-size: 1.2rem;
             font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
         }
+
         .analysis-stat-label {
             font-size: 0.68rem;
             color: var(--text-muted);
@@ -2076,6 +2118,7 @@
             flex-direction: column;
             gap: 8px;
         }
+
         .chapter-item {
             display: flex;
             align-items: center;
@@ -2084,9 +2127,11 @@
             background: var(--bg-input);
             border-radius: var(--radius-sm);
         }
+
         .chapter-item-icon {
             font-size: 1.2rem;
         }
+
         .chapter-item-name {
             flex: 1;
             font-weight: 600;
@@ -2095,6 +2140,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .chapter-item-count {
             font-size: 0.72rem;
             color: var(--text-muted);
@@ -2105,6 +2151,7 @@
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
+
         .quick-btn {
             display: flex;
             flex-direction: column;
@@ -2119,11 +2166,13 @@
             color: var(--text);
             font-size: 0.75rem;
         }
+
         .quick-btn:hover {
             background: var(--bg-hover);
             border-color: var(--accent);
             transform: translateY(-2px);
         }
+
         .quick-btn-icon {
             font-size: 1.3rem;
         }
@@ -2132,16 +2181,19 @@
             .dash-content-grid {
                 grid-template-columns: 1fr;
             }
+
             .dash-sidebar {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             }
         }
+
         @media(max-width: 800px) {
             .dash-stats-row {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+
         @media(max-width: 500px) {
             .dash-stats-row {
                 grid-template-columns: 1fr;
@@ -2156,11 +2208,13 @@
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
+
         .stu-search-box {
             flex: 1;
             min-width: 200px;
             position: relative;
         }
+
         .stu-search-icon {
             position: absolute;
             left: 14px;
@@ -2168,6 +2222,7 @@
             transform: translateY(-50%);
             color: var(--text-muted);
         }
+
         .stu-search-box input {
             width: 100%;
             padding: 12px 14px 12px 42px;
@@ -2178,16 +2233,19 @@
             font-size: 0.88rem;
             transition: var(--transition);
         }
+
         .stu-search-box input:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(91, 95, 239, 0.1);
         }
+
         .stu-filters {
             display: flex;
             align-items: center;
             gap: 10px;
         }
+
         .stu-filters select {
             padding: 10px 32px 10px 12px;
             background: var(--bg-card);
@@ -2198,9 +2256,11 @@
             cursor: pointer;
             transition: var(--transition);
         }
+
         .stu-filters select:hover {
             border-color: var(--accent);
         }
+
         .view-switcher {
             display: flex;
             background: var(--bg-card);
@@ -2208,6 +2268,7 @@
             border-radius: var(--radius-sm);
             overflow: hidden;
         }
+
         .view-btn {
             width: 40px;
             height: 40px;
@@ -2218,10 +2279,12 @@
             cursor: pointer;
             transition: var(--transition);
         }
+
         .view-btn:hover {
             background: var(--bg-hover);
             color: var(--text);
         }
+
         .view-btn.active {
             background: var(--accent);
             color: white;
@@ -2237,11 +2300,13 @@
             border-radius: var(--radius);
             margin-bottom: 20px;
         }
+
         .stu-stat {
             display: flex;
             align-items: center;
             gap: 8px;
         }
+
         .stu-stat-num {
             font-size: 1.2rem;
             font-weight: 800;
@@ -2251,11 +2316,13 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+
         .stu-stat-label {
             font-size: 0.72rem;
             color: var(--text-muted);
             text-transform: uppercase;
         }
+
         .stu-export-btn {
             margin-left: auto;
         }
@@ -2265,6 +2332,7 @@
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 16px;
         }
+
         .stu-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -2274,11 +2342,13 @@
             cursor: pointer;
             position: relative;
         }
+
         .stu-card:hover {
             border-color: rgba(91, 95, 239, 0.4);
             transform: translateY(-3px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
+
         .stu-card::before {
             content: '';
             position: absolute;
@@ -2291,15 +2361,18 @@
             opacity: 0;
             transition: var(--transition);
         }
+
         .stu-card:hover::before {
             opacity: 1;
         }
+
         .stu-card-header {
             display: flex;
             align-items: center;
             gap: 14px;
             margin-bottom: 14px;
         }
+
         .stu-card-avatar {
             width: 48px;
             height: 48px;
@@ -2313,24 +2386,29 @@
             color: white;
             box-shadow: 0 4px 12px var(--accent-glow);
         }
+
         .stu-card-info {
             flex: 1;
         }
+
         .stu-card-name {
             font-weight: 700;
             font-size: 0.95rem;
             margin-bottom: 3px;
         }
+
         .stu-card-meta {
             font-size: 0.75rem;
             color: var(--text-dim);
         }
+
         .stu-card-tags {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
             margin-bottom: 14px;
         }
+
         .stu-tag {
             padding: 3px 10px;
             border-radius: 12px;
@@ -2340,6 +2418,7 @@
             color: var(--accent);
             border: 1px solid rgba(91, 95, 239, 0.2);
         }
+
         .stu-card-footer {
             display: flex;
             align-items: center;
@@ -2347,14 +2426,17 @@
             padding-top: 14px;
             border-top: 1px solid rgba(128, 128, 128, 0.2);
         }
+
         .stu-score {
             display: flex;
             align-items: center;
             gap: 10px;
         }
+
         .stu-score-hp-wrap {
             width: 100%;
         }
+
         .stu-score-hp-bar {
             width: 100%;
             height: 10px;
@@ -2363,21 +2445,25 @@
             overflow: hidden;
             margin-bottom: 6px;
         }
+
         .stu-score-hp-fill {
             height: 100%;
             border-radius: 5px;
             transition: width 0.4s ease;
         }
+
         .stu-score-hp-text {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
         .stu-score-pct {
             font-size: 0.8rem;
             font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
         }
+
         .stu-score-circle {
             width: 44px;
             height: 44px;
@@ -2389,14 +2475,36 @@
             font-weight: 800;
             font-family: 'JetBrains Mono', monospace;
         }
-        .stu-score-circle.excellent { background: rgba(6, 214, 160, 0.15); color: var(--success); border: 2px solid rgba(6, 214, 160, 0.4); }
-        .stu-score-circle.good { background: rgba(91, 95, 239, 0.15); color: var(--accent); border: 2px solid rgba(91, 95, 239, 0.4); }
-        .stu-score-circle.average { background: rgba(229, 188, 114, 0.15); color: var(--accent-4); border: 2px solid rgba(229, 188, 114, 0.4); }
-        .stu-score-circle.poor { background: rgba(231, 76, 60, 0.15); color: var(--error); border: 2px solid rgba(231, 76, 60, 0.4); }
+
+        .stu-score-circle.excellent {
+            background: rgba(6, 214, 160, 0.15);
+            color: var(--success);
+            border: 2px solid rgba(6, 214, 160, 0.4);
+        }
+
+        .stu-score-circle.good {
+            background: rgba(91, 95, 239, 0.15);
+            color: var(--accent);
+            border: 2px solid rgba(91, 95, 239, 0.4);
+        }
+
+        .stu-score-circle.average {
+            background: rgba(229, 188, 114, 0.15);
+            color: var(--accent-4);
+            border: 2px solid rgba(229, 188, 114, 0.4);
+        }
+
+        .stu-score-circle.poor {
+            background: rgba(231, 76, 60, 0.15);
+            color: var(--error);
+            border: 2px solid rgba(231, 76, 60, 0.4);
+        }
+
         .stu-score-text {
             font-size: 0.72rem;
             color: var(--text-muted);
         }
+
         .stu-score-num {
             font-weight: 700;
             font-size: 0.75rem;
@@ -2406,15 +2514,18 @@
             text-align: center;
             padding: 60px 20px;
         }
+
         .stu-empty-icon {
             font-size: 4rem;
             margin-bottom: 16px;
             opacity: 0.4;
         }
+
         .stu-empty h3 {
             font-size: 1.1rem;
             margin-bottom: 8px;
         }
+
         .stu-empty p {
             font-size: 0.85rem;
             color: var(--text-muted);
@@ -2425,21 +2536,23 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+
             .stu-search-box {
                 min-width: auto;
             }
+
             .stu-filters {
                 flex-wrap: wrap;
             }
+
             .stu-stats-bar {
                 flex-wrap: wrap;
             }
+
             .stu-cards-grid {
                 grid-template-columns: 1fr;
             }
         }
-
-
     </style>
 </head>
 
@@ -2555,9 +2668,11 @@
                     <h1>Dashboard</h1>
                     <p>Overview of all student activity and performance</p>
                 </div>
-                <button onclick="loadDashboard();loadChaptersAdmin();loadQuestionsAdmin();" style="padding:8px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:0.8rem">↻ Refresh</button>
+                <button id="dashRefreshBtn" onclick="refreshDashboard()" style="padding:8px 18px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-size:0.82rem;display:inline-flex;align-items:center;gap:7px;font-family:'Outfit',sans-serif;font-weight:600;transition:all 0.2s ease">
+                    <span id="refreshIcon" style="display:inline-block;transition:transform 0.3s ease;font-size:1.1rem">↻</span> Refresh
+                </button>
             </div>
-            
+
             <div class="dash-stats-row">
                 <div class="dash-stat-card">
                     <div class="dash-stat-icon-bg">👥</div>
@@ -2595,8 +2710,10 @@
                         <div class="panel-header-row">
                             <div class="panel-title">📊 Performance Chart</div>
                             <div class="chart-legend">
-                                <span class="legend-item"><span class="legend-dot" style="background:#06d6a0"></span>Correct</span>
-                                <span class="legend-item"><span class="legend-dot" style="background:#ef476f"></span>Wrong</span>
+                                <span class="legend-item"><span class="legend-dot"
+                                        style="background:#06d6a0"></span>Correct</span>
+                                <span class="legend-item"><span class="legend-dot"
+                                        style="background:#ef476f"></span>Wrong</span>
                             </div>
                         </div>
                         <div class="chart-wrap"><canvas id="lectureChart"></canvas></div>
@@ -2605,7 +2722,8 @@
                     <div class="panel">
                         <div class="panel-header-row">
                             <div class="panel-title">📋 Recent Submissions</div>
-                            <button class="btn btn-ghost" onclick="showSection('students')" style="padding:6px 12px;font-size:0.75rem">View All →</button>
+                            <button class="btn btn-ghost" onclick="showSection('students')"
+                                style="padding:6px 12px;font-size:0.75rem">View All →</button>
                         </div>
                         <div id="recentActivityList" class="recent-list"></div>
                     </div>
@@ -2813,11 +2931,13 @@
             <div id="mq-question-view" style="display:none">
                 <div class="qview-header">
                     <div class="qview-top-row">
-                        <button class="btn btn-ghost" onclick="history.back()"
+                        <button class="btn btn-ghost" onclick="handleQuestionViewBack()"
                             style="padding:7px 14px;font-size:0.85rem">← Back</button>
                         <div class="qview-actions">
                             <button class="btn btn-primary" onclick="saveInlineEdit()"
                                 style="padding:8px 16px;font-size:0.85rem">💾 Save</button>
+                            <button class="btn btn-ghost" onclick="cancelInlineEdit()"
+                                style="padding:8px 16px;font-size:0.85rem">✕ Cancel</button>
                             <button class="btn btn-danger" onclick="deleteCurrentQuestion()"
                                 style="padding:8px 16px;font-size:0.85rem">🗑 Delete</button>
                         </div>
@@ -2842,13 +2962,16 @@
             <div class="stu-toolbar">
                 <div class="stu-search-box">
                     <span class="stu-search-icon">🔍</span>
-                    <input type="text" id="studentSearch" placeholder="Search by name, mobile, chapter..." oninput="filterStudents(this.value)">
+                    <input type="text" id="studentSearch" placeholder="Search by name, mobile, chapter..."
+                        oninput="filterStudents(this.value)">
                 </div>
                 <div class="stu-filters">
-                    <select id="stu-chapter-filter" onchange="filterStudents(document.getElementById('studentSearch').value)">
+                    <select id="stu-chapter-filter"
+                        onchange="filterStudents(document.getElementById('studentSearch').value)">
                         <option value="">All Chapters</option>
                     </select>
-                    <select id="stu-sort-filter" onchange="filterStudents(document.getElementById('studentSearch').value)">
+                    <select id="stu-sort-filter"
+                        onchange="filterStudents(document.getElementById('studentSearch').value)">
                         <option value="recent">Recent</option>
                         <option value="name">Name A-Z</option>
                         <option value="score-desc">Score ↓</option>
@@ -3005,7 +3128,8 @@
                     <span id="sdd-mobile">—</span>
                 </div>
             </div>
-            <button class="btn btn-primary btn-full" onclick="closeModal('studentDetailModal')" style="margin-top:8px">Close</button>
+            <button class="btn btn-primary btn-full" onclick="closeModal('studentDetailModal')"
+                style="margin-top:8px">Close</button>
         </div>
     </div>
     <div class="saving-overlay" id="savingOverlay">
@@ -3056,6 +3180,18 @@
                     onclick="cancelPromptAction()">Cancel</button></div>
         </div>
     </div>
+    <div class="modal-overlay" id="unsavedModal">
+        <div class="modal-box">
+            <div style="font-size:2rem;margin-bottom:10px">📝</div>
+            <h3>Unsaved Changes</h3>
+            <p>You have unsaved edits. What would you like to do?</p>
+            <div class="modal-actions" style="gap:8px">
+                <button class="btn btn-primary" onclick="saveAndGoBack()" style="padding:9px 18px">💾 Save & Go Back</button>
+                <button class="btn btn-danger" onclick="discardAndGoBack()" style="padding:9px 18px">Discard</button>
+                <button class="btn btn-ghost" onclick="closeModal('unsavedModal')" style="padding:9px 18px">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         /* ══════════════════════════════════════════════════════════════════
@@ -3077,6 +3213,8 @@
         let lecSelectModeOn = false, selectedLectureKeys = new Set();
         let _chartData = null;
         let _pendingConfirmAction = null, _pendingConfirmResolver = null;
+        let _hasUnsavedEdits = false;
+        let _originalEditSnapshot = null;
 
         /* ══════════════════════════════════════════════════════════════════
            OPENCV STATE
@@ -3090,7 +3228,7 @@
         }
         // OpenCV functions are defined in head for async script loading
 
-        (function() {
+        (function () {
             const debugInfo = document.getElementById("apiDebugInfo");
             if (debugInfo) {
                 debugInfo.textContent = `API: ${API_BASE}`;
@@ -3188,10 +3326,10 @@
             document.getElementById("loginOverlay").style.display = "none";
             document.getElementById("sidebar").classList.remove("hidden");
             document.getElementById("mainContent").classList.remove("hidden");
-            
+
             console.log("=== ENTER DASHBOARD ===");
             console.log("Cookie present:", document.cookie.length > 0);
-            
+
             // Load all data (skip students fetch if already loaded by checkSession)
             if (!skipStudents) {
                 await loadDashboard();
@@ -3200,21 +3338,21 @@
             }
             await loadChaptersAdmin();
             await loadQuestionsAdmin();
-            
+
             history.replaceState({ type: "section", name: "dashboard" }, "", "");
         }
-        
+
         function renderDashboardData() {
             const wa = allStudents.filter(s => (s.answers && s.answers.length > 0) || typeof s.correctCount === "number");
             const tc = wa.reduce((sum, x) => sum + (x.correctCount || 0), 0);
             const tw = wa.reduce((sum, x) => sum + ((x.totalQuestions || 0) - (x.correctCount || 0)), 0);
             const lecs = new Set(allStudents.map(s => `${s.chapter}::${s.lecture}`));
-            
+
             document.getElementById("stat-total").textContent = allStudents.length;
             document.getElementById("stat-correct").textContent = tc;
             document.getElementById("stat-wrong").textContent = tw;
             document.getElementById("stat-lectures").textContent = lecs.size;
-            
+
             const totalQ = tc + tw;
             const accuracy = totalQ > 0 ? Math.round((tc / totalQ) * 100) : 0;
             const accEl = document.getElementById("accuracyPercent");
@@ -3223,12 +3361,12 @@
             if (accBar) accBar.style.width = accuracy + '%';
             document.getElementById("sidebar-correct").textContent = tc;
             document.getElementById("sidebar-wrong").textContent = tw;
-            
+
             renderRecentActivity(wa.slice(-5).reverse());
             renderChapterBreakdown();
             _chartData = wa;
             buildChart(wa);
-            
+
             console.log("Dashboard data rendered successfully!");
         }
 
@@ -3238,29 +3376,29 @@
             const btn = document.querySelector("button[onclick='login()']");
             e.style.display = "none";
             if (!p) { e.textContent = "Please enter a passcode."; e.style.display = "block"; return; }
-            
+
             if (btn) { btn.textContent = "Logging in..."; btn.disabled = true; }
-            
+
             try {
                 const url = `${API_BASE}/api/admin/login`;
                 console.log("Attempting login to:", url);
-                const r = await fetch(url, { 
-                    method: "POST", 
-                    credentials: "include", 
-                    cache: "no-store", 
-                    headers: { "Content-Type": "application/json" }, 
-                    body: JSON.stringify({ passcode: p }) 
+                const r = await fetch(url, {
+                    method: "POST",
+                    credentials: "include",
+                    cache: "no-store",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ passcode: p })
                 });
                 console.log("Login response status:", r.status);
                 const data = await r.json().catch(() => null);
                 console.log("Login response data:", data);
-                
+
                 if (btn) { btn.textContent = "Login to Dashboard"; btn.disabled = false; }
-                
-                if (!r.ok) { 
+
+                if (!r.ok) {
                     e.textContent = data?.error || `Login failed (${r.status}). Check console.`;
-                    e.style.display = "block"; 
-                    return; 
+                    e.style.display = "block";
+                    return;
                 }
                 document.getElementById("passcode").value = "";
                 enterDashboard();
@@ -3321,9 +3459,9 @@
                 console.log("Fetching:", url);
                 const r = await fetch(url, { credentials: "include" });
                 console.log("Dashboard API status:", r.status);
-                if (r.status === 403) { 
+                if (r.status === 403) {
                     console.log("Not authorized - session issue - trying renderDashboardData");
-                    return; 
+                    return;
                 }
                 if (!r.ok) { console.log("API error:", r.status); return; }
                 const data = await r.json();
@@ -3332,6 +3470,25 @@
                 console.log("Students loaded:", allStudents.length);
                 renderDashboardData();
             } catch (e) { console.error("Dashboard error:", e); }
+        }
+
+        async function refreshDashboard() {
+            const btn = document.getElementById('dashRefreshBtn');
+            const icon = document.getElementById('refreshIcon');
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            icon.style.animation = 'spin 0.6s linear infinite';
+            try {
+                await Promise.all([loadDashboard(), loadChaptersAdmin(), loadQuestionsAdmin()]);
+            } finally {
+                icon.style.animation = '';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                // Brief success flash
+                btn.style.borderColor = 'var(--success)';
+                btn.style.color = 'var(--success)';
+                setTimeout(() => { btn.style.borderColor = ''; btn.style.color = ''; }, 1200);
+            }
         }
 
         function renderRecentActivity(activities) {
@@ -4697,6 +4854,58 @@
                     if (optRender) { optRender.textContent = (sub.options && sub.options[oi]) || ""; renderMath(optRender); }
                 });
             });
+
+            // Track unsaved edits
+            _hasUnsavedEdits = false;
+            setTimeout(() => {
+                _originalEditSnapshot = _getEditSnapshot();
+                // Attach oninput listeners to mark edits
+                document.querySelectorAll('#iqe-questions-container textarea, #iqe-questions-container input, #iqe-chapter, #iqe-lecture').forEach(el => {
+                    el.addEventListener('input', () => { _hasUnsavedEdits = true; });
+                });
+            }, 50);
+        }
+
+        function _getEditSnapshot() {
+            const ch = document.getElementById('iqe-chapter')?.value || '';
+            const lec = document.getElementById('iqe-lecture')?.value || '';
+            const containers = document.querySelectorAll('#iqe-questions-container > div');
+            let snap = ch + '::' + lec + '::';
+            containers.forEach((c, si) => {
+                snap += (document.getElementById(`iqe_qt_${si}`)?.value || '') + '|';
+                LETTERS.forEach((_, oi) => { snap += (document.getElementById(`iqe_opt_${si}_${oi}`)?.value || '') + '|'; });
+            });
+            return snap;
+        }
+
+        function handleQuestionViewBack() {
+            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
+                openModal('unsavedModal');
+            } else {
+                _hasUnsavedEdits = false;
+                history.back();
+            }
+        }
+
+        function cancelInlineEdit() {
+            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
+                openModal('unsavedModal');
+            } else {
+                _hasUnsavedEdits = false;
+                history.back();
+            }
+        }
+
+        async function saveAndGoBack() {
+            closeModal('unsavedModal');
+            await saveInlineEdit();
+            _hasUnsavedEdits = false;
+        }
+
+        function discardAndGoBack() {
+            closeModal('unsavedModal');
+            _hasUnsavedEdits = false;
+            history.back();
         }
 
         function updatePreview(si) {
@@ -4711,6 +4920,7 @@
         }
 
         function toggleCorrectAnswer(si, oi, isMulti) {
+            _hasUnsavedEdits = true;
             // Always read live multi state from the checkbox, not the stale baked-in param
             const multiCheckbox = document.getElementById(`iqe_multi_${si}`);
             const actualIsMulti = multiCheckbox ? multiCheckbox.checked : isMulti;
@@ -4766,7 +4976,7 @@
         function updateCorrectBtnStyles(si, selectedIndexes) {
             const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
             if (!wrap) return;
-            
+
             const buttons = wrap.querySelectorAll('.correct-btn');
             buttons.forEach((btn, idx) => {
                 if (selectedIndexes.includes(idx)) {
@@ -4835,13 +5045,13 @@
                 const text = document.getElementById(`iqe_qt_${si}`)?.value.trim();
                 const opts = LETTERS.map((_, oi) => document.getElementById(`iqe_opt_${si}_${oi}`)?.value.trim() || "");
                 const isMulti = document.getElementById(`iqe_multi_${si}`)?.checked || false;
-                
+
                 // Get selected correct answers from buttons
                 const wrap = document.getElementById(`iqe_correct_wrap_${si}`);
                 const selectedBtns = wrap?.querySelectorAll('.correct-btn.selected') || [];
                 const checked = Array.from(selectedBtns).map(btn => parseInt(btn.dataset.oi));
                 const ci = checked.length ? checked : [0];
-                
+
                 if (text && opts.every(o => o)) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: isMulti });
             });
             if (!questions.length) { showErrorModal("No complete questions found to save.", "Incomplete data"); return; }
@@ -4852,14 +5062,14 @@
             try {
                 const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace: true }) });
                 const data = await r.json().catch(() => null);
-                
+
                 if (!r.ok || (data && data.error)) {
                     hideSavingOverlay();
                     const errorMsg = data?.error || await extractErrorMessage(r, "Save failed for this lecture.");
                     showErrorModal(errorMsg, "Save failed");
                     return;
                 }
-                
+
                 if (oldCh !== chapter || String(oldLec) !== String(lecture)) {
                     await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(oldCh)}/${encodeURIComponent(oldLec)}`, { method: "DELETE", credentials: "include" });
                 }
@@ -4965,14 +5175,14 @@
             const container = document.getElementById('studentCardsContainer');
             if (!container) return;
             const wa = data.filter(s => (s.answers && s.answers.length > 0) || typeof s.correctCount === "number");
-            
+
             if (!wa.length) {
                 document.getElementById('studentEmptyState').style.display = 'block';
                 container.innerHTML = '';
                 return;
             }
             document.getElementById('studentEmptyState').style.display = 'none';
-            
+
             container.innerHTML = wa.map(s => {
                 let correct, total;
                 if (typeof s.correctCount === "number") { correct = s.correctCount; total = s.totalQuestions || 1; }
@@ -4980,7 +5190,7 @@
                 const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
                 const scoreClass = getScoreClass(pct);
                 const initials = getInitials(s.name);
-                
+
                 return `<div class="stu-card" onclick="showStudentDetail('${(s.mobile || s._id || '').replace(/'/g, "\\'")}')">
                     <div class="stu-card-header">
                         <div class="stu-card-avatar">${initials}</div>
@@ -4994,15 +5204,8 @@
                         <span class="stu-tag">Lecture ${s.lecture || '—'}</span>
                     </div>
                     <div class="stu-card-footer">
-                        <div class="stu-score-hp-wrap">
-                            <div class="stu-score-hp-bar">
-                                <div class="stu-score-hp-fill" style="width: ${pct}%; background: linear-gradient(90deg, #ef4444, #f59e0b 50%, #22c55e);"></div>
-                            </div>
-                            <div class="stu-score-hp-text">
-                                <span class="stu-score-num">${correct}/${total}</span>
-                                <span class="stu-score-pct">${pct}%</span>
-                            </div>
-                        </div>
+                        <span class="stu-score-text">${correct}/${total}</span>
+                        <div class="stu-score-circle ${scoreClass}"><span>${pct}%</span></div>
                     </div>
                 </div>`;
             }).join('');
@@ -5026,7 +5229,7 @@
             const f = q.toLowerCase();
             const chapterFilter = document.getElementById('stu-chapter-filter')?.value || '';
             const sortFilter = document.getElementById('stu-sort-filter')?.value || 'recent';
-            
+
             let filtered = allStudents.filter(s => {
                 const matchSearch = !f || (s.name || "").toLowerCase().includes(f) || (s.mobile || "").includes(f) || String(s.lecture || "").includes(f) || (s.chapter || "").toLowerCase().includes(f) || (s.place || "").toLowerCase().includes(f);
                 const matchChapter = !chapterFilter || s.chapter === chapterFilter;
@@ -5036,7 +5239,7 @@
             filtered.sort((a, b) => {
                 switch (sortFilter) {
                     case 'name': return (a.name || '').localeCompare(b.name || '');
-                    case 'score-desc': 
+                    case 'score-desc':
                         const scoreA = a.totalQuestions ? Math.round((a.correctCount / a.totalQuestions) * 100) : (a.correct ? 100 : 0);
                         const scoreB = b.totalQuestions ? Math.round((b.correctCount / b.totalQuestions) * 100) : (b.correct ? 100 : 0);
                         return scoreB - scoreA;
