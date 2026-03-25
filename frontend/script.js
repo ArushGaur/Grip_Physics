@@ -1,4 +1,4 @@
-const API_BASE = "https://grip-physics.onrender.com";
+const API_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? `http://${window.location.host}` : "";
 const QUOTES = [
     '"The important thing is not to stop questioning." — Einstein',
     '"Physics is the poetry of the universe."',
@@ -30,13 +30,13 @@ function setMathText(el, text) {
 /* ── PARTICLES ── */
 particlesJS("particles-js",{
     particles:{
-        number:{value:50}, color:{value:["#6366f1","#8b5cf6","#06b6d4"]},
-        shape:{type:"circle"}, opacity:{value:0.3,random:true},
-        size:{value:2,random:true},
-        line_linked:{enable:true,distance:140,color:"#6366f1",opacity:0.1,width:1},
-        move:{enable:true,speed:1.2}
+        number:{value:90}, color:{value:["#6366f1","#8b5cf6","#06b6d4","#a78bfa"]},
+        shape:{type:"circle"}, opacity:{value:0.6,random:true,anim:{enable:true,speed:0.8,opacity_min:0.2,sync:false}},
+        size:{value:3,random:true,anim:{enable:true,speed:2,size_min:0.5,sync:false}},
+        line_linked:{enable:true,distance:150,color:"#6366f1",opacity:0.25,width:1},
+        move:{enable:true,speed:1.5,out_mode:"out"}
     },
-    interactivity:{detect_on:"canvas",events:{onhover:{enable:true,mode:"grab"},onclick:{enable:true,mode:"push"}},modes:{grab:{distance:160,line_linked:{opacity:0.3}}}},
+    interactivity:{detect_on:"canvas",events:{onhover:{enable:true,mode:"grab"},onclick:{enable:true,mode:"push"}},modes:{grab:{distance:180,line_linked:{opacity:0.5}},push:{particles_nb:3}}},
     retina_detect:true
 });
 
@@ -110,7 +110,8 @@ document.getElementById("loginForm").addEventListener("submit",async(e)=>{
         document.getElementById("quiz-chapter-label").textContent=chapter;
         document.getElementById("quiz-lecture-label").textContent=`Lecture ${lecture}`;
         document.getElementById("q-total").textContent=currentQuestionSet.length;
-        if(currentQuestionSet.length>1) document.getElementById("quiz-nav").classList.remove("hidden");
+        const quizNav=document.getElementById("quiz-nav");
+        if(currentQuestionSet.length>1){quizNav.style.display="flex";}else{quizNav.style.display="none";}
         renderQuestion(0);
         history.pushState({step:"quiz"},"","");
     }catch(err){
@@ -136,8 +137,10 @@ function renderQuestion(index){
         const b64=q.questionImage;
         const mime=b64.startsWith("/9j/")?"image/jpeg":b64.startsWith("iVBORw")?"image/png":"image/jpeg";
         imgEl.src=b64.startsWith("data:")?b64:`data:${mime};base64,${b64}`;
+        imgWrap.classList.remove("hidden");
         imgWrap.style.display="block";
     } else {
+        imgWrap.classList.add("hidden");
         imgWrap.style.display="none";
         imgEl.src="";
     }
