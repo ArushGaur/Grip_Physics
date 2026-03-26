@@ -4876,9 +4876,11 @@
             const confirmed = await askConfirmModalPromise({ title: "Confirm Rename", text: `Rename topic to "${newTopic.trim()}"?`, confirmText: "Rename" });
             if (!confirmed) return;
 
+            showDeleteProgress("Renaming topic...");
             try {
                 const r = await fetch(`${API_BASE}/api/admin/rename-topic`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: ch, oldName: oldTopic, newName: newTopic.trim() }) });
                 const data = await r.json();
+                hideDeleteProgress();
                 if (r.ok && data.success) { 
                     showSuccessModal("Renamed!", "Topic renamed successfully."); 
                     await loadQuestionsAdmin(); 
@@ -4890,7 +4892,11 @@
                     }
                 }
                 else { showErrorModal(data.error || "Failed to rename topic", "Error"); }
-            } catch (e) { console.error("Rename Topic error:", e); showErrorModal(e.message, "Error"); }
+            } catch (e) { 
+                hideDeleteProgress();
+                console.error("Rename Topic error:", e); 
+                showErrorModal(e.message, "Error"); 
+            }
         }
 
         async function renameChapter(encodedName) {
@@ -4905,6 +4911,7 @@
             const confirmed = await askConfirmModalPromise({ title: "Confirm Rename", text: `Are you sure you want to rename "${oldName}" to "${newName.trim()}"?`, confirmText: "Rename" });
             if (!confirmed) return;
 
+            showDeleteProgress("Renaming chapter...");
             try {
                 const r = await fetch(`${API_BASE}/api/admin/rename-chapter`, {
                     method: "POST",
@@ -4913,6 +4920,7 @@
                     body: JSON.stringify({ oldName, newName: newName.trim() })
                 });
                 const data = await r.json();
+                hideDeleteProgress();
                 if (r.ok && data.success) {
                     showSuccessModal("Renamed!", `Chapter "${oldName}" was renamed to "${newName.trim()}" successfully.`);
                     await loadQuestionsAdmin();
@@ -4924,6 +4932,7 @@
                     showErrorModal(data.error || "Failed to rename chapter", "Error");
                 }
             } catch (e) {
+                hideDeleteProgress();
                 console.error("Rename error:", e);
                 showErrorModal(e.message, "Error");
             }
@@ -5211,26 +5220,25 @@
         
         function handleLectureNumClick(e, el, ch, lecNum) {
             const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum));
-            if (qs.length === 1) {
-                const gi = allQuestions.indexOf(qs[0]);
-                showQuestionViewH(gi);
-            } else if (qs.length > 1) {
+            const allQs = qs.flatMap(q => q.questions || []);
+            const totalQ = allQs.length;
+            
+            if (totalQ > 0) {
                 mqCurrentChapter = ch;
                 mqCurrentLectureNum = lecNum;
                 document.getElementById("mq-chapter-view").style.display = "none";
                 document.getElementById("mq-lecture-view").style.display = "block";
                 document.getElementById("mq-question-view").style.display = "none";
                 document.getElementById("mq-chapter-title").textContent = `${ch} - Lecture ${lecNum}`;
-                document.getElementById("mq-lecture-count").textContent = `${qs.length} entry/entries`;
+                document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
                 const grid = document.getElementById("lectureCardsGrid");
-                grid.innerHTML = qs.map((q, idx) => {
-                    const qc = (q.questions || []).length;
-                    const hm = (q.questions || []).some(x => x.isMultiCorrect);
-                    const gi = allQuestions.indexOf(q);
-                    return `<div class="lecture-card ${hm ? "has-multi" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" onclick="showQuestionViewH(${gi})">
+                grid.innerHTML = allQs.map((sq, idx) => {
+                    const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum) && q.questions?.includes(sq));
+                    const previewText = (sq.question || "").replace(/\$.*?\$/g, '[math]').substring(0, 40);
+                    return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi})">
                         <div class="lecture-card-num">Q${idx + 1}</div>
-                        <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${qc} Question${qc !== 1 ? 's' : ''}</div>
-                        <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
+                        <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
+                        <div style="font-size:0.78rem;margin-bottom:3px">${(sq.options || []).length} options</div>
                     </div>`;
                 }).join("");
             }
@@ -5253,9 +5261,10 @@
                 grid.innerHTML = qs.flatMap(q => {
                     return (q.questions || []).map((sq, sqIdx) => {
                         const gi = allQuestions.indexOf(q);
+                        const previewText = (sq.question || "").replace(/\$.*?\$/g, '[math]').substring(0, 40);
                         return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi})">
                             <div class="lecture-card-num">Q${qIndex++}</div>
-                            <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${(sq.question || "").substring(0, 50)}${(sq.question || "").length > 50 ? '...' : ''}</div>
+                            <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
                             <div style="font-size:0.78rem;margin-bottom:3px">Lecture ${q.lecture}</div>
                         </div>`;
                     });
