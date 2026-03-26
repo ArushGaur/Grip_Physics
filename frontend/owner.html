@@ -4461,7 +4461,7 @@
                     <button type="button" onclick="openCropper(${qi})" style="padding:7px 16px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.35);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--success);font-family:'Outfit',sans-serif;font-weight:600;cursor:pointer">✂️ Crop from Screenshot</button>
                 </div>
                 <div id="eq_manualpreview_${qi}" style="display:none;margin-top:10px">
-                    <img style="max-width:100%;max-height:180px;object-fit:contain;border-radius:6px;border:1px solid var(--border)">
+                    <img onclick="openCropper(${qi})" title="Click to open cropper again" style="cursor:pointer;max-width:100%;max-height:180px;object-fit:contain;border-radius:6px;border:1px solid var(--border)">
                     <div style="font-size:0.72rem;color:var(--accent-3);margin-top:4px">✅ Manual image uploaded</div>
                     <button onclick="removeEqManualImage(${qi})" style="margin-top:4px;padding:4px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--error);cursor:pointer;font-family:'Outfit',sans-serif">✕ Remove</button>
                 </div>
@@ -4504,7 +4504,7 @@
                 currentCropper = new Cropper(img, {
                     viewMode: 1, // Restrict crop box to not exceed canvas size
                     dragMode: 'crop', // Let the user draw a new crop box anywhere
-                    autoCropArea: 0.5,
+                    autoCrop: false, // Don't show a pre-selected box
                     background: true, // Show checkerboard for clear boundaries
                     zoomable: true, // Allow zooming for precision
                     zoomOnTouch: true,
@@ -4512,12 +4512,28 @@
                     highlight: true,
                     cropBoxResizable: true,
                     cropBoxMovable: true,
-                    wheelZoomRatio: 0.1,
+                    wheelZoomRatio: 0.1,    
                 });
             }, 50);
+
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', handleCropperKeydown);
+        }
+
+        function handleCropperKeydown(e) {
+            if (document.getElementById("cropModal").style.display === "flex") {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveCropperData();
+                } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    closeCropper();
+                }
+            }
         }
 
         function closeCropper() {
+            document.removeEventListener('keydown', handleCropperKeydown);
             closeModal("cropModal");
             if (currentCropper) {
                 currentCropper.destroy();
@@ -5571,7 +5587,7 @@
         function openModal(id) { document.getElementById(id).style.display = "flex"; }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
         function showSuccessModal(title, text) { document.getElementById("successModalTitle").textContent = title || "Success"; document.getElementById("successModalText").textContent = text || "Done."; openModal("successModal"); }
-        function showErrorModal(text, title = "Something went wrong") { showSuccessModal(title, text); }
+        function showErrorModal(text, title = "Something went wrong") { document.getElementById("errorModalTitle").textContent = title || "Error"; document.getElementById("errorModalText").textContent = text || "Something went wrong."; openModal("errorModal"); }
 
         async function extractErrorMessage(res, fallback = "Request failed.") {
             try { const data = await res.json(); return data?.error || data?.message || fallback; } catch { return fallback; }
@@ -5601,63 +5617,7 @@
         /* ══════════════════════════════════════════════════════════════════
            DRAG TO SELECT
         ══════════════════════════════════════════════════════════════════ */
-        let _dragBox = null, _isDragging = false, _dragStartX = 0, _dragStartY = 0;
-        document.addEventListener('mousedown', e => {
-            if (!selectModeOn && !lecSelectModeOn) return;
-            if (e.target.closest('.chapter-card') || e.target.closest('.lecture-card') || e.target.closest('button') || e.target.closest('input')) return;
-            _isDragging = true;
-            _dragStartX = e.clientX; _dragStartY = e.clientY;
-            _dragBox = document.createElement('div');
-            _dragBox.className = 'selection-box';
-            _dragBox.style.left = _dragStartX + 'px';
-            _dragBox.style.top = _dragStartY + 'px';
-            _dragBox.style.width = '0px';
-            _dragBox.style.height = '0px';
-            document.body.appendChild(_dragBox);
-
-            if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                if (selectModeOn) { selectedLectures.clear(); renderChapterCards(allQuestions); updateMassDeleteBar(); }
-                if (lecSelectModeOn) {
-                    selectedLectureKeys.clear();
-                    document.querySelectorAll('.lecture-card').forEach(c => { c.classList.remove('selected-lec'); const cb = c.querySelector('.lec-checkbox'); if (cb) cb.checked = false; });
-                    updateLecMassDeleteBar();
-                }
-            }
-        });
-        document.addEventListener('mousemove', e => {
-            if (!_isDragging || !_dragBox) return;
-            const cx = e.clientX, cy = e.clientY;
-            _dragBox.style.left = Math.min(_dragStartX, cx) + 'px';
-            _dragBox.style.top = Math.min(_dragStartY, cy) + 'px';
-            _dragBox.style.width = Math.abs(cx - _dragStartX) + 'px';
-            _dragBox.style.height = Math.abs(cy - _dragStartY) + 'px';
-            const boxRect = _dragBox.getBoundingClientRect();
-
-            if (selectModeOn) {
-                document.querySelectorAll('.chapter-card').forEach(card => {
-                    const rect = card.getBoundingClientRect();
-                    const intersect = !(rect.right < boxRect.left || rect.left > boxRect.right || rect.bottom < boxRect.top || rect.top > boxRect.bottom);
-                    const ch = decodeURIComponent(card.dataset.ch);
-                    const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch);
-                    if (intersect) lecs.forEach(q => selectedLectures.add(`${ch}::${q.lecture}`));
-                });
-                renderChapterCards(allQuestions); updateMassDeleteBar();
-            } else if (lecSelectModeOn) {
-                document.querySelectorAll('.lecture-card').forEach(card => {
-                    const rect = card.getBoundingClientRect();
-                    const intersect = !(rect.right < boxRect.left || rect.left > boxRect.right || rect.bottom < boxRect.top || rect.top > boxRect.bottom);
-                    if (intersect) {
-                        const k = `${card.dataset.ch}::${card.dataset.lec}`;
-                        selectedLectureKeys.add(k);
-                        card.classList.add('selected-lec');
-                        const cb = card.querySelector('.lec-checkbox'); if (cb) cb.checked = true;
-                    }
-                });
-                updateLecMassDeleteBar();
-            }
-        });
-        document.addEventListener('mouseup', () => { if (_isDragging) { _isDragging = false; if (_dragBox && _dragBox.parentNode) _dragBox.parentNode.removeChild(_dragBox); _dragBox = null; } });
-
+        // Drag-selection lasso removed per request
         /* ══════════════════════════════════════════════════════════════════
            PWA
         ══════════════════════════════════════════════════════════════════ */
