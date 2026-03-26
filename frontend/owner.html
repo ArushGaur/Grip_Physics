@@ -2670,8 +2670,10 @@
                     <h1>Dashboard</h1>
                     <p>Overview of all student activity and performance</p>
                 </div>
-                <button id="dashRefreshBtn" onclick="refreshDashboard()" style="padding:8px 18px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-size:0.82rem;display:inline-flex;align-items:center;gap:7px;font-family:'Outfit',sans-serif;font-weight:600;transition:all 0.2s ease">
-                    <span id="refreshIcon" style="display:inline-block;transition:transform 0.3s ease;font-size:1.1rem">↻</span> Refresh
+                <button id="dashRefreshBtn" onclick="refreshDashboard()"
+                    style="padding:8px 18px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-size:0.82rem;display:inline-flex;align-items:center;gap:7px;font-family:'Outfit',sans-serif;font-weight:600;transition:all 0.2s ease">
+                    <span id="refreshIcon"
+                        style="display:inline-block;transition:transform 0.3s ease;font-size:1.1rem">↻</span> Refresh
                 </button>
             </div>
 
@@ -2960,7 +2962,6 @@
                 <h1>Student Records</h1>
                 <p>Track and analyze student performance across all lectures</p>
             </div>
-
             <div class="stu-toolbar">
                 <div class="stu-search-box">
                     <span class="stu-search-icon">🔍</span>
@@ -3188,18 +3189,22 @@
             <h3>Unsaved Changes</h3>
             <p>You have unsaved edits. What would you like to do?</p>
             <div class="modal-actions" style="gap:8px">
-                <button class="btn btn-primary" onclick="saveAndGoBack()" style="padding:9px 18px">💾 Save & Go Back</button>
+                <button class="btn btn-primary" onclick="saveAndGoBack()" style="padding:9px 18px">💾 Save & Go
+                    Back</button>
                 <button class="btn btn-danger" onclick="discardAndGoBack()" style="padding:9px 18px">Discard</button>
-                <button class="btn btn-ghost" onclick="closeModal('unsavedModal')" style="padding:9px 18px">Cancel</button>
+                <button class="btn btn-ghost" onclick="closeModal('unsavedModal')"
+                    style="padding:9px 18px">Cancel</button>
             </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="cropModal" style="display:none;z-index:9999">
-        <div class="modal-box" style="width:800px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;">
+        <div class="modal-box"
+            style="width:800px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;">
             <h3>✂️ Crop Diagram from Screenshot</h3>
             <p style="margin-bottom:10px">Drag boundaries to select the diagram exactly. Leave tight margins.</p>
-            <div style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:20px;display:flex;align-items:center;justify-content:center;">
+            <div
+                style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:20px;display:flex;align-items:center;justify-content:center;">
                 <img id="cropTarget" style="max-width:100%;max-height:100%;display:block">
             </div>
             <div class="modal-actions" style="margin-top:auto;width:100%">
@@ -3237,7 +3242,7 @@
                 document.getElementById("confirmModalTitle").textContent = title || "Confirm";
                 document.getElementById("confirmModalText").textContent = text || "Are you sure?";
                 document.getElementById("confirmModalOkBtn").textContent = confirmText || "Confirm";
-                
+
                 const cleanup = () => { _pendingConfirmAction = null; _pendingCancelAction = null; };
                 _pendingConfirmAction = () => { cleanup(); resolve(true); closeModal('confirmModal'); };
                 _pendingCancelAction = () => { cleanup(); resolve(false); closeModal('confirmModal'); };
@@ -4018,7 +4023,7 @@
                 const x = c1 * cellW, y = r1 * cellH;
                 const w = (c2 - c1 + 1) * cellW, h = (r2 - r1 + 1) * cellH;
                 if (w < W * 0.1 || h < H * 0.05) return null;   // too small to be a figure
-                
+
                 // Add padding
                 const padX = w * 0.10;
                 const padY = h * 0.10;
@@ -4369,7 +4374,7 @@
                         <div id="eq_imgwrap_${qi}" style="margin-bottom:12px">
                             <div id="eq_autoimg_${qi}">
                                 <div class="eq-image-preview" style="position:relative">
-                                    <img id="eq_autoimg_el_${qi}" src="data:image/jpeg;base64,${q.extractedImageB64}" alt="Auto-detected diagram">
+                                    <img id="eq_autoimg_el_${qi}" src="data:image/jpeg;base64,${q.extractedImageB64}" alt="Auto-detected diagram" onclick="openCropper(${qi})" style="cursor:pointer" title="Click to crop exactly">
                                     <div class="eq-image-label">
                                         ${methodBadge}
                                         &nbsp;<button onclick="rejectAutoImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;text-decoration:underline;font-family:inherit">✕ Wrong? Upload manually</button>
@@ -4524,7 +4529,7 @@
 
         function saveCropperData() {
             if (!currentCropper || currentCropQi === null) return;
-            
+
             const btn = document.getElementById("saveCropBtn");
             btn.innerHTML = '<span class="spinner"></span>&nbsp; Saving...';
             btn.disabled = true;
@@ -4820,7 +4825,7 @@
         }
         function toggleChapterSelect(e, encCh, idx) {
             const ch = decodeURIComponent(encCh);
-            
+
             // Collect all unique chapter names exactly as rendered
             const chaptersObj = {};
             allQuestions.forEach(q => { const cName = q.chapter || "(No Chapter)"; chaptersObj[cName] = true; });
@@ -4918,7 +4923,7 @@
 
             lastSelectedLectureIdx = gridIdx;
             updateLecMassDeleteBar();
-            
+
             document.querySelectorAll(".lecture-card").forEach(c => {
                 if (c.dataset.ch === chapter) {
                     const lk = `${chapter}::${c.dataset.lec}`;
@@ -5609,11 +5614,11 @@
             _dragBox.style.width = '0px';
             _dragBox.style.height = '0px';
             document.body.appendChild(_dragBox);
-            
+
             if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
                 if (selectModeOn) { selectedLectures.clear(); renderChapterCards(allQuestions); updateMassDeleteBar(); }
-                if (lecSelectModeOn) { 
-                    selectedLectureKeys.clear(); 
+                if (lecSelectModeOn) {
+                    selectedLectureKeys.clear();
                     document.querySelectorAll('.lecture-card').forEach(c => { c.classList.remove('selected-lec'); const cb = c.querySelector('.lec-checkbox'); if (cb) cb.checked = false; });
                     updateLecMassDeleteBar();
                 }
@@ -5627,7 +5632,7 @@
             _dragBox.style.width = Math.abs(cx - _dragStartX) + 'px';
             _dragBox.style.height = Math.abs(cy - _dragStartY) + 'px';
             const boxRect = _dragBox.getBoundingClientRect();
-            
+
             if (selectModeOn) {
                 document.querySelectorAll('.chapter-card').forEach(card => {
                     const rect = card.getBoundingClientRect();
