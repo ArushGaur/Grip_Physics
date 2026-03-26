@@ -2913,7 +2913,7 @@
             </div>
             <div id="mq-lecture-view" style="display:none">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-                    <button class="btn btn-ghost" onclick="showChapterViewH()"
+                    <button class="btn btn-ghost" onclick="goBackMQ()"
                         style="padding:7px 14px;font-size:0.85rem">← Back</button>
                     <div style="flex:1">
                         <h2 id="mq-chapter-title" style="font-size:1.05rem;font-weight:800;margin:0"></h2>
@@ -3187,8 +3187,8 @@
             <h3 id="confirmModalTitle">Please Confirm</h3>
             <p id="confirmModalText">Are you sure?</p>
             <div class="modal-actions"><button class="btn btn-danger" id="confirmModalOkBtn"
-                    onclick="confirmPromptAction()">Confirm</button><button class="btn btn-ghost"
-                    onclick="cancelPromptAction()">Cancel</button></div>
+                    onclick="confirmConfirmModal()">Confirm</button><button class="btn btn-ghost"
+                    onclick="cancelConfirmModal()">Cancel</button></div>
         </div>
     </div>
     <div class="modal-overlay" id="promptModal">
@@ -3249,6 +3249,7 @@
         let manualQuestionCount = 0;
         let undoStack = [], redoStack = [];
         let mqCurrentChapter = null, mqCurrentLectureIdx = null, mqCurrentTopic = null, mqCurrentLectureNum = null;
+        let mqPrevView = null; // 'chapter', 'topic', 'lecture'
         let selectModeOn = false, selectedLectures = new Set();
         let lecSelectModeOn = false, selectedLectureKeys = new Set();
         let _chartData = null;
@@ -3275,11 +3276,29 @@
                 document.getElementById("promptModalText").textContent = text || "Please enter a value:";
                 document.getElementById("promptModalInput").value = defaultValue;
 
-                const cleanup = () => { _pendingConfirmAction = null; _pendingCancelAction = null; };
+                const cleanup = () => { 
+                    _pendingConfirmAction = null; 
+                    _pendingCancelAction = null; 
+                    document.getElementById("promptModalInput").removeEventListener("keydown", handlePromptKeydown);
+                };
+                const handlePromptKeydown = (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        cleanup();
+                        resolve(document.getElementById("promptModalInput").value);
+                        closeModal('promptModal');
+                    } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        cleanup();
+                        resolve(null);
+                        closeModal('promptModal');
+                    }
+                };
                 _pendingConfirmAction = () => { cleanup(); resolve(document.getElementById("promptModalInput").value); closeModal('promptModal'); };
                 _pendingCancelAction = () => { cleanup(); resolve(null); closeModal('promptModal'); };
                 openModal('promptModal');
                 document.getElementById("promptModalInput").focus();
+                document.getElementById("promptModalInput").addEventListener("keydown", handlePromptKeydown);
             });
         }
         function confirmPromptAction() { if (_pendingConfirmAction) _pendingConfirmAction(); }
@@ -4347,7 +4366,7 @@
 
                 extractedQuestions = parsed.map((q, i) => ({
                     ...q,
-                    assignedLecture: startLec + i,
+                    assignedLecture: startLec,
                     manualImageB64: null
                 }));
 
@@ -4368,7 +4387,8 @@
                 }
 
                 status.className = "extract-status success";
-                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${imgCount} with diagrams${imgSummary}.` : ""}`;
+                const lecNums = [...new Set(parsed.map((_, i) => startLec))];
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — all assigned to Lecture ${startLec}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${imgCount} with diagrams${imgSummary}.` : ""}`;
 
                 renderExtractedQuestions(extractedQuestions);
                 document.getElementById("extractedList").style.display = "block";
@@ -4442,7 +4462,7 @@
                         ${q.isMultiCorrect ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:20px;color:var(--warn)">✦ Multi</span>' : ""}
                         ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Image</span>' : ""}
                         <div style="display:flex;align-items:center;gap:5px;background:rgba(91,95,239,0.08);border:1px solid rgba(91,95,239,0.2);border-radius:7px;padding:3px 10px">
-                            <span style="font-size:0.7rem;opacity:0.6">Q #</span>
+                            <span style="font-size:0.7rem;opacity:0.6">Lec #</span>
                             <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
                         </div>
                     </div>
@@ -4685,7 +4705,7 @@
             const startLec = parseInt(document.getElementById("imp-lecture").value) || 1;
             document.querySelectorAll(".extracted-q-item").forEach((item, idx) => {
                 const lbl = item.querySelector("strong"); if (lbl) lbl.textContent = `Q${idx + 1}`;
-                const li = item.querySelector('[id^="eq_lec_"]'); if (li) li.value = startLec + idx;
+                const li = item.querySelector('[id^="eq_lec_"]'); if (li) li.value = startLec;
             });
             updateUndoRedoBtns();
         }
@@ -4693,7 +4713,7 @@
         function addExtractedQ() {
             const sl = parseInt(document.getElementById("imp-lecture").value) || 1;
             const count = document.querySelectorAll(".extracted-q-item").length;
-            extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndexes: [0], isMultiCorrect: false, assignedLecture: sl + count, hasImage: false });
+            extractedQuestions.push({ question: "", options: ["", "", "", ""], correctIndexes: [0], isMultiCorrect: false, assignedLecture: sl, hasImage: false });
             renderExtractedQuestions(extractedQuestions);
         }
 
@@ -4957,6 +4977,12 @@
 
         let lastSelectedChapterIdx = -1;
 
+        // Strip LaTeX math delimiters for plain-text card previews
+        function stripMath(text) {
+            if (!text) return '';
+            return text.replace(/\$\$[\s\S]*?\$\$/g, '[equation]').replace(/\$[^$]+\$/g, '[eq]');
+        }
+
         function renderChapterCards(questions) {
             const grid = document.getElementById("chapterCardsGrid"); if (!grid) return;
             const chapters = {};
@@ -5044,7 +5070,7 @@
             const ov = document.createElement("div");
             ov.id = "deleteProgressOverlay";
             ov.style.cssText = "position:fixed;bottom:24px;right:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.3)";
-            ov.innerHTML = `<div class="saving-spinner"></div><div><div class="saving-text">Deleting...</div><div class="saving-subtext">${msg}</div></div>`;
+            ov.innerHTML = `<div class="saving-spinner"></div><div><div class="saving-text">${msg}</div></div>`;
             document.body.appendChild(ov);
         }
         function hideDeleteProgress() {
@@ -5160,10 +5186,23 @@
             document.getElementById("mq-chapter-view").style.display = "block";
             document.getElementById("mq-lecture-view").style.display = "none";
             document.getElementById("mq-question-view").style.display = "none";
-            mqCurrentChapter = null; mqCurrentLectureIdx = null;
+            mqCurrentChapter = null; mqCurrentLectureIdx = null; mqCurrentTopic = null; mqCurrentLectureNum = null; mqPrevView = null;
         }
+        
+        function goBackMQ() {
+            if (mqPrevView === 'topic' && mqCurrentChapter) {
+                showLectureViewForChapter(mqCurrentChapter);
+            } else if (mqPrevView === 'lecture' && mqCurrentChapter) {
+                showLectureViewForChapter(mqCurrentChapter);
+            } else {
+                showChapterView();
+            }
+            mqPrevView = null;
+        }
+        
         function showLectureViewForChapter(ch) {
             mqCurrentChapter = ch;
+            mqPrevView = 'chapter';
             const viewMode = document.getElementById("lecViewMode")?.value || "topic";
             const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch).sort((a, b) => Number(a.lecture) - Number(b.lecture));
             document.getElementById("mq-chapter-view").style.display = "none";
@@ -5226,6 +5265,7 @@
             if (totalQ > 0) {
                 mqCurrentChapter = ch;
                 mqCurrentLectureNum = lecNum;
+                mqPrevView = 'lecture';
                 document.getElementById("mq-chapter-view").style.display = "none";
                 document.getElementById("mq-lecture-view").style.display = "block";
                 document.getElementById("mq-question-view").style.display = "none";
@@ -5234,7 +5274,7 @@
                 const grid = document.getElementById("lectureCardsGrid");
                 grid.innerHTML = allQs.map((sq, idx) => {
                     const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum) && q.questions?.includes(sq));
-                    const previewText = (sq.question || "").replace(/\$.*?\$/g, '[math]').substring(0, 40);
+                    const previewText = stripMath((sq.question || "").substring(0, 60));
                     return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi})">
                         <div class="lecture-card-num">Q${idx + 1}</div>
                         <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
@@ -5251,6 +5291,7 @@
             if (totalQ > 0) {
                 mqCurrentChapter = ch;
                 mqCurrentTopic = topic;
+                mqPrevView = 'topic';
                 document.getElementById("mq-chapter-view").style.display = "none";
                 document.getElementById("mq-lecture-view").style.display = "block";
                 document.getElementById("mq-question-view").style.display = "none";
@@ -5261,7 +5302,7 @@
                 grid.innerHTML = qs.flatMap(q => {
                     return (q.questions || []).map((sq, sqIdx) => {
                         const gi = allQuestions.indexOf(q);
-                        const previewText = (sq.question || "").replace(/\$.*?\$/g, '[math]').substring(0, 40);
+                        const previewText = stripMath((sq.question || "").substring(0, 60));
                         return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi})">
                             <div class="lecture-card-num">Q${qIndex++}</div>
                             <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
@@ -5335,14 +5376,17 @@
             }).join("")}
             </div>`;
 
-            (q.questions || []).forEach((sub, si) => {
-                const prev = document.getElementById(`iqe_preview_${si}`);
-                if (prev) { prev.textContent = sub.question; renderMath(prev); }
-                LETTERS.forEach((l, oi) => {
-                    const optRender = document.getElementById(`iqe_opt_render_${si}_${oi}`);
-                    if (optRender) { optRender.textContent = (sub.options && sub.options[oi]) || ""; renderMath(optRender); }
+            // Render math after DOM is fully inserted
+            setTimeout(() => {
+                (q.questions || []).forEach((sub, si) => {
+                    const prev = document.getElementById(`iqe_preview_${si}`);
+                    if (prev) { prev.textContent = sub.question; renderMath(prev); }
+                    LETTERS.forEach((l, oi) => {
+                        const optRender = document.getElementById(`iqe_opt_render_${si}_${oi}`);
+                        if (optRender) { optRender.textContent = (sub.options && sub.options[oi]) || ""; renderMath(optRender); }
+                    });
                 });
-            });
+            }, 0);
 
             // Track unsaved edits
             _hasUnsavedEdits = false;
@@ -5375,7 +5419,58 @@
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
-                showLectureView();
+                goBackFromQuestion();
+            }
+        }
+
+        function goBackFromQuestion() {
+            document.getElementById("mq-question-view").style.display = "none";
+            document.getElementById("mq-lecture-view").style.display = "block";
+            document.getElementById("mq-chapter-view").style.display = "none";
+            if (mqPrevView === 'topic' && mqCurrentChapter && mqCurrentTopic) {
+                // Re-render the topic question list
+                const ch = mqCurrentChapter;
+                const topic = mqCurrentTopic;
+                const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && (q.topic || "(No Topic)") === topic);
+                const totalQ = qs.reduce((sum, x) => sum + (x.questions?.length || 0), 0);
+                document.getElementById("mq-chapter-title").textContent = `${ch} - ${topic}`;
+                document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
+                const grid = document.getElementById("lectureCardsGrid");
+                let qIndex = 1;
+                grid.innerHTML = qs.flatMap(q => {
+                    return (q.questions || []).map((sq, sqIdx) => {
+                        const gi = allQuestions.indexOf(q);
+                        const previewText = stripMath((sq.question || "").substring(0, 60));
+                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi})">
+                            <div class="lecture-card-num">Q${qIndex++}</div>
+                            <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
+                            <div style="font-size:0.78rem;margin-bottom:3px">Lecture ${q.lecture}</div>
+                        </div>`;
+                    });
+                }).join("");
+            } else if (mqPrevView === 'lecture' && mqCurrentChapter && mqCurrentLectureNum !== null) {
+                // Re-render the lecture question list
+                const ch = mqCurrentChapter;
+                const lecNum = mqCurrentLectureNum;
+                const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum));
+                const allQs = qs.flatMap(q => q.questions || []);
+                const totalQ = allQs.length;
+                document.getElementById("mq-chapter-title").textContent = `${ch} - Lecture ${lecNum}`;
+                document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
+                const grid = document.getElementById("lectureCardsGrid");
+                grid.innerHTML = allQs.map((sq, idx) => {
+                    const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum) && q.questions?.includes(sq));
+                    const previewText = stripMath((sq.question || "").substring(0, 60));
+                    return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi})">
+                        <div class="lecture-card-num">Q${idx + 1}</div>
+                        <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
+                        <div style="font-size:0.78rem;margin-bottom:3px">${(sq.options || []).length} options</div>
+                    </div>`;
+                }).join("");
+            } else if (mqCurrentChapter) {
+                showLectureViewForChapter(mqCurrentChapter);
+            } else {
+                showChapterView();
             }
         }
 
@@ -5384,7 +5479,7 @@
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
-                showLectureView();
+                goBackFromQuestion();
             }
         }
 
@@ -5392,12 +5487,13 @@
             closeModal('unsavedModal');
             await saveInlineEdit();
             _hasUnsavedEdits = false;
+            goBackFromQuestion();
         }
 
         function discardAndGoBack() {
             closeModal('unsavedModal');
             _hasUnsavedEdits = false;
-            showLectureView();
+            goBackFromQuestion();
         }
 
         function updatePreview(si) {
@@ -5864,20 +5960,18 @@
             document.getElementById("confirmModalText").textContent = text;
             document.getElementById("confirmModalOkBtn").textContent = confirmText;
             _pendingConfirmAction = onConfirm;
+            _pendingCancelAction = () => { _pendingConfirmAction = null; closeModal("confirmModal"); };
             openModal("confirmModal");
         }
-        function askConfirmModalPromise(opts = {}) {
-            return new Promise(resolve => { _pendingConfirmResolver = resolve; askConfirmModal(opts); });
+        async function confirmConfirmModal() {
+            if (typeof _pendingConfirmAction === "function") { const fn = _pendingConfirmAction; _pendingConfirmAction = null; _pendingCancelAction = null; fn(); }
+            else if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(true); _pendingConfirmResolver = null; closeModal("confirmModal"); }
+            else { closeModal("confirmModal"); }
         }
-        async function confirmPromptAction() {
-            closeModal("confirmModal");
-            if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(true); _pendingConfirmResolver = null; }
-            if (typeof _pendingConfirmAction === "function") { const fn = _pendingConfirmAction; _pendingConfirmAction = null; await fn(); }
-        }
-        function cancelPromptAction() {
-            if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(false); _pendingConfirmResolver = null; }
-            _pendingConfirmAction = null;
-            closeModal("confirmModal");
+        function cancelConfirmModal() {
+            if (typeof _pendingCancelAction === "function") { const fn = _pendingCancelAction; _pendingConfirmAction = null; _pendingCancelAction = null; fn(); }
+            else if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(false); _pendingConfirmResolver = null; closeModal("confirmModal"); }
+            else { _pendingConfirmAction = null; closeModal("confirmModal"); }
         }
 
         /* ══════════════════════════════════════════════════════════════════
