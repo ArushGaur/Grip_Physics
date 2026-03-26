@@ -101,7 +101,7 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physic
     .then(() => console.log("MongoDB connected")).catch(err => console.error("MongoDB error:", err));
 
 const QuestionSchema = new mongoose.Schema({
-    chapter: { type: String, index: true }, lecture: { type: String, index: true },
+    chapter: { type: String, index: true }, lecture: { type: String, index: true }, topic: { type: String, index: true, default: "" },
     questions: [{ question: String, options: [String], correctIndex: Number, correctIndexes: [Number], isMultiCorrect: Boolean, questionImage: String, optionImages: [String] }],
     question: String, options: [String], correctIndex: Number, updatedAt: { type: Number, default: Date.now }
 }, { strict: false });
@@ -246,12 +246,12 @@ app.post("/api/student-register", async (req, res) => { const { name, mobile, pl
 
 // ── ADMIN ROUTES
 app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
-    const { chapter, lecture, questions, replace } = req.body;
+    const { chapter, lecture, topic, questions, replace } = req.body;
     if (!lecture || !Array.isArray(questions) || !questions.length) return res.status(400).json({ error: "Missing" });
     let existing = await Question.findOne({ chapter: chapter || null, lecture });
     if (!existing && !chapter) existing = await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] });
     if (existing && !replace) return res.status(409).json({ warning: "Lecture already exists" });
-    const data = { chapter: chapter || null, lecture, questions, updatedAt: Date.now() };
+    const data = { chapter: chapter || null, lecture, topic: topic || "", questions, updatedAt: Date.now() };
     if (existing) { await Question.updateOne({ _id: existing._id }, { $set: data, $unset: { question: "", options: "", correctIndex: "" } }); }
     else { await Question.create(data); }
     await refreshCache(chapter, lecture);
@@ -270,11 +270,45 @@ app.post("/api/admin/mass-delete", requireAdmin, async (req, res) => {
     for (const { chapter, lecture } of items) { await Question.deleteMany({ lecture, $or: [{ chapter }, { chapter: null }, { chapter: { $exists: false } }] }); delete questionCache[`${chapter || ""}::${lecture}`]; deleted++; }
     res.json({ success: true, deleted });
 });
-app.get("/api/admin/students", requireAdmin, async (req, res) => { try { const all = await Student.find({}).lean(); res.json(all.map(normalizeStudent)); } catch { res.status(500).json({ error: "Failed" }); } });
-app.get("/api/admin/questions", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); res.json(all.map(normalizeQuestion)); } catch { res.status(500).json({ error: "Failed" }); } });
+app.get("/api/admin/students", requireAdmin, async (req, res) => { try { const all = await Student.find({}).sort({ time: -1 }).lean(); res.json(all.map(normalizeStudent)); } catch { res.status(500).json({ error: "Failed" }); } });
+app.get("/api/admin/questions", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); res.json(all.map(normalizeQuestion));    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/admin/rename-chapter", requireAdmin, async (req, res) => {
+    try {
+        const { oldName, newName } = req.body;
+        if (!oldName || !newName) return res.status(400).json({ error: "Missing old or new chapter name." });
+        
+        const result = await Question.updateMany({ chapter: oldName }, { $set: { chapter: newName } });
+        if (result.matchedCount === 0) return res.status(404).json({ error: "Chapter not found or no questions exist." });
+        
+        await loadQuestions();
+        res.json({ success: true, updated: result.modifiedCount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post("/api/admin/rename-topic", requireAdmin, async (req, res) => {
+    try {
+        const { chapter, oldName, newName } = req.body;
+        if (!oldName || !newName) return res.status(400).json({ error: "Missing old or new topic name." });
+        
+        let query = { topic: oldName };
+        if (chapter) query.chapter = chapter;
+        
+        const result = await Question.updateMany(query, { $set: { topic: newName } });
+        if (result.matchedCount === 0) return res.status(404).json({ error: "Topic not found." });
+        
+        await loadQuestions();
+        res.json({ success: true, updated: result.modifiedCount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 app.post("/api/admin/reload-cache", requireAdmin, async (req, res) => { try { await loadQuestions(); res.json({ success: true, cached: Object.keys(questionCache).length }); } catch (e) { res.status(500).json({ error: e.message }); } });
-app.get("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const c = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())); res.json({ total: all.length, corrupted: c.length, corruptedLectures: c.map(q => ({ lecture: q.lecture, chapter: q.chapter || null, _id: q._id })) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const c = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(normalizeQuestion).filter(q => q._corrupted); res.json({ total: all.length, corrupted: c.length, corruptedLectures: c.map(q => ({ lecture: q.lecture, chapter: q.chapter || null, _id: q._id })) }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const ids = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(q => q._id); if (!ids.length) return res.json({ success: true, deleted: 0, message: "No corrupted records found." }); await Question.deleteMany({ _id: { $in: ids } }); await loadQuestions(); res.json({ success: true, deleted: ids.length, message: `Deleted ${ids.length} corrupted record(s).` }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     const { questionImages, answerImages, manualAnswerKey } = req.body;
@@ -282,7 +316,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
-    const prompt = `You are a physics teacher extracting MCQ questions from Indian exam papers (JEE/NEET/HC Verma style).\n\n${answerKeyDesc}\n\nTASK: Extract EVERY question from ALL question images and match each to its answer.\nOutput ONLY a raw JSON array. No markdown, no explanation.\n\nMOST CRITICAL RULE — SEPARATING QUESTION FROM OPTIONS:\nIndian exam papers have TWO styles of writing options:\n\nSTYLE 1 — Options listed BELOW the question separately:\n  Q: "Which law states F=ma?"\n  (A) Newton's 1st  (B) Newton's 2nd  (C) Newton's 3rd  (D) Kepler's\n  → question = "Which law states F=ma?"\n  → options = ["Newton's 1st", "Newton's 2nd", "Newton's 3rd", "Kepler's"]\n\nSTYLE 2 — Options EMBEDDED inside question text as (a)(b)(c)(d):\n  "In a semiconductor (a) no free electrons at 0K (b) more electrons than conductor (c) free electrons increase with temp (d) it is an insulator"\n  → question = "In a semiconductor"  [STEM ONLY — stop before the first (a)]\n  → options = ["no free electrons at 0K", "more electrons than conductor", "free electrons increase with temp", "it is an insulator"]\n\nCRITICAL ENFORCEMENT ON OPTIONS: NEVER MISS ANY PART OF AN OPTION. Extract the FULL TEXT of all 4 options. EVEN IF the option text is just a single letter or number (e.g., "(a) A (b) B"), you MUST extract that exact letter as the option ("A", "B"). Do not discard single-character options.\n\nJSON format per question:\n{"question":"stem only","options":["A text","B text","C text","D text"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nLaTeX math (KaTeX in $...$):\n- pi→$\\\\pi$, omega→$\\\\omega$, epsilon→$\\\\varepsilon$, T^4→$T^4$, T_1→$T_1$\n- cos→$\\\\cos$, sin→$\\\\sin$, 1/2 mv^2→$\\\\frac{1}{2}mv^2$\n- s^{-1}→$s^{-1}$, E_0 cos(100 pi t)→$E_0\\\\cos(100\\\\pi t)$\n- Do NOT add trailing $ at end of plain text sentences\n\nOTHER RULES:\n- hasImage:true if question has a diagram/figure/graph\n- correctIndexes: 0=A,1=B,2=C,3=D. Numbers 1/2/3/4 → 0/1/2/3\n- A,C in answer key → correctIndexes:[0,2], isMultiCorrect:true\n- Extract all questions in the order they appear`;
+    const prompt = `You are a physics teacher extracting MCQ questions from Indian exam papers (JEE/NEET/HC Verma style).\n\n${answerKeyDesc}\n\nTASK: Extract EVERY question from ALL question images and match each to its answer.\nOutput ONLY a raw JSON array. No markdown, no explanation.\n\nMOST CRITICAL RULE — SEPARATING QUESTION FROM OPTIONS:\nIndian exam papers have TWO styles of writing options:\n\nSTYLE 1 — Options listed BELOW the question separately:\n  Q: "Which law states F=ma?"\n  (A) Newton's 1st  (B) Newton's 2nd  (C) Newton's 3rd  (D) Kepler's\n  → question = "Which law states F=ma?"\n  → options = ["Newton's 1st", "Newton's 2nd", "Newton's 3rd", "Kepler's"]\n\nSTYLE 2 — Options EMBEDDED inside question text as (a)(b)(c)(d):\n  "In a semiconductor (a) no free electrons at 0K (b) more electrons than conductor (c) free electrons increase with temp (d) it is an insulator"\n  → question = "In a semiconductor"  [STEM ONLY — stop before the first (a)]\n  → options = ["no free electrons at 0K", "more electrons than conductor", "free electrons increase with temp", "it is an insulator"]\n\n  "Match the following: (a) A (b) B (c) C (d) D"\n  → question = "Match the following:"\n  → options = ["A", "B", "C", "D"]\n\nCRITICAL ENFORCEMENT ON OPTIONS:\n1. IF the option text is JUST A SINGLE LETTER (e.g., "(a) A", "(b) B"), you MUST extract that exact letter (e.g. "A"). Do NOT leave the option blank.\n2. Do NOT mistake single-character options as part of the "(a)" prefix. The letter after the "(a)" is the answer text.\n3. Identify all 4 options exactly as written. The options array MUST always have exactly 4 strings.\n\nJSON format per question:\n{"question":"stem only","options":["A text","B text","C text","D text"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nLaTeX math (KaTeX in $...$):\n- pi→$\\\\pi$, omega→$\\\\omega$, epsilon→$\\\\varepsilon$, T^4→$T^4$, T_1→$T_1$\n- cos→$\\\\cos$, sin→$\\\\sin$, 1/2 mv^2→$\\\\frac{1}{2}mv^2$\n- s^{-1}→$s^{-1}$, E_0 cos(100 pi t)→$E_0\\\\cos(100\\\\pi t)$\n- Do NOT add trailing $ at end of plain text sentences\n\nOTHER RULES:\n- hasImage:true if question has a diagram/figure/graph\n- correctIndexes: 0=A,1=B,2=C,3=D. Numbers 1/2/3/4 → 0/1/2/3\n- A,C in answer key → correctIndexes:[0,2], isMultiCorrect:true\n- Extract all questions in the order they appear`;
     try {
         const contentParts = [];
         for (const img of questionImages) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
