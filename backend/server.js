@@ -250,12 +250,18 @@ app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
     if (!lecture || !Array.isArray(questions) || !questions.length) return res.status(400).json({ error: "Missing" });
     let existing = await Question.findOne({ chapter: chapter || null, lecture });
     if (!existing && !chapter) existing = await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] });
-    if (existing && !replace) return res.status(409).json({ warning: "Lecture already exists" });
+    if (existing) {
+        const existingQs = existing.questions || [];
+        const newQs = questions.map((q, i) => ({ ...q, _tempIdx: existingQs.length + i }));
+        const updatedQs = [...existingQs, ...newQs];
+        await Question.updateOne({ _id: existing._id }, { $set: { questions: updatedQs, topic: topic || existing.topic || "", updatedAt: Date.now() }, $unset: { question: "", options: "", correctIndex: "" } });
+        await refreshCache(chapter, lecture);
+        return res.json({ success: true, added: questions.length, total: updatedQs.length });
+    }
     const data = { chapter: chapter || null, lecture, topic: topic || "", questions, updatedAt: Date.now() };
-    if (existing) { await Question.updateOne({ _id: existing._id }, { $set: data, $unset: { question: "", options: "", correctIndex: "" } }); }
-    else { await Question.create(data); }
+    await Question.create(data);
     await refreshCache(chapter, lecture);
-    res.json({ success: true });
+    res.json({ success: true, added: questions.length, total: questions.length });
 });
 app.delete("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, res) => {
     const chapter = decodeURIComponent(req.params.chapter), lecture = decodeURIComponent(req.params.lecture);
