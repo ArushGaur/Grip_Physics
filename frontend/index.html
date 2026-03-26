@@ -87,20 +87,17 @@
                         </div>
                         <div class="form-field full-width">
                             <label>Select Chapter</label>
-                            <div class="input-wrap select-wrap">
+                            <div class="input-wrap">
                                 <span class="input-icon">📚</span>
-                                <select id="chapterSelect" required>
-                                    <option value="">Choose Chapter</option>
-                                </select>
+                                <input type="text" id="chapterSelect" placeholder="Search Chapter Name..." list="chapterList" autocomplete="off" required>
+                                <datalist id="chapterList"></datalist>
                             </div>
                         </div>
                         <div class="form-field full-width">
-                            <label>Select Lecture</label>
-                            <div class="input-wrap select-wrap" id="lectureWrap">
+                            <label>Lecture Number</label>
+                            <div class="input-wrap" id="lectureWrap">
                                 <span class="input-icon">🎬</span>
-                                <select id="lectureSelect" required disabled>
-                                    <option value="">Choose Chapter First</option>
-                                </select>
+                                <input type="number" id="lectureSelect" min="1" placeholder="e.g. 1" required>
                             </div>
                         </div>
                     </div>
