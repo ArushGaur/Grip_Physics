@@ -2928,8 +2928,12 @@
                         onclick="clearLectureSelection()">✕ Cancel</button>
                 </div>
                 <div style="margin-bottom:14px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
-                    <input type="text" id="lecTopicFilter" placeholder="Filter by Topic..." oninput="filterLectureCards()" style="flex:1;min-width:180px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;">
-                    <input type="number" id="lecNumFilter" placeholder="Filter by Lecture #" oninput="filterLectureCards()" style="width:160px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;">
+                    <select id="lecViewMode" onchange="handleViewModeChange()" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;min-width:150px">
+                        <option value="topic">Topic Wise</option>
+                        <option value="lecture">Lecture Wise</option>
+                    </select>
+                    <input type="text" id="lecTopicFilter" placeholder="Filter by Topic..." oninput="filterLectureCards()" style="flex:1;min-width:180px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
+                    <input type="number" id="lecNumFilter" placeholder="Filter by Lecture #" oninput="filterLectureCards()" style="width:160px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
                     <button class="btn btn-warn" style="padding:8px 14px;font-size:0.82rem" id="lecSelectModeBtn"
                         onclick="toggleLectureSelectMode()">☐ Select Lectures</button>
                 </div>
@@ -3187,6 +3191,17 @@
                     onclick="cancelPromptAction()">Cancel</button></div>
         </div>
     </div>
+    <div class="modal-overlay" id="promptModal">
+        <div class="modal-box">
+            <div style="font-size:2rem;margin-bottom:10px">✏️</div>
+            <h3 id="promptModalTitle">Enter Value</h3>
+            <p id="promptModalText">Please enter a value:</p>
+            <input type="text" id="promptModalInput" class="table-search" style="margin:15px 0;width:100%">
+            <div class="modal-actions"><button class="btn btn-primary" id="promptModalOkBtn"
+                    onclick="confirmPromptAction()">OK</button><button class="btn btn-ghost"
+                    onclick="cancelPromptAction()">Cancel</button></div>
+        </div>
+    </div>
     <div class="modal-overlay" id="unsavedModal">
         <div class="modal-box">
             <div style="font-size:2rem;margin-bottom:10px">📝</div>
@@ -3207,9 +3222,9 @@
             style="width:800px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;">
             <h3>✂️ Crop Diagram from Screenshot</h3>
             <p style="margin-bottom:10px">Drag boundaries to select the diagram exactly. Leave tight margins.</p>
-            <div
-                style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:20px;display:flex;align-items:center;justify-content:center;overflow:auto;">
-                <img id="cropTarget" style="display:block">
+            <div id="cropContainer"
+                style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:20px;overflow:auto;position:relative;">
+                <img id="cropTarget" style="display:block;min-width:100%;min-height:100%;">
             </div>
             <div class="modal-actions" style="margin-top:auto;width:100%">
                 <button class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact Crop</button>
@@ -3233,7 +3248,7 @@
         let qImagesBase64 = [], aImagesBase64 = [], extractedQuestions = [];
         let manualQuestionCount = 0;
         let undoStack = [], redoStack = [];
-        let mqCurrentChapter = null, mqCurrentLectureIdx = null;
+        let mqCurrentChapter = null, mqCurrentLectureIdx = null, mqCurrentTopic = null;
         let selectModeOn = false, selectedLectures = new Set();
         let lecSelectModeOn = false, selectedLectureKeys = new Set();
         let _chartData = null;
@@ -3253,8 +3268,25 @@
                 openModal('confirmModal');
             });
         }
+
+        function askPromptModalPromise({ title, text, defaultValue = "" }) {
+            return new Promise(resolve => {
+                document.getElementById("promptModalTitle").textContent = title || "Enter Value";
+                document.getElementById("promptModalText").textContent = text || "Please enter a value:";
+                document.getElementById("promptModalInput").value = defaultValue;
+
+                const cleanup = () => { _pendingConfirmAction = null; _pendingCancelAction = null; };
+                _pendingConfirmAction = () => { cleanup(); resolve(document.getElementById("promptModalInput").value); closeModal('promptModal'); };
+                _pendingCancelAction = () => { cleanup(); resolve(null); closeModal('promptModal'); };
+                openModal('promptModal');
+                document.getElementById("promptModalInput").focus();
+            });
+        }
         function confirmPromptAction() { if (_pendingConfirmAction) _pendingConfirmAction(); }
-        function cancelPromptAction() { if (_pendingCancelAction) _pendingCancelAction(); else closeModal('confirmModal'); }
+        function cancelPromptAction() { 
+            if (_pendingCancelAction) _pendingCancelAction(); 
+            else { closeModal('confirmModal'); closeModal('promptModal'); }
+        }
 
         /* ══════════════════════════════════════════════════════════════════
            OPENCV STATE
@@ -4410,7 +4442,7 @@
                         ${q.isMultiCorrect ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:20px;color:var(--warn)">✦ Multi</span>' : ""}
                         ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Image</span>' : ""}
                         <div style="display:flex;align-items:center;gap:5px;background:rgba(91,95,239,0.08);border:1px solid rgba(91,95,239,0.2);border-radius:7px;padding:3px 10px">
-                            <span style="font-size:0.7rem;opacity:0.6">Lecture</span>
+                            <span style="font-size:0.7rem;opacity:0.6">Q #</span>
                             <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
                         </div>
                     </div>
@@ -4704,18 +4736,13 @@
             for (const lec of lectures) {
                 document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%";
                 document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved…`;
-                const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec], replace: false }) });
+                const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec] }) });
                 if (r.ok) {
+                    const data = await r.json();
                     saved++;
-                } else if (r.status === 409) {
-                    document.getElementById("saveProgressOverlay")?.style.setProperty("display", "none", "important");
-                    const shouldReplace = await askConfirmModalPromise({ title: "Lecture exists", text: `Lecture ${lec} already exists. Replace it?`, confirmText: "Replace" });
-                    document.getElementById("saveProgressOverlay")?.style.setProperty("display", "flex", "important");
-                    if (shouldReplace) {
-                        const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec], replace: true }) });
-                        if (r2.ok) saved++; else failed.push(lec);
-                    } else { failed.push(lec); }
-                } else { failed.push(lec); }
+                } else {
+                    failed.push(lec);
+                }
             }
 
             document.getElementById("saveProgressOverlay")?.remove();
@@ -4733,11 +4760,11 @@
         ══════════════════════════════════════════════════════════════════ */
         async function submitQuestions(chapter, lecture, questions, replace = false, topic = "") {
             const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, topic, questions, replace }) });
-            if (r.status === 409) { 
-                document.getElementById("saveProgressOverlay")?.style.setProperty("display", "none", "important");
-                pendingReplaceData = { chapter, lecture, topic, questions }; openModal("replaceModal"); return; 
+            if (r.ok) { 
+                const data = await r.json();
+                showSuccessModal("Saved!", `${questions.length} question(s) added to Lecture ${lecture}. Total: ${data.total || questions.length}.`); 
+                await loadQuestionsAdmin(); if(typeof loadChaptersAdmin === 'function') loadChaptersAdmin(); 
             }
-            if (r.ok) { showSuccessModal("Saved!", `${questions.length} question(s) for Lecture ${lecture}.`); await loadQuestionsAdmin(); if(typeof loadChaptersAdmin === 'function') loadChaptersAdmin(); }
             else { showErrorModal(await extractErrorMessage(r, "Failed to save questions."), "Save failed"); }
         }
 
@@ -4805,9 +4832,27 @@
             } catch (e) { console.error("Error loading questions:", e); }
         }
 
+        function handleViewModeChange() {
+            const mode = document.getElementById("lecViewMode")?.value || "topic";
+            const topicFilter = document.getElementById("lecTopicFilter");
+            const lecFilter = document.getElementById("lecNumFilter");
+            const grid = document.getElementById("lectureCardsGrid");
+            
+            if (mode === "topic") {
+                topicFilter.style.display = "";
+                lecFilter.style.display = "none";
+            } else {
+                topicFilter.style.display = "none";
+                lecFilter.style.display = "";
+            }
+            
+            if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
+        }
+
         function renderQuestionList(questions) { renderChapterCards(questions); }
 
         function filterLectureCards() {
+            const viewMode = document.getElementById("lecViewMode")?.value || "topic";
             const topicQ = (document.getElementById("lecTopicFilter")?.value || "").toLowerCase().trim();
             const lecQ = (document.getElementById("lecNumFilter")?.value || "").trim();
             document.querySelectorAll("#lectureCardsGrid .lecture-card").forEach(card => {
@@ -4822,9 +4867,14 @@
         async function renameTopic(encodedCh, encodedTopic) {
             const ch = decodeURIComponent(encodedCh);
             const oldTopic = decodeURIComponent(encodedTopic);
-            const newTopic = prompt(`Enter new topic name for "${oldTopic || "(No Topic)"}" inside Chapter "${ch}":`, oldTopic);
-            if (newTopic === null || newTopic.trim() === oldTopic) return;
-            if (!confirm(`Rename topic to "${newTopic.trim()}"?`)) return;
+            const newTopic = await askPromptModalPromise({ 
+                title: "Rename Topic", 
+                text: `Enter new topic name for "${oldTopic || "(No Topic)"}" inside Chapter "${ch}":`, 
+                defaultValue: oldTopic 
+            });
+            if (newTopic === null || newTopic.trim() === oldTopic || !newTopic.trim()) return;
+            const confirmed = await askConfirmModalPromise({ title: "Confirm Rename", text: `Rename topic to "${newTopic.trim()}"?`, confirmText: "Rename" });
+            if (!confirmed) return;
 
             try {
                 const r = await fetch(`${API_BASE}/api/admin/rename-topic`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: ch, oldName: oldTopic, newName: newTopic.trim() }) });
@@ -4842,10 +4892,15 @@
 
         async function renameChapter(encodedName) {
             const oldName = decodeURIComponent(encodedName);
-            const newName = prompt(`Enter new name for chapter: "${oldName}"\n\nThis will apply to all lectures in this chapter.`, oldName);
+            const newName = await askPromptModalPromise({ 
+                title: "Rename Chapter", 
+                text: `Enter new name for chapter: "${oldName}"\n\nThis will apply to all lectures in this chapter.`, 
+                defaultValue: oldName 
+            });
             if (!newName || !newName.trim() || newName.trim() === oldName) return;
 
-            if (!confirm(`Are you sure you want to rename "${oldName}" to "${newName.trim()}"?`)) return;
+            const confirmed = await askConfirmModalPromise({ title: "Confirm Rename", text: `Are you sure you want to rename "${oldName}" to "${newName.trim()}"?`, confirmText: "Rename" });
+            if (!confirmed) return;
 
             try {
                 const r = await fetch(`${API_BASE}/api/admin/rename-chapter`, {
@@ -5063,6 +5118,7 @@
         }
         function showLectureViewForChapter(ch) {
             mqCurrentChapter = ch;
+            const viewMode = document.getElementById("lecViewMode")?.value || "topic";
             const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch).sort((a, b) => Number(a.lecture) - Number(b.lecture));
             document.getElementById("mq-chapter-view").style.display = "none";
             document.getElementById("mq-lecture-view").style.display = "block";
@@ -5074,23 +5130,76 @@
             document.getElementById("lec-mass-delete-bar").classList.remove("visible");
             const grid = document.getElementById("lectureCardsGrid");
             grid.className = "";
-            grid.innerHTML = lecs.map(q => {
-                const qc = (q.questions || []).length;
-                const hm = (q.questions || []).some(x => x.isMultiCorrect);
-                const gi = allQuestions.indexOf(q);
-                const key = `${ch}::${q.lecture}`;
-                const isSel = selectedLectureKeys.has(key);
-                return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSel ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" data-idx="${lecs.indexOf(q)}" data-topic="${(q.topic||"").toLowerCase().replace(/"/g, '&quot;')}" onclick="handleLecCardClick(event,this)">
-                    <input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect(event, '${ch.replace(/'/g, "\\'")}','${q.lecture}', ${lecs.indexOf(q)})" ${isSel ? "checked" : ""}>
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            
+            if (viewMode === "topic") {
+                const topics = {};
+                lecs.forEach(q => {
+                    const topic = q.topic || "(No Topic)";
+                    if (!topics[topic]) topics[topic] = [];
+                    topics[topic].push(q);
+                });
+                const sortedTopics = Object.keys(topics).sort();
+                grid.innerHTML = sortedTopics.map(topic => {
+                    const qs = topics[topic];
+                    const totalQ = qs.reduce((sum, x) => sum + (x.questions?.length || 0), 0);
+                    const hasMulti = qs.some(x => x.questions?.some(y => y.isMultiCorrect));
+                    const firstQ = qs[0];
+                    return `<div class="lecture-card ${hasMulti ? "has-multi" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-topic="${topic.toLowerCase().replace(/"/g, '&quot;')}" onclick="handleTopicCardClick(event, this, '${ch.replace(/'/g, "\\'")}', '${encodeURIComponent(topic)}')">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div class="lecture-card-num">📚</div>
+                            <button class="btn btn-ghost" style="padding:2px; font-size:0.9rem; min-width:unset; opacity:0.7" onclick="event.stopPropagation(); renameTopic('${encodeURIComponent(ch)}', '${encodeURIComponent(topic)}')" title="Rename Topic">✏️</button>
+                        </div>
+                        <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${topic}</div>
+                        <div style="font-size:0.78rem;margin-bottom:3px">${qs.length} lecture(s) · ${totalQ} Q</div>
+                    </div>`;
+                }).join("");
+            } else {
+                grid.innerHTML = lecs.map(q => {
+                    const qc = (q.questions || []).length;
+                    const hm = (q.questions || []).some(x => x.isMultiCorrect);
+                    const gi = allQuestions.indexOf(q);
+                    const key = `${ch}::${q.lecture}`;
+                    const isSel = selectedLectureKeys.has(key);
+                    return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSel ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" data-idx="${lecs.indexOf(q)}" data-topic="${(q.topic||"").toLowerCase().replace(/"/g, '&quot;')}" onclick="handleLecCardClick(event,this)">
+                        <input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect(event, '${ch.replace(/'/g, "\\'")}','${q.lecture}', ${lecs.indexOf(q)})" ${isSel ? "checked" : ""}>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div class="lecture-card-num">L${q.lecture}</div>
+                            <button class="btn btn-ghost" style="padding:2px; font-size:0.9rem; min-width:unset; opacity:0.7" onclick="event.stopPropagation(); renameTopic('${encodeURIComponent(ch)}', '${encodeURIComponent(q.topic || "")}')" title="Rename Topic">✏️</button>
+                        </div>
+                        <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${q.topic || "<i style='opacity:0.5'>No Topic</i>"}</div>
+                        <div style="font-size:0.78rem;margin-bottom:3px">${qc} Q</div>
+                        <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
+                    </div>`;
+                }).join("");
+            }
+        }
+        
+        function handleTopicCardClick(e, el, ch, encodedTopic) {
+            const topic = decodeURIComponent(encodedTopic);
+            const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && (q.topic || "(No Topic)") === topic);
+            if (qs.length === 1) {
+                const gi = allQuestions.indexOf(qs[0]);
+                showQuestionViewH(gi);
+            } else if (qs.length > 1) {
+                mqCurrentChapter = ch;
+                mqCurrentTopic = topic;
+                document.getElementById("mq-chapter-view").style.display = "none";
+                document.getElementById("mq-lecture-view").style.display = "block";
+                document.getElementById("mq-question-view").style.display = "none";
+                document.getElementById("mq-chapter-title").textContent = `${ch} - ${topic}`;
+                document.getElementById("mq-lecture-count").textContent = `${qs.length} lecture(s)`;
+                const grid = document.getElementById("lectureCardsGrid");
+                grid.innerHTML = qs.map(q => {
+                    const qc = (q.questions || []).length;
+                    const hm = (q.questions || []).some(x => x.isMultiCorrect);
+                    const gi = allQuestions.indexOf(q);
+                    return `<div class="lecture-card ${hm ? "has-multi" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" onclick="showQuestionViewH(${gi})">
                         <div class="lecture-card-num">L${q.lecture}</div>
-                        <button class="btn btn-ghost" style="padding:2px; font-size:0.9rem; min-width:unset; opacity:0.7" onclick="event.stopPropagation(); renameTopic('${encodeURIComponent(ch)}', '${encodeURIComponent(q.topic || "")}')" title="Rename Topic">✏️</button>
-                    </div>
-                    <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${q.topic || "<i style='opacity:0.5'>No Topic</i>"}</div>
-                    <div style="font-size:0.78rem;margin-bottom:3px">${qc} Q</div>
-                    <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
-                </div>`;
-            }).join("");
+                        <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">Questions: ${qc}</div>
+                        <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
+                    </div>`;
+                }).join("");
+            }
         }
         function handleLecCardClick(e, el) {
             const ch = el.dataset.ch;
