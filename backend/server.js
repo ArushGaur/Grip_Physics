@@ -282,7 +282,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
-    const prompt = `You are a physics teacher extracting MCQ questions from Indian exam papers (JEE/NEET/HC Verma style).\n\n${answerKeyDesc}\n\nTASK: Extract EVERY question from ALL question images and match each to its answer.\nOutput ONLY a raw JSON array. No markdown, no explanation.\n\nMOST CRITICAL RULE — SEPARATING QUESTION FROM OPTIONS:\nIndian exam papers have TWO styles of writing options:\n\nSTYLE 1 — Options listed BELOW the question separately:\n  Q: "Which law states F=ma?"\n  (A) Newton's 1st  (B) Newton's 2nd  (C) Newton's 3rd  (D) Kepler's\n  → question = "Which law states F=ma?"\n  → options = ["Newton's 1st", "Newton's 2nd", "Newton's 3rd", "Kepler's"]\n\nSTYLE 2 — Options EMBEDDED inside question text as (a)(b)(c)(d):\n  "In a semiconductor (a) no free electrons at 0K (b) more electrons than conductor (c) free electrons increase with temp (d) it is an insulator"\n  → question = "In a semiconductor"  [STEM ONLY — stop before the first (a)]\n  → options = ["no free electrons at 0K", "more electrons than conductor", "free electrons increase with temp", "it is an insulator"]\n\nRULE: The "question" field must ONLY contain the question stem. Strip out ALL (a)(b)(c)(d) or (A)(B)(C)(D) sub-items and put them into the "options" array WITHOUT the letter prefix.\n\nJSON format per question:\n{"question":"stem only","options":["A text","B text","C text","D text"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nLaTeX math (KaTeX in $...$):\n- pi→$\\\\pi$, omega→$\\\\omega$, epsilon→$\\\\varepsilon$, T^4→$T^4$, T_1→$T_1$\n- cos→$\\\\cos$, sin→$\\\\sin$, 1/2 mv^2→$\\\\frac{1}{2}mv^2$\n- s^{-1}→$s^{-1}$, E_0 cos(100 pi t)→$E_0\\\\cos(100\\\\pi t)$\n- Do NOT add trailing $ at end of plain text sentences\n\nOTHER RULES:\n- hasImage:true if question has a diagram/figure/graph\n- correctIndexes: 0=A,1=B,2=C,3=D. Numbers 1/2/3/4 → 0/1/2/3\n- A,C in answer key → correctIndexes:[0,2], isMultiCorrect:true\n- Extract all questions in the order they appear`;
+    const prompt = `You are a physics teacher extracting MCQ questions from Indian exam papers (JEE/NEET/HC Verma style).\n\n${answerKeyDesc}\n\nTASK: Extract EVERY question from ALL question images and match each to its answer.\nOutput ONLY a raw JSON array. No markdown, no explanation.\n\nMOST CRITICAL RULE — SEPARATING QUESTION FROM OPTIONS:\nIndian exam papers have TWO styles of writing options:\n\nSTYLE 1 — Options listed BELOW the question separately:\n  Q: "Which law states F=ma?"\n  (A) Newton's 1st  (B) Newton's 2nd  (C) Newton's 3rd  (D) Kepler's\n  → question = "Which law states F=ma?"\n  → options = ["Newton's 1st", "Newton's 2nd", "Newton's 3rd", "Kepler's"]\n\nSTYLE 2 — Options EMBEDDED inside question text as (a)(b)(c)(d):\n  "In a semiconductor (a) no free electrons at 0K (b) more electrons than conductor (c) free electrons increase with temp (d) it is an insulator"\n  → question = "In a semiconductor"  [STEM ONLY — stop before the first (a)]\n  → options = ["no free electrons at 0K", "more electrons than conductor", "free electrons increase with temp", "it is an insulator"]\n\nCRITICAL ENFORCEMENT ON OPTIONS: NEVER MISS ANY PART OF AN OPTION. Extract the FULL TEXT of all 4 options, completely and exactly as written. Ensure the "options" array has exactly 4 items containing the full text.\n\nRULE: The "question" field must ONLY contain the question stem. Strip out ALL (a)(b)(c)(d) or (A)(B)(C)(D) sub-items and put them into the "options" array WITHOUT the letter prefix.\n\nJSON format per question:\n{"question":"stem only","options":["A text","B text","C text","D text"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nLaTeX math (KaTeX in $...$):\n- pi→$\\\\pi$, omega→$\\\\omega$, epsilon→$\\\\varepsilon$, T^4→$T^4$, T_1→$T_1$\n- cos→$\\\\cos$, sin→$\\\\sin$, 1/2 mv^2→$\\\\frac{1}{2}mv^2$\n- s^{-1}→$s^{-1}$, E_0 cos(100 pi t)→$E_0\\\\cos(100\\\\pi t)$\n- Do NOT add trailing $ at end of plain text sentences\n\nOTHER RULES:\n- hasImage:true if question has a diagram/figure/graph\n- correctIndexes: 0=A,1=B,2=C,3=D. Numbers 1/2/3/4 → 0/1/2/3\n- A,C in answer key → correctIndexes:[0,2], isMultiCorrect:true\n- Extract all questions in the order they appear`;
     try {
         const contentParts = [];
         for (const img of questionImages) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
@@ -304,91 +304,6 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     } catch (e) { console.error("Extract error:", e); res.status(500).json({ error: "Server error: " + e.message }); }
 });
 
-app.post("/api/admin/extract-diagram", requireAdmin, async (req, res) => {
-    const { image, questionText } = req.body;
-    if (!image) return res.status(400).json({ error: "No image provided" });
-    if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set" });
-
-    function getMime(b64) {
-        if (b64.startsWith("/9j/")) return "image/jpeg";
-        if (b64.startsWith("iVBORw")) return "image/png";
-        return "image/jpeg";
-    }
-
-    try {
-        const prompt = `This is a physics exam screenshot. The question "${questionText || "shown"}" has a diagram/figure in it.
-
-Your job: identify the bounding box of ONLY the diagram/figure (not the question text, not option text, not captions like "Figure 13-Q2").
-
-The diagram is the actual drawing — shapes, graphs, circuits, ray diagrams, vessel drawings, etc.
-
-Reply with ONLY a JSON object, no markdown:
-{"x": 0.12, "y": 0.35, "w": 0.76, "h": 0.28}
-
-Where x, y, w, h are fractions of the full image dimensions (0.0 to 1.0).
-x = left edge, y = top edge, w = width, h = height.
-
-Be tight — do not include text rows above or below the drawing.`;
-
-        const mime = getMime(image);
-        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + process.env.GROQ_API_KEY
-            },
-            body: JSON.stringify({
-                model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                max_tokens: 100,
-                temperature: 0.0,
-                messages: [{
-                    role: "user",
-                    content: [
-                        { type: "image_url", image_url: { url: `data:${mime};base64,${image}` } },
-                        { type: "text", text: prompt }
-                    ]
-                }]
-            })
-        });
-
-        if (!r.ok) {
-            const e = await r.json();
-            const msg = e.error?.message || "Groq error";
-            console.error("Groq extract-diagram error:", msg);
-            return res.status(502).json({ error: msg });
-        }
-
-        const data = await r.json();
-        let text = (data.choices?.[0]?.message?.content || "").trim();
-        text = text.replace(/```json|```/g, "").trim();
-
-        // Extract JSON object from response
-        const start = text.indexOf("{"), end = text.lastIndexOf("}");
-        if (start === -1 || end === -1) return res.status(500).json({ error: "AI did not return coords" });
-
-        const coords = JSON.parse(text.slice(start, end + 1));
-        if (typeof coords.x !== "number") return res.status(500).json({ error: "Invalid coords" });
-
-        // Clamp values to valid range
-        coords.x = Math.max(0, Math.min(1, coords.x));
-        coords.y = Math.max(0, Math.min(1, coords.y));
-        coords.w = Math.max(0.05, Math.min(1 - coords.x, coords.w));
-        coords.h = Math.max(0.05, Math.min(1 - coords.y, coords.h));
-
-        // Add 10% padding to prevent tight crops
-        const padX = coords.w * 0.10;
-        const padY = coords.h * 0.10;
-        coords.x = Math.max(0, coords.x - padX);
-        coords.y = Math.max(0, coords.y - padY);
-        coords.w = Math.min(1 - coords.x, coords.w + padX * 2);
-        coords.h = Math.min(1 - coords.y, coords.h + padY * 2);
-
-        res.json({ coords });
-    } catch (e) {
-        console.error("Extract diagram error:", e);
-        res.status(500).json({ error: e.message });
-    }
-});
 
 // ── Catch-all: no stack traces leaked to clients
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
