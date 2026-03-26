@@ -2800,6 +2800,7 @@
                             id="existingChapters"></datalist></div>
                     <div class="field"><label>Lecture Number</label><input id="aq-lecture" type="number" min="1"
                             placeholder="e.g. 5"></div>
+                    <div class="field"><label>Topic Name</label><input id="aq-topic" placeholder="e.g. Introduction"></div>
                 </div>
                 <div id="aqQuestionsContainer"></div>
                 <button class="btn btn-ghost mt-12" onclick="addManualQuestion()">+ Add Another Question</button>
@@ -2824,6 +2825,7 @@
                         <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">3 questions → lectures 4,
                             5, 6</div>
                     </div>
+                    <div class="field"><label>Topic Name</label><input id="imp-topic" placeholder="e.g. Introduction"></div>
                 </div>
                 <div class="field" style="margin-top:8px">
                     <label>📄 Question Screenshots <span style="color:var(--accent);font-weight:500">— paste (Ctrl+V),
@@ -2925,7 +2927,9 @@
                     <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
                         onclick="clearLectureSelection()">✕ Cancel</button>
                 </div>
-                <div style="margin-bottom:14px;display:flex;justify-content:flex-end">
+                <div style="margin-bottom:14px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+                    <input type="text" id="lecTopicFilter" placeholder="Filter by Topic..." oninput="filterLectureCards()" style="flex:1;min-width:180px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;">
+                    <input type="number" id="lecNumFilter" placeholder="Filter by Lecture #" oninput="filterLectureCards()" style="width:160px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;">
                     <button class="btn btn-warn" style="padding:8px 14px;font-size:0.82rem" id="lecSelectModeBtn"
                         onclick="toggleLectureSelectMode()">☐ Select Lectures</button>
                 </div>
@@ -3067,7 +3071,7 @@
             <h3>Replace Existing Question?</h3>
             <p>A question for this lecture already exists. Replace it?</p>
             <div class="modal-actions"><button class="btn btn-danger" onclick="confirmReplace()">Replace</button><button
-                    class="btn btn-ghost" onclick="closeModal('replaceModal')">Cancel</button></div>
+                    class="btn btn-ghost" onclick="closeModal('replaceModal'); document.getElementById('saveProgressOverlay')?.style.setProperty('display', 'flex', 'important');">Cancel</button></div>
         </div>
     </div>
     <div class="modal-overlay" id="logoutModal">
@@ -3204,8 +3208,8 @@
             <h3>✂️ Crop Diagram from Screenshot</h3>
             <p style="margin-bottom:10px">Drag boundaries to select the diagram exactly. Leave tight margins.</p>
             <div
-                style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:20px;display:flex;align-items:center;justify-content:center;">
-                <img id="cropTarget" style="max-width:100%;max-height:100%;display:block">
+                style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:20px;display:flex;align-items:center;justify-content:center;overflow:auto;">
+                <img id="cropTarget" style="display:block">
             </div>
             <div class="modal-actions" style="margin-top:auto;width:100%">
                 <button class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact Crop</button>
@@ -3696,6 +3700,7 @@
         async function saveManualQuestions() {
             const chapter = document.getElementById("aq-chapter").value.trim();
             const lecture = document.getElementById("aq-lecture").value.trim();
+            const topic = document.getElementById("aq-topic")?.value.trim() || "";
             if (!chapter || !lecture) { showErrorModal("Please enter chapter and lecture.", "Missing fields"); return; }
             const questions = [];
             document.querySelectorAll("#aqQuestionsContainer .panel").forEach(b => {
@@ -3711,7 +3716,7 @@
                 if (text && opts.every(o => o) && ci.length) questions.push({ question: text, options: opts, correctIndexes: ci, isMultiCorrect: isMulti });
             });
             if (!questions.length) { showErrorModal("Please fill at least one complete question.", "Incomplete data"); return; }
-            await submitQuestions(chapter, lecture, questions);
+            await submitQuestions(chapter, lecture, questions, false, topic);
         }
 
         /* ══════════════════════════════════════════════════════════════════
@@ -4502,7 +4507,7 @@
             setTimeout(() => {
                 if (currentCropper) currentCropper.destroy();
                 currentCropper = new Cropper(img, {
-                    viewMode: 1, // Restrict crop box to not exceed canvas size
+                    viewMode: 0, // Allow crop box to exceed canvas size for scrolling
                     dragMode: 'crop', // Let the user draw a new crop box anywhere
                     autoCrop: false, // Don't show a pre-selected box
                     background: true, // Show checkerboard for clear boundaries
@@ -4512,7 +4517,7 @@
                     highlight: true,
                     cropBoxResizable: true,
                     cropBoxMovable: true,
-                    wheelZoomRatio: 0.1,    
+                    wheelZoomRatio: 0.1,
                 });
             }, 50);
 
@@ -4662,6 +4667,7 @@
 
         async function saveExtractedQuestions() {
             const chapter = document.getElementById("imp-chapter").value.trim();
+            const topic = document.getElementById("imp-topic")?.value.trim() || "";
             if (!chapter) { showErrorModal("Please enter a chapter.", "Missing fields"); return; }
             const items = document.querySelectorAll(".extracted-q-item");
             if (!items.length) { showErrorModal("No questions to save.", "Nothing to save"); return; }
@@ -4690,21 +4696,23 @@
             // Progress overlay
             const ov = document.createElement("div");
             ov.id = "saveProgressOverlay";
-            ov.style.cssText = "position:fixed;inset:0;background:var(--bg-card);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px";
-            ov.innerHTML = `<div style="font-size:3rem;margin-bottom:10px">💾</div><div style="font-size:1.4rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:300px;height:6px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;margin:10px 0"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease-out;width:0%"></div></div><div style="font-size:0.9rem;color:var(--text-dim);font-weight:500" id="progText">0 / ${lectures.length} lectures saved</div>`;
+            ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center";
+            ov.innerHTML = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:36px 44px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:320px;box-shadow:0 12px 48px rgba(0,0,0,0.45)"><div style="font-size:3rem;line-height:1">💾</div><div style="font-size:1.3rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:280px;height:7px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease-out;width:0%"></div></div><div style="font-size:0.88rem;color:var(--text-dim);font-weight:500" id="progText">0 / ${lectures.length} lectures saved</div></div>`;
             document.body.appendChild(ov);
 
             let saved = 0, failed = [];
             for (const lec of lectures) {
                 document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%";
                 document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved…`;
-                const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: false }) });
+                const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec], replace: false }) });
                 if (r.ok) {
                     saved++;
                 } else if (r.status === 409) {
+                    document.getElementById("saveProgressOverlay")?.style.setProperty("display", "none", "important");
                     const shouldReplace = await askConfirmModalPromise({ title: "Lecture exists", text: `Lecture ${lec} already exists. Replace it?`, confirmText: "Replace" });
+                    document.getElementById("saveProgressOverlay")?.style.setProperty("display", "flex", "important");
                     if (shouldReplace) {
-                        const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, questions: groups[lec], replace: true }) });
+                        const r2 = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec], replace: true }) });
                         if (r2.ok) saved++; else failed.push(lec);
                     } else { failed.push(lec); }
                 } else { failed.push(lec); }
@@ -4723,18 +4731,24 @@
         /* ══════════════════════════════════════════════════════════════════
            SHARED SUBMIT
         ══════════════════════════════════════════════════════════════════ */
-        async function submitQuestions(chapter, lecture, questions, replace = false) {
-            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, questions, replace }) });
-            if (r.status === 409) { pendingReplaceData = { chapter, lecture, questions }; openModal("replaceModal"); return; }
-            if (r.ok) { showSuccessModal("Saved!", `${questions.length} question(s) for Lecture ${lecture}.`); await loadQuestionsAdmin(); loadChaptersAdmin(); }
+        async function submitQuestions(chapter, lecture, questions, replace = false, topic = "") {
+            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, topic, questions, replace }) });
+            if (r.status === 409) { 
+                document.getElementById("saveProgressOverlay")?.style.setProperty("display", "none", "important");
+                pendingReplaceData = { chapter, lecture, topic, questions }; openModal("replaceModal"); return; 
+            }
+            if (r.ok) { showSuccessModal("Saved!", `${questions.length} question(s) for Lecture ${lecture}.`); await loadQuestionsAdmin(); if(typeof loadChaptersAdmin === 'function') loadChaptersAdmin(); }
             else { showErrorModal(await extractErrorMessage(r, "Failed to save questions."), "Save failed"); }
         }
 
         async function confirmReplace() {
             closeModal("replaceModal");
+            const progOverlay = document.getElementById("saveProgressOverlay");
+            if (progOverlay) progOverlay.style.setProperty("display", "flex", "important");
             const d = pendingReplaceData;
-            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, questions: d.questions, replace: true }) });
-            if (r.ok) { showSuccessModal("Replaced!", "Lecture questions were replaced."); await loadQuestionsAdmin(); loadChaptersAdmin(); }
+            const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, topic: d.topic, questions: d.questions, replace: true }) });
+            if (progOverlay) progOverlay.remove();
+            if (r.ok) { showSuccessModal("Replaced!", "Lecture questions were replaced."); await loadQuestionsAdmin(); if(typeof loadChaptersAdmin === 'function') loadChaptersAdmin(); }
             else { showErrorModal(await extractErrorMessage(r, "Replace failed."), "Replace failed"); }
         }
 
@@ -4793,6 +4807,67 @@
 
         function renderQuestionList(questions) { renderChapterCards(questions); }
 
+        function filterLectureCards() {
+            const topicQ = (document.getElementById("lecTopicFilter")?.value || "").toLowerCase().trim();
+            const lecQ = (document.getElementById("lecNumFilter")?.value || "").trim();
+            document.querySelectorAll("#lectureCardsGrid .lecture-card").forEach(card => {
+                const cTopic = card.dataset.topic || "";
+                const cLec = card.dataset.lec || "";
+                const matchTopic = !topicQ || cTopic.includes(topicQ);
+                const matchLec = !lecQ || (cLec === lecQ || cLec.includes(lecQ));
+                card.style.display = matchTopic && matchLec ? "" : "none";
+            });
+        }
+
+        async function renameTopic(encodedCh, encodedTopic) {
+            const ch = decodeURIComponent(encodedCh);
+            const oldTopic = decodeURIComponent(encodedTopic);
+            const newTopic = prompt(`Enter new topic name for "${oldTopic || "(No Topic)"}" inside Chapter "${ch}":`, oldTopic);
+            if (newTopic === null || newTopic.trim() === oldTopic) return;
+            if (!confirm(`Rename topic to "${newTopic.trim()}"?`)) return;
+
+            try {
+                const r = await fetch(`${API_BASE}/api/admin/rename-topic`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: ch, oldName: oldTopic, newName: newTopic.trim() }) });
+                const data = await r.json();
+                if (r.ok && data.success) { 
+                    showSuccessModal("Renamed!", "Topic renamed successfully."); 
+                    await loadQuestionsAdmin(); 
+                    if (document.getElementById("mq-lecture-view").style.display === "block" && mqCurrentChapter) {
+                        showLectureViewForChapter(mqCurrentChapter);
+                    }
+                }
+                else { showErrorModal(data.error || "Failed to rename topic", "Error"); }
+            } catch (e) { console.error("Rename Topic error:", e); showErrorModal(e.message, "Error"); }
+        }
+
+        async function renameChapter(encodedName) {
+            const oldName = decodeURIComponent(encodedName);
+            const newName = prompt(`Enter new name for chapter: "${oldName}"\n\nThis will apply to all lectures in this chapter.`, oldName);
+            if (!newName || !newName.trim() || newName.trim() === oldName) return;
+
+            if (!confirm(`Are you sure you want to rename "${oldName}" to "${newName.trim()}"?`)) return;
+
+            try {
+                const r = await fetch(`${API_BASE}/api/admin/rename-chapter`, {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ oldName, newName: newName.trim() })
+                });
+                const data = await r.json();
+                if (r.ok && data.success) {
+                    showSuccessModal("Renamed!", `Chapter "${oldName}" was renamed to "${newName.trim()}" successfully.`);
+                    await loadQuestionsAdmin();
+                    if(typeof loadChaptersAdmin === 'function') loadChaptersAdmin();
+                } else {
+                    showErrorModal(data.error || "Failed to rename chapter", "Error");
+                }
+            } catch (e) {
+                console.error("Rename error:", e);
+                showErrorModal(e.message, "Error");
+            }
+        }
+
         function showToast(msg, type = 'success') {
             let container = document.getElementById('toast-container');
             if (!container) {
@@ -4825,7 +4900,10 @@
                 return `<div class="chapter-card ${isSelected ? "selected-card" : ""}" data-ch="${encodeURIComponent(ch)}" data-idx="${i}" onclick="chapterCardClick(event,decodeURIComponent(this.dataset.ch))">
                     ${selectModeOn ? `<input type="checkbox" class="card-checkbox" onclick="event.stopPropagation();toggleChapterSelect(event, '${encodeURIComponent(ch)}', ${i})" ${isSelected ? "checked" : ""}>` : ""}
                     <div class="chapter-card-icon">${CHAPTER_ICONS[i % CHAPTER_ICONS.length]}</div>
-                    <div class="chapter-card-title">${ch}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%">
+                        <div class="chapter-card-title" style="margin:0">${ch}</div>
+                        <button class="btn btn-ghost" style="padding:4px; margin-left:8px; font-size:1.1rem; min-width:unset; align-self:flex-start" title="Rename Chapter" onclick="event.stopPropagation(); renameChapter('${encodeURIComponent(ch)}')">✏️</button>
+                    </div>
                     <div class="chapter-card-count">${lc} lecture${lc !== 1 ? "s" : ""} &middot; ${qc} Q${hasMulti ? ' <span style="color:var(--warn)">&#10022;</span>' : ""}</div>
                 </div>`;
             }).join("");
@@ -5002,9 +5080,13 @@
                 const gi = allQuestions.indexOf(q);
                 const key = `${ch}::${q.lecture}`;
                 const isSel = selectedLectureKeys.has(key);
-                return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSel ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" data-idx="${lecs.indexOf(q)}" onclick="handleLecCardClick(event,this)">
+                return `<div class="lecture-card ${hm ? "has-multi" : ""} ${isSel ? "selected-lec" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-gi="${gi}" data-idx="${lecs.indexOf(q)}" data-topic="${(q.topic||"").toLowerCase().replace(/"/g, '&quot;')}" onclick="handleLecCardClick(event,this)">
                     <input type="checkbox" class="lec-checkbox" onclick="event.stopPropagation();toggleLectureSelect(event, '${ch.replace(/'/g, "\\'")}','${q.lecture}', ${lecs.indexOf(q)})" ${isSel ? "checked" : ""}>
-                    <div class="lecture-card-num">L${q.lecture}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div class="lecture-card-num">L${q.lecture}</div>
+                        <button class="btn btn-ghost" style="padding:2px; font-size:0.9rem; min-width:unset; opacity:0.7" onclick="event.stopPropagation(); renameTopic('${encodeURIComponent(ch)}', '${encodeURIComponent(q.topic || "")}')" title="Rename Topic">✏️</button>
+                    </div>
+                    <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${q.topic || "<i style='opacity:0.5'>No Topic</i>"}</div>
                     <div style="font-size:0.78rem;margin-bottom:3px">${qc} Q</div>
                     <div class="lecture-card-meta">${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}</div>
                 </div>`;
