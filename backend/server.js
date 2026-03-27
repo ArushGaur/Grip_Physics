@@ -780,26 +780,47 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             return res.status(500).json({ error: "Could not parse AI response. Please try again once; if it still fails, use manual answer key or cleaner screenshots." });
         }
 
-        // If the model likely truncated at ~10 items, run a continuation pass and merge.
-        const likelyTruncated = firstPass.finishReason === "length" || parsed.length === 10;
-        if (likelyTruncated) {
-            try {
-                const continuationInstruction = `Your previous response returned ${parsed.length} question(s). Continue extracting ONLY remaining unseen questions from the same images. Return JSON array only. If none remain, return []`;
-                const secondPass = await requestExtraction(continuationInstruction);
-                const more = parseAiQuestions(secondPass.raw) || [];
-                if (Array.isArray(more) && more.length) {
-                    const keyOf = (q) => `${String(q?.question || "").trim().toLowerCase()}||${JSON.stringify((q?.options || []).map(o => String(o || "").trim().toLowerCase()))}`;
-                    const seen = new Set(parsed.map(keyOf));
+        // Multi-pass continuation: helps recover remaining questions when model stops early (e.g. 10-11 out of 18).
+        const keyOf = (q) => {
+            const qq = String(q?.question || "").trim().toLowerCase();
+            const oo = JSON.stringify((q?.options || []).map(o => String(o || "").trim().toLowerCase()));
+            const cc = JSON.stringify((q?.correctIndexes || []).map(n => Number(n)));
+            return `${qq}||${oo}||${cc}`;
+        };
+        const seen = new Set(parsed.map(keyOf));
+
+        // Run continuation if likely incomplete OR generally when count is large enough that truncation is common.
+        const shouldContinue = firstPass.finishReason === "length" || parsed.length >= 8;
+        if (shouldContinue) {
+            for (let pass = 1; pass <= 3; pass++) {
+                try {
+                    const lastStem = String(parsed[parsed.length - 1]?.question || "").replace(/\s+/g, " ").slice(0, 180);
+                    const continuationInstruction = [
+                        `Pass ${pass}: You previously returned ${parsed.length} question(s).`,
+                        `Continue extracting ONLY remaining unseen questions that appear AFTER this last extracted stem in image order: "${lastStem}".`,
+                        `Do not repeat earlier questions.`,
+                        `Return JSON array only. If no more questions remain, return [].`
+                    ].join(" ");
+
+                    const nextPass = await requestExtraction(continuationInstruction);
+                    const more = parseAiQuestions(nextPass.raw) || [];
+                    if (!Array.isArray(more) || !more.length) break;
+
+                    let added = 0;
                     for (const q of more) {
                         const k = keyOf(q);
                         if (!seen.has(k)) {
                             seen.add(k);
                             parsed.push(q);
+                            added++;
                         }
                     }
+
+                    if (added === 0) break;
+                } catch (contErr) {
+                    console.warn(`Continuation extraction pass ${pass} skipped:`, contErr.message);
+                    break;
                 }
-            } catch (contErr) {
-                console.warn("Continuation extraction skipped:", contErr.message);
             }
         }
 
