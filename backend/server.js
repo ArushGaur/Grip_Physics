@@ -417,7 +417,7 @@ app.post("/api/check-attempt", async (req, res) => {
 });
 
 app.post("/api/submit-attempt", rateLimit(60 * 1000, 5), async (req, res) => {
-    const { mobile, chapter, lecture, selectedAnswers, name, place, className } = req.body;
+    const { mobile, chapter, lecture, selectedAnswers, askedQuestionIndexes, name, place, className } = req.body;
     if (!mobile || !lecture) return res.status(400).json({ error: "Missing" });
     const q = await findQuestion(chapter, lecture);
     if (!q) return res.status(404).json({ error: "Not found" });
@@ -426,8 +426,18 @@ app.post("/api/submit-attempt", rateLimit(60 * 1000, 5), async (req, res) => {
     if (lastResult.rows.length && lastResult.rows[0].time >= (q.updatedAt || 0)) return res.json({ allowed: false });
 
     const answers = Array.isArray(selectedAnswers) ? selectedAnswers : [];
+    const validSourceIndexes = Array.isArray(askedQuestionIndexes)
+        ? askedQuestionIndexes.map((idx) => Number(idx)).filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < q.questions.length)
+        : [];
+    const questionsForScoring = validSourceIndexes.length
+        ? validSourceIndexes.map((idx) => q.questions[idx]).filter(Boolean)
+        : q.questions;
+
     let correctCount = 0;
-    answers.forEach((ans, i) => { if (isCorrect(q.questions[i], ans)) correctCount++; });
+    answers.forEach((ans, i) => {
+        if (isCorrect(questionsForScoring[i], ans)) correctCount++;
+    });
+    const totalQuestions = questionsForScoring.length;
     const now = Date.now();
 
     await db.execute({ sql: "INSERT INTO attempts (mobile, chapter, lecture, time) VALUES (?, ?, ?, ?)", args: [mobile, chapter || null, lecture, now] });
@@ -438,9 +448,9 @@ app.post("/api/submit-attempt", rateLimit(60 * 1000, 5), async (req, res) => {
                 name=excluded.name, place=excluded.place, class_name=excluded.class_name,
                 chapter=excluded.chapter, answers_json=excluded.answers_json,
                 correct_count=excluded.correct_count, total_questions=excluded.total_questions, time=excluded.time`,
-        args: [mobile, lecture, name, place, className, chapter || null, JSON.stringify(answers), correctCount, q.questions.length, now],
+        args: [mobile, lecture, name, place, className, chapter || null, JSON.stringify(answers), correctCount, totalQuestions, now],
     });
-    res.json({ success: true, correctCount, totalQuestions: q.questions.length });
+    res.json({ success: true, correctCount, totalQuestions });
 });
 
 app.post("/api/student-register", async (req, res) => {
@@ -530,10 +540,38 @@ app.post("/api/admin/rename-chapter", requireAdmin, async (req, res) => {
     try {
         const { oldName, newName } = req.body;
         if (!oldName || !newName) return res.status(400).json({ error: "Missing old or new chapter name." });
-        const result = await db.execute({ sql: "UPDATE questions SET chapter = ? WHERE chapter = ?", args: [newName, oldName] });
-        if (!result.rowsAffected) return res.status(404).json({ error: "Chapter not found or no questions exist." });
+
+        const questionsResult = await db.execute({
+            sql: "UPDATE questions SET chapter = ? WHERE chapter = ?",
+            args: [newName, oldName]
+        });
+        const studentsResult = await db.execute({
+            sql: "UPDATE students SET chapter = ? WHERE chapter = ?",
+            args: [newName, oldName]
+        });
+        const attemptsResult = await db.execute({
+            sql: "UPDATE attempts SET chapter = ? WHERE chapter = ?",
+            args: [newName, oldName]
+        });
+
+        const questionsUpdated = questionsResult.rowsAffected || 0;
+        const studentsUpdated = studentsResult.rowsAffected || 0;
+        const attemptsUpdated = attemptsResult.rowsAffected || 0;
+        const totalUpdated = questionsUpdated + studentsUpdated + attemptsUpdated;
+
+        if (!totalUpdated) return res.status(404).json({ error: "Chapter not found in questions, students, or attempts." });
+
         await loadQuestions();
-        res.json({ success: true, updated: result.rowsAffected });
+
+        res.json({
+            success: true,
+            updated: {
+                questions: questionsUpdated,
+                students: studentsUpdated,
+                attempts: attemptsUpdated,
+                total: totalUpdated,
+            },
+        });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
