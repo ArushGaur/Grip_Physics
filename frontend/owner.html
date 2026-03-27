@@ -2946,6 +2946,10 @@
                         <button class="btn btn-ghost" onclick="handleQuestionViewBack()"
                             style="padding:7px 14px;font-size:0.85rem">← Back</button>
                         <div class="qview-actions">
+                            <button class="btn btn-ghost" id="mq-prev-btn" onclick="navigateQuestion(-1)"
+                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Previous question">◀ Prev</button>
+                            <button class="btn btn-ghost" id="mq-next-btn" onclick="navigateQuestion(1)"
+                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Next question">Next ▶</button>
                             <button class="btn btn-primary" onclick="saveInlineEdit()"
                                 style="padding:8px 16px;font-size:0.85rem">💾 Save</button>
                             <button class="btn btn-ghost" onclick="cancelInlineEdit()"
@@ -3237,7 +3241,7 @@
             </div>
 
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:0.8rem;color:var(--text-dim)">
-                <span>🔍 Scroll wheel = zoom &nbsp;|&nbsp; Hold <kbd style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:1px 5px">Space</kbd> + drag = pan &nbsp;|&nbsp; Drag image corner = resize crop</span>
+                <span>🔍 Scroll = zoom &nbsp;|&nbsp; Drag = pan &nbsp;|&nbsp; <kbd style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:1px 5px">Dbl-click</kbd> = draw/move crop box &nbsp;|&nbsp; Drag crop corner = resize</span>
             </div>
 
             <div class="modal-actions" style="margin-top:auto;width:100%">
@@ -3270,6 +3274,8 @@
         let _pendingConfirmAction = null, _pendingCancelAction = null;
         let _hasUnsavedEdits = false;
         let _originalEditSnapshot = null;
+        let mqCurrentSqIdx = -1;          // index in _mqQuestionList of current question
+        let _mqQuestionList = [];         // [{gi, sqIdx}] — flat ordered list for prev/next nav
 
         function askConfirmModalPromise({ title, text, confirmText }) {
             return new Promise(resolve => {
@@ -4568,9 +4574,10 @@
             // Wait for image to load before init
             img.onload = () => {
                 currentCropper = new Cropper(img, {
-                    viewMode: 1,          // Image constrained inside container; drag-mode moves canvas
-                    dragMode: 'move',     // Default drag moves the canvas (pan), not draws crop
-                    autoCrop: false,
+                    viewMode: 2,          // Allow canvas to move freely inside/outside container
+                    dragMode: 'move',     // Default drag = pan the canvas
+                    autoCrop: true,       // Show crop box immediately
+                    autoCropArea: 0.6,    // Crop box covers 60% of canvas initially
                     background: true,
                     zoomable: true,
                     zoomOnTouch: true,
@@ -4581,8 +4588,9 @@
                     wheelZoomRatio: 0.08,
                     toggleDragModeOnDblclick: true, // Dbl-click switches between move/crop
                     ready() {
-                        // Switch to crop draw mode after user zooms (they can dbl-click to pan)
-                        this.cropper.setDragMode('crop');
+                        // Keep drag mode as 'move' so users can pan after zooming
+                        // Double-click to switch to crop-draw mode
+                        this.cropper.setDragMode('move');
                     }
                 });
             };
@@ -4821,15 +4829,20 @@
 
             let savedQ = 0, saved = 0, failed = [];
             for (const lec of lectures) {
-                document.getElementById("progBar").style.width = Math.round((savedQ / totalQuestions) * 100) + "%";
-                document.getElementById("progText").textContent = `${savedQ} / ${totalQuestions} questions saved…`;
+                const lecQCount = groups[lec].length;
+                // Show that we're saving this lecture
+                document.getElementById("progText").textContent = `Saving ${savedQ + lecQCount > totalQuestions ? totalQuestions : savedQ + 1}–${Math.min(savedQ + lecQCount, totalQuestions)} / ${totalQuestions} questions…`;
                 const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec] }) });
                 if (r.ok) {
                     const data = await r.json();
-                    savedQ += groups[lec].length;
+                    // Increment one by one with small visual delay for feedback
+                    for (let qi = 0; qi < lecQCount; qi++) {
+                        savedQ++;
+                        document.getElementById("progBar").style.width = Math.round((savedQ / totalQuestions) * 100) + "%";
+                        document.getElementById("progText").textContent = `${savedQ} / ${totalQuestions} questions saved`;
+                        if (qi < lecQCount - 1) await new Promise(r => setTimeout(r, 60));
+                    }
                     saved++;
-                    document.getElementById("progBar").style.width = Math.round((savedQ / totalQuestions) * 100) + "%";
-                    document.getElementById("progText").textContent = `${savedQ} / ${totalQuestions} questions saved…`;
                 } else {
                     failed.push(lec);
                 }
@@ -5342,9 +5355,12 @@
                 document.getElementById("mq-chapter-title").textContent = `${ch} - Lecture ${lecNum}`;
                 document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
                 const grid = document.getElementById("lectureCardsGrid");
+                // Build navigation list for Prev/Next buttons
+                _mqQuestionList = [];
                 grid.innerHTML = allQs.map((sq, idx) => {
                     const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum) && q.questions?.includes(sq));
                     const sqIdx = allQuestions[gi]?.questions?.indexOf(sq) ?? idx;
+                    _mqQuestionList.push({ gi, sqIdx });
                     const previewText = stripMath((sq.question || "").substring(0, 60));
                     return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
                         <div class="lecture-card-num">Q${idx + 1}</div>
@@ -5369,10 +5385,13 @@
                 document.getElementById("mq-chapter-title").textContent = `${ch} - ${topic}`;
                 document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
                 const grid = document.getElementById("lectureCardsGrid");
+                // Build navigation list for Prev/Next buttons
+                _mqQuestionList = [];
                 let qIndex = 1;
                 grid.innerHTML = qs.flatMap(q => {
                     return (q.questions || []).map((sq, sqIdx) => {
                         const gi = allQuestions.indexOf(q);
+                        _mqQuestionList.push({ gi, sqIdx });
                         const previewText = stripMath((sq.question || "").substring(0, 60));
                         return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
                             <div class="lecture-card-num">Q${qIndex++}</div>
@@ -5382,6 +5401,25 @@
                     });
                 }).join("");
             }
+        }
+        function navigateQuestion(delta) {
+            // Guard unsaved changes
+            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
+                // Store intent and show unsaved modal
+                _pendingNavDelta = delta;
+                openModal('unsavedModal');
+                return;
+            }
+            _doNavigateQuestion(delta);
+        }
+        let _pendingNavDelta = 0;
+        function _doNavigateQuestion(delta) {
+            const newIdx = mqCurrentSqIdx + delta;
+            if (newIdx < 0 || newIdx >= _mqQuestionList.length) return;
+            const { gi, sqIdx } = _mqQuestionList[newIdx];
+            _hasUnsavedEdits = false;
+            showQuestionView(gi, sqIdx);
+            history.pushState({ type: "mqQuestion", idx: gi, sqIdx }, "", "");
         }
         function handleLecCardClick(e, el) {
             const ch = el.dataset.ch;
@@ -5408,7 +5446,21 @@
             document.getElementById("mq-lecture-view").style.display = "none";
             document.getElementById("mq-question-view").style.display = "block";
             document.getElementById("mq-question-title").textContent = `${q.chapter} — Lecture ${q.lecture}`;
-            document.getElementById("mq-question-subtitle").textContent = filterSingle ? `Question ${sqIdx + 1} of ${(q.questions || []).length}` : `${(q.questions || []).length} question(s) · ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}`;
+
+            // Find position in the navigation list
+            const listIdx = _mqQuestionList.findIndex(e => e.gi === gi && (sqIdx === undefined || e.sqIdx === sqIdx));
+            mqCurrentSqIdx = listIdx;
+            const inList = _mqQuestionList.length > 1;
+            const posLabel = inList && listIdx >= 0 ? ` · ${listIdx + 1} / ${_mqQuestionList.length}` : '';
+            document.getElementById("mq-question-subtitle").textContent = filterSingle
+                ? `Question ${sqIdx + 1} of ${(q.questions || []).length}${posLabel}`
+                : `${(q.questions || []).length} question(s) · ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}`;
+
+            // Show/hide & enable/disable prev/next buttons
+            const prevBtn = document.getElementById('mq-prev-btn');
+            const nextBtn = document.getElementById('mq-next-btn');
+            if (prevBtn) { prevBtn.style.display = inList ? '' : 'none'; prevBtn.disabled = listIdx <= 0; }
+            if (nextBtn) { nextBtn.style.display = inList ? '' : 'none'; nextBtn.disabled = listIdx < 0 || listIdx >= _mqQuestionList.length - 1; }
 
             const el = document.getElementById("mq-question-content");
             el.innerHTML = `<div class="form-row" style="margin-bottom:16px">
@@ -5418,9 +5470,10 @@
             <div id="iqe-questions-container">
                 ${subsToRender.map(([sub, si]) => {
                 const ci = sub.correctIndexes || [sub.correctIndex || 0];
-                const hasImg = sub.questionImage;
-                const imgMime = hasImg ? (sub.questionImage.startsWith('/9j/') ? 'image/jpeg' : 'image/png') : '';
-                const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)"><img src="data:${imgMime};base64,${sub.questionImage}" alt="Question diagram" style="max-width:100%;max-height:250px;display:block;margin:0 auto;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'250px':'none'"></div>` : '';
+                const hasImg = sub.questionImage && sub.questionImage.length > 0;
+                const _imgData = hasImg ? sub.questionImage : '';
+                const imgMime = hasImg ? (_imgData.startsWith('/9j/') ? 'image/jpeg' : _imgData.startsWith('iVBOR') ? 'image/png' : _imgData.startsWith('R0lGO') ? 'image/gif' : 'image/jpeg') : '';
+                const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);text-align:center;background:rgba(0,0,0,0.1)"><img src="data:${imgMime};base64,${_imgData}" alt="Question diagram" style="max-width:100%;max-height:280px;display:inline-block;object-fit:contain;cursor:pointer;border-radius:var(--radius-sm)" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'280px':'none'" onerror="this.parentElement.innerHTML='<div style=\\'padding:12px;color:var(--error);font-size:0.82rem\\''>⚠️ Image failed to load</div>'"></div>` : '';
                 const isMulti = sub.isMultiCorrect || ci.length > 1;
                 return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
@@ -5465,13 +5518,15 @@
 
             // Track unsaved edits
             _hasUnsavedEdits = false;
-            setTimeout(() => {
-                _originalEditSnapshot = _getEditSnapshot();
-                // Attach oninput listeners to mark edits
-                document.querySelectorAll('#iqe-questions-container textarea, #iqe-questions-container input, #iqe-chapter, #iqe-lecture').forEach(el => {
-                    el.addEventListener('input', () => { _hasUnsavedEdits = true; });
-                });
-            }, 50);
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    _originalEditSnapshot = _getEditSnapshot();
+                    // Attach oninput listeners to mark edits
+                    document.querySelectorAll('#iqe-questions-container textarea, #iqe-questions-container input, #iqe-chapter, #iqe-lecture').forEach(el => {
+                        el.addEventListener('input', () => { _hasUnsavedEdits = true; });
+                    });
+                }, 120);
+            });
         }
 
         function _getEditSnapshot() {
@@ -5563,13 +5618,24 @@
             closeModal('unsavedModal');
             await saveInlineEdit();
             _hasUnsavedEdits = false;
-            goBackFromQuestion();
+            if (_pendingNavDelta !== 0) {
+                const delta = _pendingNavDelta; _pendingNavDelta = 0;
+                _doNavigateQuestion(delta);
+            } else {
+                goBackFromQuestion();
+            }
         }
 
         function discardAndGoBack() {
             closeModal('unsavedModal');
             _hasUnsavedEdits = false;
-            goBackFromQuestion();
+            if (_pendingNavDelta !== 0) {
+                const delta = _pendingNavDelta; _pendingNavDelta = 0;
+                _doNavigateQuestion(delta);
+            } else {
+                _pendingNavDelta = 0;
+                goBackFromQuestion();
+            }
         }
 
         function updatePreview(si) {
