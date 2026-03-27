@@ -774,6 +774,78 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             return res.status(500).json({ error: "Could not parse AI response. Please try again once; if it still fails, use manual answer key or cleaner screenshots." });
         }
 
+        const questionKey = (q) => {
+            const qq = String(q?.question || "").trim().toLowerCase();
+            const oo = JSON.stringify((q?.options || []).map((o) => String(o || "").trim().toLowerCase()));
+            return `${qq}||${oo}`;
+        };
+
+        const seen = new Set(Array.isArray(parsed) ? parsed.map(questionKey) : []);
+        const mergeUniqueQuestions = (arr) => {
+            if (!Array.isArray(arr) || !arr.length) return 0;
+            let added = 0;
+            for (const q of arr) {
+                const key = questionKey(q);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    parsed.push(q);
+                    added++;
+                }
+            }
+            return added;
+        };
+
+        // Continue extraction in bounded passes to recover questions often dropped in a single response.
+        for (let pass = 1; pass <= 4; pass++) {
+            try {
+                const lastStem = String(parsed?.[parsed.length - 1]?.question || "").replace(/\s+/g, " ").slice(0, 180);
+                const seenPreview = (parsed || []).slice(-5).map((q) => `- ${String(q?.question || "").replace(/\s+/g, " ").slice(0, 120)}`).join("\n");
+                const continuationInstruction = [
+                    `Continuation pass ${pass}: return ONLY remaining unseen questions from the same images.`,
+                    `Keep original order and do not repeat already extracted items.`,
+                    lastStem ? `The last extracted stem was: "${lastStem}".` : "",
+                    seenPreview ? `Already extracted stems (do not repeat):\n${seenPreview}` : "",
+                    `Output JSON array only. If no new questions remain, return [].`
+                ].filter(Boolean).join("\n\n");
+
+                const rawNext = await requestExtraction(continuationInstruction);
+                const parsedNext = parseAiQuestions(rawNext);
+                if (!Array.isArray(parsedNext) || !parsedNext.length) break;
+
+                const added = mergeUniqueQuestions(parsedNext);
+
+                if (added === 0) break;
+            } catch (contErr) {
+                console.warn(`Continuation extraction pass ${pass} skipped:`, contErr.message);
+                break;
+            }
+        }
+
+        // Fallback: explicitly ask by numbered sequence windows to recover missed questions (generic, no fixed total assumed).
+        let emptyRangePasses = 0;
+        const rangeSize = 10;
+        for (let rangeStart = 1; rangeStart <= 60; rangeStart += rangeSize) {
+            if (emptyRangePasses >= 2) break;
+            const rangeEnd = rangeStart + rangeSize - 1;
+            try {
+                const rangeInstruction = [
+                    `Numbered-sequence pass: extract questions whose printed question numbers are in range ${rangeStart} to ${rangeEnd}.`,
+                    `If a question number is outside this range, do not include it.`,
+                    `Do not repeat already extracted questions.`,
+                    `Return JSON array only; return [] if none in this range.`
+                ].join("\n");
+
+                const rawRange = await requestExtraction(rangeInstruction);
+                const parsedRange = parseAiQuestions(rawRange);
+                const added = mergeUniqueQuestions(parsedRange || []);
+                if (added === 0) emptyRangePasses++;
+                else emptyRangePasses = 0;
+            } catch (rangeErr) {
+                console.warn(`Numbered-sequence pass ${rangeStart}-${rangeEnd} skipped:`, rangeErr.message);
+                emptyRangePasses++;
+            }
+        }
+
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
 
         const normalizeMathText = (val) => {
