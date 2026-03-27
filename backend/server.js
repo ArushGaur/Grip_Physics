@@ -789,38 +789,35 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         };
         const seen = new Set(parsed.map(keyOf));
 
-        // Run continuation if likely incomplete OR generally when count is large enough that truncation is common.
-        const shouldContinue = firstPass.finishReason === "length" || parsed.length >= 8;
-        if (shouldContinue) {
-            for (let pass = 1; pass <= 3; pass++) {
-                try {
-                    const lastStem = String(parsed[parsed.length - 1]?.question || "").replace(/\s+/g, " ").slice(0, 180);
-                    const continuationInstruction = [
-                        `Pass ${pass}: You previously returned ${parsed.length} question(s).`,
-                        `Continue extracting ONLY remaining unseen questions that appear AFTER this last extracted stem in image order: "${lastStem}".`,
-                        `Do not repeat earlier questions.`,
-                        `Return JSON array only. If no more questions remain, return [].`
-                    ].join(" ");
+        // Always attempt bounded continuation passes; this is generic and not tied to any specific question count.
+        for (let pass = 1; pass <= 3; pass++) {
+            try {
+                const lastStem = String(parsed[parsed.length - 1]?.question || "").replace(/\s+/g, " ").slice(0, 180);
+                const continuationInstruction = [
+                    `Pass ${pass}: You previously returned ${parsed.length} question(s).`,
+                    `Continue extracting ONLY remaining unseen questions that appear AFTER this last extracted stem in image order: "${lastStem}".`,
+                    `Do not repeat earlier questions.`,
+                    `Return JSON array only. If no more questions remain, return [].`
+                ].join(" ");
 
-                    const nextPass = await requestExtraction(continuationInstruction);
-                    const more = parseAiQuestions(nextPass.raw) || [];
-                    if (!Array.isArray(more) || !more.length) break;
+                const nextPass = await requestExtraction(continuationInstruction);
+                const more = parseAiQuestions(nextPass.raw) || [];
+                if (!Array.isArray(more) || !more.length) break;
 
-                    let added = 0;
-                    for (const q of more) {
-                        const k = keyOf(q);
-                        if (!seen.has(k)) {
-                            seen.add(k);
-                            parsed.push(q);
-                            added++;
-                        }
+                let added = 0;
+                for (const q of more) {
+                    const k = keyOf(q);
+                    if (!seen.has(k)) {
+                        seen.add(k);
+                        parsed.push(q);
+                        added++;
                     }
-
-                    if (added === 0) break;
-                } catch (contErr) {
-                    console.warn(`Continuation extraction pass ${pass} skipped:`, contErr.message);
-                    break;
                 }
+
+                if (added === 0) break;
+            } catch (contErr) {
+                console.warn(`Continuation extraction pass ${pass} skipped:`, contErr.message);
+                break;
             }
         }
 
