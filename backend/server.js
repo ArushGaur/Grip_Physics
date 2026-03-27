@@ -266,7 +266,8 @@ function normalizeQuestion(row) {
         d.questions = d.questions.map((q) => {
             if (!q.correctIndexes || !q.correctIndexes.length)
                 q.correctIndexes = [typeof q.correctIndex === "number" ? q.correctIndex : 0];
-            q.isMultiCorrect = q.correctIndexes.length > 1;
+            // Preserve explicit isMultiCorrect flag; fallback to checking array length
+            if (typeof q.isMultiCorrect !== "boolean") q.isMultiCorrect = q.correctIndexes.length > 1;
             return q;
         });
         return d;
