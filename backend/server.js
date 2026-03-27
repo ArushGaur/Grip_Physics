@@ -780,11 +780,35 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             return `${qq}||${oo}`;
         };
 
+        const extractQuestionNumber = (q) => {
+            const txt = String(q?.question || "").trim();
+            const m = txt.match(/^\s*(?:q\.?\s*)?(\d{1,3})\s*[\).:-]/i);
+            if (!m) return null;
+            const n = parseInt(m[1], 10);
+            return Number.isInteger(n) ? n : null;
+        };
+
         const seen = new Set(Array.isArray(parsed) ? parsed.map(questionKey) : []);
         const mergeUniqueQuestions = (arr) => {
             if (!Array.isArray(arr) || !arr.length) return 0;
             let added = 0;
             for (const q of arr) {
+                const key = questionKey(q);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    parsed.push(q);
+                    added++;
+                }
+            }
+            return added;
+        };
+
+        const mergeUniqueQuestionsInRange = (arr, rangeStart, rangeEnd) => {
+            if (!Array.isArray(arr) || !arr.length) return 0;
+            let added = 0;
+            for (const q of arr) {
+                const qn = extractQuestionNumber(q);
+                if (!Number.isInteger(qn) || qn < rangeStart || qn > rangeEnd) continue;
                 const key = questionKey(q);
                 if (!seen.has(key)) {
                     seen.add(key);
@@ -821,29 +845,43 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             }
         }
 
-        // Fallback: explicitly ask by numbered sequence windows to recover missed questions (generic, no fixed total assumed).
-        let emptyRangePasses = 0;
-        const rangeSize = 10;
-        for (let rangeStart = 1; rangeStart <= 60; rangeStart += rangeSize) {
-            if (emptyRangePasses >= 2) break;
-            const rangeEnd = rangeStart + rangeSize - 1;
-            try {
-                const rangeInstruction = [
-                    `Numbered-sequence pass: extract questions whose printed question numbers are in range ${rangeStart} to ${rangeEnd}.`,
-                    `If a question number is outside this range, do not include it.`,
-                    `Do not repeat already extracted questions.`,
-                    `Return JSON array only; return [] if none in this range.`
-                ].join("\n");
+        // Fallback: numbered windows only when dataset appears explicitly numbered.
+        const numberedCount = parsed.reduce((acc, q) => acc + (Number.isInteger(extractQuestionNumber(q)) ? 1 : 0), 0);
+        const hasMostlyNumberedQuestions = parsed.length > 0 && (numberedCount / parsed.length) >= 0.5;
+        if (hasMostlyNumberedQuestions) {
+            let emptyRangePasses = 0;
+            const rangeSize = 10;
+            for (let rangeStart = 1; rangeStart <= 60; rangeStart += rangeSize) {
+                if (emptyRangePasses >= 2) break;
+                const rangeEnd = rangeStart + rangeSize - 1;
+                try {
+                    const rangeInstruction = [
+                        `Numbered-sequence pass: extract questions whose printed question numbers are in range ${rangeStart} to ${rangeEnd}.`,
+                        `Include ONLY questions whose number prefix is in this range, exclude all others.`,
+                        `Do not repeat already extracted questions.`,
+                        `Return JSON array only; return [] if none in this range.`
+                    ].join("\n");
 
-                const rawRange = await requestExtraction(rangeInstruction);
-                const parsedRange = parseAiQuestions(rawRange);
-                const added = mergeUniqueQuestions(parsedRange || []);
-                if (added === 0) emptyRangePasses++;
-                else emptyRangePasses = 0;
-            } catch (rangeErr) {
-                console.warn(`Numbered-sequence pass ${rangeStart}-${rangeEnd} skipped:`, rangeErr.message);
-                emptyRangePasses++;
+                    const rawRange = await requestExtraction(rangeInstruction);
+                    const parsedRange = parseAiQuestions(rawRange);
+                    const added = mergeUniqueQuestionsInRange(parsedRange || [], rangeStart, rangeEnd);
+                    if (added === 0) emptyRangePasses++;
+                    else emptyRangePasses = 0;
+                } catch (rangeErr) {
+                    console.warn(`Numbered-sequence pass ${rangeStart}-${rangeEnd} skipped:`, rangeErr.message);
+                    emptyRangePasses++;
+                }
             }
+
+            // If numbering exists, keep only one best entry per question number to avoid over-generated extras.
+            const seenNums = new Set();
+            parsed = parsed.filter((q) => {
+                const qn = extractQuestionNumber(q);
+                if (!Number.isInteger(qn)) return true;
+                if (seenNums.has(qn)) return false;
+                seenNums.add(qn);
+                return true;
+            });
         }
 
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
