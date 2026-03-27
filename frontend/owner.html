@@ -59,26 +59,26 @@
         }
 
         [data-theme="light"] {
-            --bg: #e9edff;
+            --bg: #eff6ff;
             --bg-card: #ffffff;
-            --bg-input: #eef2ff;
-            --bg-hover: #e3e9ff;
-            --bg-sidebar: #f8f9ff;
-            --border: rgba(59, 72, 143, 0.2);
-            --border-focus: #5157e7;
-            --accent: #4b53eb;
-            --accent-2: #7a3df0;
-            --accent-3: #089d7a;
-            --accent-4: #cc6f00;
-            --accent-glow: rgba(75, 83, 235, 0.22);
-            --success: #089d7a;
-            --error: #dc2626;
-            --warn: #c96b00;
-            --text: #070d1a;
-            --text-dim: rgba(7, 13, 26, 0.86);
-            --text-muted: rgba(7, 13, 26, 0.72);
-            --shadow-card: 0 8px 28px rgba(44, 63, 148, 0.12);
-            --shadow-modal: 0 24px 80px rgba(27, 38, 94, 0.28);
+            --bg-input: #f2f8ff;
+            --bg-hover: #e8f2ff;
+            --bg-sidebar: #f7fbff;
+            --border: rgba(35, 84, 150, 0.18);
+            --border-focus: #2f7dd3;
+            --accent: #2f7dd3;
+            --accent-2: #1ca79b;
+            --accent-3: #148a7f;
+            --accent-4: #b26f18;
+            --accent-glow: rgba(47, 125, 211, 0.2);
+            --success: #148a7f;
+            --error: #cf2f3f;
+            --warn: #a76812;
+            --text: #0e1a2a;
+            --text-dim: rgba(14, 26, 42, 0.84);
+            --text-muted: rgba(14, 26, 42, 0.66);
+            --shadow-card: 0 8px 28px rgba(23, 70, 130, 0.12);
+            --shadow-modal: 0 24px 80px rgba(23, 70, 130, 0.22);
         }
 
         /* RESET */
@@ -3229,9 +3229,9 @@
 
             <!-- Image navigation bar (shown only when multiple screenshots exist) -->
             <div id="cropImageNav" style="display:none;align-items:center;gap:10px;margin-bottom:10px;width:100%">
-                <button onclick="cropNavPrev()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">◀ Prev</button>
+                <button type="button" onclick="cropNavPrev()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">◀ Prev</button>
                 <span id="cropNavLabel" style="font-size:0.82rem;color:var(--text-dim);flex:1;text-align:center">Image 1 / 1</span>
-                <button onclick="cropNavNext()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">Next ▶</button>
+                <button type="button" onclick="cropNavNext()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">Next ▶</button>
             </div>
 
             <!-- Crop container: overflow:hidden so Cropper.js controls scrolling internally -->
@@ -3245,8 +3245,8 @@
             </div>
 
             <div class="modal-actions" style="margin-top:auto;width:100%">
-                <button class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact Crop</button>
-                <button class="btn btn-ghost" onclick="closeCropper()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact Crop</button>
+                <button type="button" class="btn btn-ghost" onclick="closeCropper()">Cancel</button>
             </div>
         </div>
     </div>
@@ -4665,7 +4665,7 @@
         }
 
         function saveCropperData() {
-            if (currentCropQi === null) {
+            if (currentCropQi === null || currentCropQi === undefined) {
                 showErrorModal("No question selected for cropping.", "Error");
                 return;
             }
@@ -4694,7 +4694,11 @@
                 }
 
                 const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-                const b64 = dataUrl.split(",")[1];
+                const b64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : "";
+                if (!b64) {
+                    showErrorModal("Failed to encode crop image. Please try again.", "Crop error");
+                    return;
+                }
 
                 setEqManualImage(currentCropQi, b64);
                 closeCropper();
@@ -4980,6 +4984,11 @@
             if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
         }
 
+        function setQuestionSelectButtonVisible(visible) {
+            const btn = document.getElementById("lecSelectModeQBtn");
+            if (btn) btn.style.display = visible ? "" : "none";
+        }
+
         function renderQuestionList(questions) { renderChapterCards(questions); }
 
         function filterLectureCards() {
@@ -5221,9 +5230,9 @@
             
             // Refresh to show checkboxes
             if (mqCurrentChapter && mqCurrentLectureNum !== null) {
-                showLectureViewForChapter(mqCurrentChapter);
+                handleLectureNumClick(null, null, mqCurrentChapter, mqCurrentLectureNum);
             } else if (mqCurrentChapter && mqCurrentTopic) {
-                handleTopicCardClick(event, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
+                handleTopicCardClick(null, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
             }
         }
         
@@ -5252,18 +5261,20 @@
             }
         }
         
-        function clearQuestionSelection() {
+        function clearQuestionSelection(skipRefresh = false) {
             qSelectModeOn = false; selectedQuestions.clear();
             document.getElementById("lecSelectModeQBtn").textContent = "☐ Select Questions";
             document.getElementById("lec-mass-delete-q-bar").classList.remove("visible");
             const grid = document.getElementById("lectureCardsGrid");
             if (grid) grid.classList.remove("lec-select-mode");
+
+            if (skipRefresh) return;
             
             // Refresh to hide checkboxes
             if (mqCurrentChapter && mqCurrentLectureNum !== null) {
-                showLectureViewForChapter(mqCurrentChapter);
+                handleLectureNumClick(null, null, mqCurrentChapter, mqCurrentLectureNum);
             } else if (mqCurrentChapter && mqCurrentTopic) {
-                handleTopicCardClick(event, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
+                handleTopicCardClick(null, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
             }
         }
         window.clearQuestionSelection = clearQuestionSelection;
@@ -5332,13 +5343,15 @@
                 if (r.ok) {
                     hideDeleteProgress();
                     showSuccessModal("Deleted!", `${qIndices.length} question(s) deleted successfully.`);
-                    clearQuestionSelection();
+                    clearQuestionSelection(true);
                     await loadQuestionsAdmin();
                     
                     // Refresh the view
                     if (mqCurrentTopic) {
-                        handleTopicCardClick(event, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
+                        handleTopicCardClick(null, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
                     } else if (mqCurrentLectureNum !== null) {
+                        handleLectureNumClick(null, null, mqCurrentChapter, mqCurrentLectureNum);
+                    } else if (mqCurrentChapter) {
                         showLectureViewForChapter(mqCurrentChapter);
                     }
                 } else {
@@ -5360,6 +5373,7 @@
             document.getElementById("mq-chapter-view").style.display = "block";
             document.getElementById("mq-lecture-view").style.display = "none";
             document.getElementById("mq-question-view").style.display = "none";
+            setQuestionSelectButtonVisible(false);
             mqCurrentChapter = null; mqCurrentLectureIdx = null; mqCurrentTopic = null; mqCurrentLectureNum = null; mqPrevView = null;
         }
         
@@ -5376,12 +5390,16 @@
         
         function showLectureViewForChapter(ch) {
             mqCurrentChapter = ch;
+            mqCurrentTopic = null;
+            mqCurrentLectureNum = null;
             mqPrevView = 'chapter';
             const viewMode = document.getElementById("lecViewMode")?.value || "topic";
             const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch).sort((a, b) => Number(a.lecture) - Number(b.lecture));
             document.getElementById("mq-chapter-view").style.display = "none";
             document.getElementById("mq-lecture-view").style.display = "block";
             document.getElementById("mq-question-view").style.display = "none";
+            setQuestionSelectButtonVisible(false);
+            clearQuestionSelection(true);
             document.getElementById("mq-chapter-title").textContent = ch;
             document.getElementById("mq-lecture-count").textContent = lecs.length + " lecture(s)";
             const grid = document.getElementById("lectureCardsGrid");
@@ -5436,10 +5454,12 @@
             if (totalQ > 0) {
                 mqCurrentChapter = ch;
                 mqCurrentLectureNum = lecNum;
+                mqCurrentTopic = null;
                 mqPrevView = 'lecture';
                 document.getElementById("mq-chapter-view").style.display = "none";
                 document.getElementById("mq-lecture-view").style.display = "block";
                 document.getElementById("mq-question-view").style.display = "none";
+                setQuestionSelectButtonVisible(true);
                 document.getElementById("mq-chapter-title").textContent = `${ch} - Lecture ${lecNum}`;
                 document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
                 const grid = document.getElementById("lectureCardsGrid");
@@ -5472,10 +5492,12 @@
             if (totalQ > 0) {
                 mqCurrentChapter = ch;
                 mqCurrentTopic = topic;
+                mqCurrentLectureNum = null;
                 mqPrevView = 'topic';
                 document.getElementById("mq-chapter-view").style.display = "none";
                 document.getElementById("mq-lecture-view").style.display = "block";
                 document.getElementById("mq-question-view").style.display = "none";
+                setQuestionSelectButtonVisible(true);
                 document.getElementById("mq-chapter-title").textContent = `${ch} - ${topic}`;
                 document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
                 const grid = document.getElementById("lectureCardsGrid");
@@ -6226,16 +6248,103 @@
            CSV EXPORT
         ══════════════════════════════════════════════════════════════════ */
         function exportCSV() {
-            let csv = "Name,Mobile,Place,Class,Chapter,Lecture,Correct,Total,Score%\n";
-            allStudents.filter(s => (s.answers && s.answers.length > 0) || typeof s.correctCount === "number").forEach(s => {
-                const pct = s.totalQuestions ? Math.round((s.correctCount / s.totalQuestions) * 100) : 0;
-                const mobile = s.mobile ? `="${s.mobile}"` : "";
-                csv += `"${s.name || ""}",${mobile},"${s.place || ""}","${s.className || ""}","${s.chapter || ""}","${s.lecture || ""}",${s.correctCount || 0},${s.totalQuestions || 0},${pct}%\n`;
+            const q = (document.getElementById('studentSearch')?.value || "").toLowerCase().trim();
+            const chapterFilter = document.getElementById('stu-chapter-filter')?.value || '';
+            const sortFilter = document.getElementById('stu-sort-filter')?.value || 'recent';
+
+            const toPct = (s) => {
+                const total = Number(s.totalQuestions || 0);
+                const correct = Number(s.correctCount || 0);
+                return total > 0 ? Math.round((correct / total) * 100) : (s.correct ? 100 : 0);
+            };
+
+            const performanceBand = (pct) => {
+                if (pct >= 80) return "Excellent";
+                if (pct >= 60) return "Good";
+                if (pct >= 40) return "Average";
+                return "Needs Improvement";
+            };
+
+            const csvEscape = (value) => {
+                const str = String(value ?? '');
+                return `"${str.replace(/"/g, '""')}"`;
+            };
+
+            let rows = allStudents
+                .filter(s => (s.answers && s.answers.length > 0) || typeof s.correctCount === "number")
+                .filter(s => {
+                    const searchMatch = !q
+                        || (s.name || "").toLowerCase().includes(q)
+                        || (s.mobile || "").includes(q)
+                        || (s.chapter || "").toLowerCase().includes(q)
+                        || String(s.lecture || "").includes(q)
+                        || (s.place || "").toLowerCase().includes(q)
+                        || (s.className || "").toLowerCase().includes(q);
+                    const chapterMatch = !chapterFilter || s.chapter === chapterFilter;
+                    return searchMatch && chapterMatch;
+                });
+
+            rows.sort((a, b) => {
+                switch (sortFilter) {
+                    case 'name': return (a.name || '').localeCompare(b.name || '');
+                    case 'score-desc': return toPct(b) - toPct(a);
+                    case 'score-asc': return toPct(a) - toPct(b);
+                    default: return Number(b.time || 0) - Number(a.time || 0);
+                }
             });
+
+            const stats = getStudentStats(rows);
+            const chapters = new Set(rows.map(r => r.chapter).filter(Boolean));
+
+            const lines = [];
+            lines.push("Grip Physics Student Report");
+            lines.push(`Generated At,${csvEscape(new Date().toLocaleString())}`);
+            lines.push(`Total Records,${rows.length}`);
+            lines.push(`Unique Chapters,${chapters.size}`);
+            lines.push(`Average Score,${stats.avgScore}%`);
+            lines.push(`Top Score,${stats.topScore}%`);
+            lines.push("");
+
+            lines.push("Summary Metric,Value");
+            lines.push(`Students Included,${rows.length}`);
+            lines.push(`Average Score %,${stats.avgScore}`);
+            lines.push(`Top Score %,${stats.topScore}`);
+            lines.push(`Current Chapter Filter,${csvEscape(chapterFilter || 'All Chapters')}`);
+            lines.push(`Current Sort,${csvEscape(sortFilter)}`);
+            lines.push("");
+
+            lines.push("Rank,Name,Mobile,Class,Place,Chapter,Lecture,Correct,Wrong,Total,Score %,Performance,Attempt Time");
+
+            rows.forEach((s, idx) => {
+                const total = Number(s.totalQuestions || 0);
+                const correct = Number(s.correctCount || 0);
+                const wrong = Math.max(0, total - correct);
+                const pct = toPct(s);
+                const timeStr = s.time ? new Date(s.time).toLocaleString() : '';
+                const mobileLiteral = s.mobile ? `="${String(s.mobile)}"` : '';
+
+                lines.push([
+                    idx + 1,
+                    csvEscape(s.name || ''),
+                    csvEscape(mobileLiteral),
+                    csvEscape(s.className || ''),
+                    csvEscape(s.place || ''),
+                    csvEscape(s.chapter || ''),
+                    csvEscape(s.lecture || ''),
+                    correct,
+                    wrong,
+                    total,
+                    pct,
+                    csvEscape(performanceBand(pct)),
+                    csvEscape(timeStr),
+                ].join(','));
+            });
+
+            const csv = "\uFEFF" + lines.join("\n");
             const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.href = url; link.download = `GripPhysics_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.href = url; link.download = `GripPhysics_Report_${new Date().toISOString().slice(0, 10)}.csv`;
             link.click();
         }
 
