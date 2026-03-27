@@ -7,18 +7,18 @@ const QUOTES = [
     '"Nothing in life is to be feared, only to be understood." — Curie'
 ];
 
-let currentQuestionSet=null, currentLecture=null, currentChapter=null;
-let currentQuestionIndex=0, selectedAnswers=[], timerInterval=null;
-let askedQuestionIndexes=[];
+let currentQuestionSet = null, currentLecture = null, currentChapter = null;
+let currentQuestionIndex = 0, selectedAnswers = [], timerInterval = null;
+let askedQuestionIndexes = [];
 
-document.getElementById("quote").innerText = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+document.getElementById("quote").innerText = QUOTES[Math.floor(Math.random() * QUOTES.length)];
 
 /* ── KATEX ── */
 function renderMath(el) {
-    if(window.renderMathInElement) {
+    if (window.renderMathInElement) {
         renderMathInElement(el, {
-            delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],
-            throwOnError:false
+            delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }],
+            throwOnError: false
         });
     }
 }
@@ -29,315 +29,462 @@ function setMathText(el, text) {
 }
 
 /* ── PARTICLES ── */
-particlesJS("particles-js",{
-    particles:{
-        number:{value:120,density:{enable:true,value_area:900}},
-        color:{value:["#6366f1","#8b5cf6","#06b6d4","#a78bfa","#818cf8"]},
-        shape:{type:"circle"},
-        opacity:{value:0.7,random:true,anim:{enable:true,speed:0.6,opacity_min:0.25,sync:false}},
-        size:{value:4,random:true,anim:{enable:true,speed:1.5,size_min:0.8,sync:false}},
-        line_linked:{enable:true,distance:160,color:"#8b5cf6",opacity:0.35,width:1.2},
-        move:{enable:true,speed:1.2,direction:"none",random:true,straight:false,out_mode:"out",bounce:false}
+particlesJS("particles-js", {
+    particles: {
+        number: { value: 120, density: { enable: true, value_area: 900 } },
+        color: { value: ["#6366f1", "#8b5cf6", "#06b6d4", "#a78bfa", "#818cf8"] },
+        shape: { type: "circle" },
+        opacity: { value: 0.7, random: true, anim: { enable: true, speed: 0.6, opacity_min: 0.25, sync: false } },
+        size: { value: 4, random: true, anim: { enable: true, speed: 1.5, size_min: 0.8, sync: false } },
+        line_linked: { enable: true, distance: 160, color: "#8b5cf6", opacity: 0.35, width: 1.2 },
+        move: { enable: true, speed: 1.2, direction: "none", random: true, straight: false, out_mode: "out", bounce: false }
     },
-    interactivity:{detect_on:"canvas",events:{onhover:{enable:true,mode:"grab"},onclick:{enable:true,mode:"push"},resize:true},modes:{grab:{distance:200,line_linked:{opacity:0.6}},push:{particles_nb:4}}},
-    retina_detect:true
+    interactivity: { detect_on: "canvas", events: { onhover: { enable: true, mode: "grab" }, onclick: { enable: true, mode: "push" }, resize: true }, modes: { grab: { distance: 200, line_linked: { opacity: 0.6 } }, push: { particles_nb: 4 } } },
+    retina_detect: true
 });
 
 /* ── LOADER ── */
-window.addEventListener("load",()=>{
-    setTimeout(()=>{
-        const loader=document.getElementById("loader"), main=document.getElementById("main-content");
-        loader.style.opacity="0";
-        setTimeout(()=>{loader.style.display="none";main.classList.remove("hidden");},800);
-    },2800);
+window.addEventListener("load", () => {
+    setTimeout(() => {
+        const loader = document.getElementById("loader"), main = document.getElementById("main-content");
+        loader.style.opacity = "0";
+        setTimeout(() => { loader.style.display = "none"; main.classList.remove("hidden"); }, 800);
+    }, 2800);
     loadChapters();
 });
 
-async function loadChapters(){
-    try{
-        const res=await fetch(`${API_BASE}/api/chapters`);
-        const chapters=await res.json();
-        const sel=document.getElementById("chapterList");
-        sel.innerHTML='';
-        chapters.forEach(ch=>{const o=document.createElement("option");o.value=ch;sel.appendChild(o);});
-        const chapterInput=document.getElementById("chapterSelect");
-        if(chapterInput&&chapterInput.value.trim()){
-            loadLecturesForChapter(chapterInput.value.trim());
+let availableChapters = [];
+let availableLectures = [];
+let loadedChapterKey = "";
+
+async function loadChapters() {
+    try {
+        const res = await fetch(`${API_BASE}/api/chapters`);
+        availableChapters = await res.json();
+        renderDropdown("chapterDropdown", availableChapters, document.getElementById("chapterSelect").value.trim(), selectChapter);
+        const chapterInput = document.getElementById("chapterSelect");
+        const presetChapter = findExactChapter(chapterInput?.value || "");
+        if (chapterInput && presetChapter) {
+            chapterInput.value = presetChapter;
+            loadLecturesForChapter(presetChapter);
         }
-    }catch(e){console.error("chapters:",e);}
+    } catch (e) { console.error("chapters:", e); }
 }
 
-async function loadLecturesForChapter(chapter){
-    const lectureList=document.getElementById("lectureList");
-    const lectureInput=document.getElementById("lectureSelect");
-    if(!lectureList||!lectureInput) return;
+async function loadLecturesForChapter(chapter) {
+    const lectureInput = document.getElementById("lectureSelect");
+    if (!lectureInput) return;
 
-    lectureList.innerHTML='';
-    if(!chapter){
-        lectureInput.placeholder="Search Lecture Number…";
+    availableLectures = [];
+    renderDropdown("lectureDropdown", [], "", selectLecture);
+    if (!chapter) {
+        lectureInput.placeholder = "Search Lecture Number…";
         return;
     }
 
-    try{
-        const res=await fetch(`${API_BASE}/api/lectures/${encodeURIComponent(chapter)}`);
-        if(!res.ok){
-            lectureInput.placeholder="No lectures found for chapter";
+    try {
+        const res = await fetch(`${API_BASE}/api/lectures/${encodeURIComponent(chapter)}`);
+        if (!res.ok) {
+            lectureInput.placeholder = "No lectures found for chapter";
             return;
         }
-        const lectures=await res.json();
-        (lectures||[]).forEach(lec=>{
-            const o=document.createElement("option");
-            o.value=String(lec);
-            lectureList.appendChild(o);
-        });
-        lectureInput.placeholder=lectures.length?"Search Lecture Number…":"No lectures found for chapter";
-    }catch(e){
-        console.error("lectures:",e);
-        lectureInput.placeholder="Failed to load lectures";
+        const lectures = await res.json();
+        availableLectures = (lectures || []).map(lec => String(lec));
+        renderDropdown("lectureDropdown", availableLectures, lectureInput.value.trim(), selectLecture);
+        lectureInput.placeholder = lectures.length ? "Search Lecture Number…" : "No lectures found for chapter";
+    } catch (e) {
+        console.error("lectures:", e);
+        lectureInput.placeholder = "Failed to load lectures";
     }
 }
 
-const chapterSelectInput=document.getElementById("chapterSelect");
-const lectureSelectInput=document.getElementById("lectureSelect");
-if(chapterSelectInput&&lectureSelectInput){
-    const onChapterUpdate=()=>{
-        lectureSelectInput.value="";
-        loadLecturesForChapter(chapterSelectInput.value.trim());
+function findExactChapter(value) {
+    const query = String(value || "").trim().toLowerCase();
+    if (!query) return "";
+    const match = availableChapters.find(ch => String(ch).toLowerCase() === query);
+    return match || "";
+}
+
+function renderDropdown(panelId, options, query, onSelect) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    const q = String(query || "").trim().toLowerCase();
+    const filtered = (options || []).filter(opt => String(opt).toLowerCase().includes(q));
+    panel.innerHTML = "";
+    if (!filtered.length) {
+        const empty = document.createElement("div");
+        empty.className = "custom-dropdown-empty";
+        empty.textContent = q ? "No matching results" : "No options available";
+        panel.appendChild(empty);
+        return;
+    }
+    filtered.slice(0, 80).forEach(opt => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "custom-dropdown-item";
+        btn.textContent = String(opt);
+        btn.addEventListener("mousedown", (e) => e.preventDefault());
+        btn.addEventListener("click", () => onSelect(String(opt)));
+        panel.appendChild(btn);
+    });
+}
+
+function openDropdown(panelId) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    closeDropdowns(panelId);
+    panel.classList.add("show");
+}
+
+function closeDropdowns(exceptId = "") {
+    ["chapterDropdown", "lectureDropdown"].forEach(id => {
+        if (id === exceptId) return;
+        document.getElementById(id)?.classList.remove("show");
+    });
+}
+
+function selectChapter(value) {
+    const chapterInput = document.getElementById("chapterSelect");
+    const lectureInput = document.getElementById("lectureSelect");
+    if (!chapterInput || !lectureInput) return;
+    chapterInput.value = value;
+    renderDropdown("chapterDropdown", availableChapters, value, selectChapter);
+    document.getElementById("chapterDropdown")?.classList.remove("show");
+
+    const chapterKey = value.toLowerCase();
+    if (loadedChapterKey !== chapterKey) {
+        loadedChapterKey = chapterKey;
+        lectureInput.value = "";
+        loadLecturesForChapter(value);
+    }
+}
+
+function selectLecture(value) {
+    const lectureInput = document.getElementById("lectureSelect");
+    if (!lectureInput) return;
+    lectureInput.value = value;
+    renderDropdown("lectureDropdown", availableLectures, value, selectLecture);
+    document.getElementById("lectureDropdown")?.classList.remove("show");
+}
+
+const chapterSelectInput = document.getElementById("chapterSelect");
+const lectureSelectInput = document.getElementById("lectureSelect");
+if (chapterSelectInput && lectureSelectInput) {
+    const onChapterUpdate = () => {
+        renderDropdown("chapterDropdown", availableChapters, chapterSelectInput.value.trim(), selectChapter);
+        openDropdown("chapterDropdown");
+
+        const exactChapter = findExactChapter(chapterSelectInput.value);
+        if (!exactChapter) {
+            loadedChapterKey = "";
+            availableLectures = [];
+            lectureSelectInput.value = "";
+            renderDropdown("lectureDropdown", availableLectures, "", selectLecture);
+            lectureSelectInput.placeholder = "Select a valid chapter first";
+            return;
+        }
+
+        if (loadedChapterKey !== exactChapter.toLowerCase()) {
+            selectChapter(exactChapter);
+        }
     };
-    chapterSelectInput.addEventListener("input",onChapterUpdate);
-    chapterSelectInput.addEventListener("change",onChapterUpdate);
+
+    chapterSelectInput.addEventListener("focus", () => {
+        renderDropdown("chapterDropdown", availableChapters, chapterSelectInput.value.trim(), selectChapter);
+        openDropdown("chapterDropdown");
+    });
+    chapterSelectInput.addEventListener("input", onChapterUpdate);
+
+    lectureSelectInput.addEventListener("focus", () => {
+        renderDropdown("lectureDropdown", availableLectures, lectureSelectInput.value.trim(), selectLecture);
+        openDropdown("lectureDropdown");
+    });
+    lectureSelectInput.addEventListener("input", () => {
+        renderDropdown("lectureDropdown", availableLectures, lectureSelectInput.value.trim(), selectLecture);
+        openDropdown("lectureDropdown");
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".custom-dropdown")) closeDropdowns();
+    });
+
+    chapterSelectInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeDropdowns();
+        if (e.key === "Enter") {
+            const first = document.querySelector("#chapterDropdown .custom-dropdown-item");
+            if (first) {
+                e.preventDefault();
+                selectChapter(first.textContent || "");
+            }
+        }
+    });
+
+    lectureSelectInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeDropdowns();
+        if (e.key === "Enter") {
+            const first = document.querySelector("#lectureDropdown .custom-dropdown-item");
+            if (first) {
+                e.preventDefault();
+                selectLecture(first.textContent || "");
+            }
+        }
+    });
+
+    chapterSelectInput.addEventListener("blur", () => {
+        const exact = findExactChapter(chapterSelectInput.value);
+        if (exact) chapterSelectInput.value = exact;
+    });
+
+    lectureSelectInput.addEventListener("blur", () => {
+        const val = lectureSelectInput.value.trim();
+        const exact = availableLectures.find(v => v.toLowerCase() === val.toLowerCase());
+        if (exact) lectureSelectInput.value = exact;
+    });
+
+    if (!chapterSelectInput.value.trim()) {
+        lectureSelectInput.value = "";
+        lectureSelectInput.placeholder = "Select a valid chapter first";
+    }
 }
 
 /* ── LOGIN ── */
-document.getElementById("loginForm").addEventListener("submit",async(e)=>{
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const name=document.getElementById("userName").value.trim();
-    const mobile=document.getElementById("userMobile").value.trim();
-    const place=document.getElementById("userPlace").value.trim();
-    const className=document.getElementById("userClass").value.trim();
-    const chapter=document.getElementById("chapterSelect").value;
-    const lecture=document.getElementById("lectureSelect").value.trim();
-    const btnText=document.getElementById("submitBtnText");
-    if(!/^[0-9]{10}$/.test(mobile)){shakeForm();showFormError("Please enter a valid 10-digit mobile number.");return;}
-    if(!chapter){shakeForm();showFormError("Please select a chapter.");return;}
-    if(!lecture){shakeForm();showFormError("Please select a lecture.");return;}
-    const availableLectures=[...document.querySelectorAll("#lectureList option")].map(o=>String(o.value));
-    if(availableLectures.length&&!availableLectures.includes(lecture)){
+    const name = document.getElementById("userName").value.trim();
+    const mobile = document.getElementById("userMobile").value.trim();
+    const place = document.getElementById("userPlace").value.trim();
+    const className = document.getElementById("userClass").value.trim();
+    const chapter = document.getElementById("chapterSelect").value.trim();
+    const lecture = document.getElementById("lectureSelect").value.trim();
+    const btnText = document.getElementById("submitBtnText");
+    if (!/^[0-9]{10}$/.test(mobile)) { shakeForm(); showFormError("Please enter a valid 10-digit mobile number."); return; }
+    if (!chapter) { shakeForm(); showFormError("Please select a chapter."); return; }
+    if (!lecture) { shakeForm(); showFormError("Please select a lecture."); return; }
+    const normalizedChapter = findExactChapter(chapter);
+    if (!normalizedChapter) {
+        shakeForm();
+        showFormError("Please select a valid chapter from the dropdown list.");
+        return;
+    }
+    const normalizedLecture = availableLectures.find(v => v.toLowerCase() === lecture.toLowerCase());
+    if (availableLectures.length && !normalizedLecture) {
         shakeForm();
         showFormError("Please select a valid lecture from the dropdown list.");
         return;
     }
-    btnText.textContent="Checking...";
-    try{
-        const qRes=await fetch(`${API_BASE}/api/question/${encodeURIComponent(chapter)}/${encodeURIComponent(lecture)}`);
-        if(qRes.status===404){btnText.textContent="Unlock Question";shakeForm();showFormError("This lecture does not exist yet.");return;}
-        const questionData=await qRes.json();
-        const attemptRes=await fetch(`${API_BASE}/api/check-attempt`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mobile,chapter,lecture})});
-        const attemptData=await attemptRes.json();
-        if(!attemptData.allowed){showAlreadyAttempted();btnText.textContent="Unlock Question";return;}
-        await fetch(`${API_BASE}/api/student-register`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,mobile,place,className,chapter,lecture})});
-        currentChapter=chapter;currentLecture=lecture;
+    const finalChapter = normalizedChapter;
+    const finalLecture = normalizedLecture || lecture;
+    btnText.textContent = "Checking...";
+    try {
+        const qRes = await fetch(`${API_BASE}/api/question/${encodeURIComponent(finalChapter)}/${encodeURIComponent(finalLecture)}`);
+        if (qRes.status === 404) { btnText.textContent = "Unlock Question"; shakeForm(); showFormError("This lecture does not exist yet."); return; }
+        const questionData = await qRes.json();
+        const attemptRes = await fetch(`${API_BASE}/api/check-attempt`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mobile, chapter: finalChapter, lecture: finalLecture }) });
+        const attemptData = await attemptRes.json();
+        if (!attemptData.allowed) { showAlreadyAttempted(); btnText.textContent = "Unlock Question"; return; }
+        await fetch(`${API_BASE}/api/student-register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, mobile, place, className, chapter: finalChapter, lecture: finalLecture }) });
+        currentChapter = finalChapter; currentLecture = finalLecture;
         // Select exactly 1 uniformly random question from the lecture's pool
-        let allQs=(questionData.questions||[]).map((q, idx)=>({
+        let allQs = (questionData.questions || []).map((q, idx) => ({
             ...q,
             _sourceIndex: idx,
-            options:Array.isArray(q.options)?q.options:[],
-            correctIndexes:Array.isArray(q.correctIndexes)?q.correctIndexes:[q.correctIndex??0],
+            options: Array.isArray(q.options) ? q.options : [],
+            correctIndexes: Array.isArray(q.correctIndexes) ? q.correctIndexes : [q.correctIndex ?? 0],
         }));
-        if(allQs.length>0){
+        if (allQs.length > 0) {
             const randIdx = Math.floor(Math.random() * allQs.length);
             currentQuestionSet = [allQs[randIdx]];
         } else {
             currentQuestionSet = [];
         }
-        askedQuestionIndexes=currentQuestionSet.map(q=>q._sourceIndex).filter(i=>Number.isInteger(i));
-        currentQuestionIndex=0;
-        selectedAnswers=currentQuestionSet.map(q=>q.isMultiCorrect?[]:null);
+        askedQuestionIndexes = currentQuestionSet.map(q => q._sourceIndex).filter(i => Number.isInteger(i));
+        currentQuestionIndex = 0;
+        selectedAnswers = currentQuestionSet.map(q => q.isMultiCorrect ? [] : null);
         setStep(2);
         document.getElementById("login-page").classList.add("hidden");
         document.getElementById("quiz-page").classList.remove("hidden");
         document.getElementById("quiz-page").classList.add("slide-in");
-        document.getElementById("quiz-chapter-label").textContent=chapter;
-        document.getElementById("quiz-lecture-label").textContent=`Lecture ${lecture}`;
-        document.getElementById("q-total").textContent=currentQuestionSet.length;
-        const quizNav=document.getElementById("quiz-nav");
-        if(currentQuestionSet.length>1){quizNav.style.display="flex";}else{quizNav.style.display="none";}
+        document.getElementById("quiz-chapter-label").textContent = chapter;
+        document.getElementById("quiz-lecture-label").textContent = `Lecture ${lecture}`;
+        document.getElementById("q-total").textContent = currentQuestionSet.length;
+        const quizNav = document.getElementById("quiz-nav");
+        if (currentQuestionSet.length > 1) { quizNav.style.display = "flex"; } else { quizNav.style.display = "none"; }
         renderQuestion(0);
-        history.pushState({step:"quiz"},"","");
-    }catch(err){
-        console.error(err);shakeForm();showFormError("Connection error. Please try again.");
-        btnText.textContent="Unlock Question";
+        history.pushState({ step: "quiz" }, "", "");
+    } catch (err) {
+        console.error(err); shakeForm(); showFormError("Connection error. Please try again.");
+        btnText.textContent = "Unlock Question";
     }
 });
 
 /* ── RENDER QUESTION ── */
-function renderQuestion(index){
-    const q=currentQuestionSet[index];
-    document.getElementById("q-current").textContent=index+1;
-    const letters=["A","B","C","D"];
-    const notice=document.getElementById("multi-correct-notice");
-    notice.classList.toggle("hidden",!q.isMultiCorrect);
+function renderQuestion(index) {
+    const q = currentQuestionSet[index];
+    document.getElementById("q-current").textContent = index + 1;
+    const letters = ["A", "B", "C", "D"];
+    const notice = document.getElementById("multi-correct-notice");
+    notice.classList.toggle("hidden", !q.isMultiCorrect);
     // Question text
-    const qTextEl=document.getElementById("question-text");
-    setMathText(qTextEl,q.question);
+    const qTextEl = document.getElementById("question-text");
+    setMathText(qTextEl, q.question);
     // Question image (if any)
-    const imgWrap=document.getElementById("question-image-wrap");
-    const imgEl=document.getElementById("question-image");
-    if(q.questionImage){
-        const b64=q.questionImage;
-        const mime=b64.startsWith("/9j/")?"image/jpeg":b64.startsWith("iVBORw")?"image/png":"image/jpeg";
-        imgEl.src=b64.startsWith("data:")?b64:`data:${mime};base64,${b64}`;
+    const imgWrap = document.getElementById("question-image-wrap");
+    const imgEl = document.getElementById("question-image");
+    if (q.questionImage) {
+        const b64 = q.questionImage;
+        const mime = b64.startsWith("/9j/") ? "image/jpeg" : b64.startsWith("iVBORw") ? "image/png" : "image/jpeg";
+        imgEl.src = b64.startsWith("data:") ? b64 : `data:${mime};base64,${b64}`;
         imgWrap.classList.remove("hidden");
-        imgWrap.style.display="block";
+        imgWrap.style.display = "block";
     } else {
         imgWrap.classList.add("hidden");
-        imgWrap.style.display="none";
-        imgEl.src="";
+        imgWrap.style.display = "none";
+        imgEl.src = "";
     }
     // Options
-    const container=document.getElementById("options-container");
-    container.innerHTML="";
-    const opts=Array.isArray(q.options)?q.options:[];
-    if(!opts.length){
-        const msg=document.createElement("div");
-        msg.style.cssText="padding:14px 16px;border-radius:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;font-size:0.85rem;text-align:center;";
-        msg.textContent="⚠️ Options not found for this question. Please contact your teacher.";
+    const container = document.getElementById("options-container");
+    container.innerHTML = "";
+    const opts = Array.isArray(q.options) ? q.options : [];
+    if (!opts.length) {
+        const msg = document.createElement("div");
+        msg.style.cssText = "padding:14px 16px;border-radius:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;font-size:0.85rem;text-align:center;";
+        msg.textContent = "⚠️ Options not found for this question. Please contact your teacher.";
         container.appendChild(msg);
     } else {
-        opts.forEach((opt,i)=>{
-            const div=document.createElement("div");
-            div.className="option";
-            if(q.isMultiCorrect){if((selectedAnswers[index]||[]).includes(i)) div.classList.add("selected");}
-            else{if(selectedAnswers[index]===i) div.classList.add("selected");}
-            const letterSpan=document.createElement("span");
-            letterSpan.className="option-letter";
-            letterSpan.textContent=letters[i];
-            const textSpan=document.createElement("span");
-            textSpan.style.flex="1";
-            textSpan.textContent=opt||"";
-            div.appendChild(letterSpan);div.appendChild(textSpan);
-            div.onclick=()=>selectAnswer(div,i,index);
+        opts.forEach((opt, i) => {
+            const div = document.createElement("div");
+            div.className = "option";
+            if (q.isMultiCorrect) { if ((selectedAnswers[index] || []).includes(i)) div.classList.add("selected"); }
+            else { if (selectedAnswers[index] === i) div.classList.add("selected"); }
+            const letterSpan = document.createElement("span");
+            letterSpan.className = "option-letter";
+            letterSpan.textContent = letters[i];
+            const textSpan = document.createElement("span");
+            textSpan.style.flex = "1";
+            textSpan.textContent = opt || "";
+            div.appendChild(letterSpan); div.appendChild(textSpan);
+            div.onclick = () => selectAnswer(div, i, index);
             container.appendChild(div);
         });
     }
     renderMath(container);
-    document.getElementById("prevBtn").disabled=index===0;
-    document.getElementById("nextBtn").disabled=index===currentQuestionSet.length-1;
+    document.getElementById("prevBtn").disabled = index === 0;
+    document.getElementById("nextBtn").disabled = index === currentQuestionSet.length - 1;
     checkSubmitReady();
 }
 
 /* ── SELECT ANSWER ── */
-function selectAnswer(element,optionIndex,questionIndex){
-    if(document.querySelector(".option.correct,.option.incorrect")) return;
-    const q=currentQuestionSet[questionIndex];
-    if(q.isMultiCorrect){
-        if(!Array.isArray(selectedAnswers[questionIndex])) selectedAnswers[questionIndex]=[];
-        const arr=selectedAnswers[questionIndex];
-        const pos=arr.indexOf(optionIndex);
-        if(pos===-1) arr.push(optionIndex); else arr.splice(pos,1);
+function selectAnswer(element, optionIndex, questionIndex) {
+    if (document.querySelector(".option.correct,.option.incorrect")) return;
+    const q = currentQuestionSet[questionIndex];
+    if (q.isMultiCorrect) {
+        if (!Array.isArray(selectedAnswers[questionIndex])) selectedAnswers[questionIndex] = [];
+        const arr = selectedAnswers[questionIndex];
+        const pos = arr.indexOf(optionIndex);
+        if (pos === -1) arr.push(optionIndex); else arr.splice(pos, 1);
         renderQuestion(questionIndex);
     } else {
-        selectedAnswers[questionIndex]=optionIndex;
-        document.querySelectorAll(".option").forEach(o=>o.classList.remove("selected"));
+        selectedAnswers[questionIndex] = optionIndex;
+        document.querySelectorAll(".option").forEach(o => o.classList.remove("selected"));
         element.classList.add("selected");
     }
     checkSubmitReady();
 }
 
-function checkSubmitReady(){
-    const allAnswered=selectedAnswers.every((a,i)=>{
-        const q=currentQuestionSet[i];
-        if(q.isMultiCorrect) return Array.isArray(a)&&a.length>0;
-        return a!==null;
+function checkSubmitReady() {
+    const allAnswered = selectedAnswers.every((a, i) => {
+        const q = currentQuestionSet[i];
+        if (q.isMultiCorrect) return Array.isArray(a) && a.length > 0;
+        return a !== null;
     });
-    document.getElementById("submitAnswerBtn").disabled=!allAnswered;
+    document.getElementById("submitAnswerBtn").disabled = !allAnswered;
 }
 
-function nextQuestion(){if(currentQuestionIndex<currentQuestionSet.length-1){currentQuestionIndex++;renderQuestion(currentQuestionIndex);}}
-function prevQuestion(){if(currentQuestionIndex>0){currentQuestionIndex--;renderQuestion(currentQuestionIndex);}}
+function nextQuestion() { if (currentQuestionIndex < currentQuestionSet.length - 1) { currentQuestionIndex++; renderQuestion(currentQuestionIndex); } }
+function prevQuestion() { if (currentQuestionIndex > 0) { currentQuestionIndex--; renderQuestion(currentQuestionIndex); } }
 
 /* ── SUBMIT ── */
-async function submitAnswer(timedOut=false){
-    const btn=document.getElementById("submitAnswerBtn"),syncText=document.getElementById("sync-text");
-    const mobile=document.getElementById("userMobile").value.trim();
-    const name=document.getElementById("userName").value.trim();
-    const place=document.getElementById("userPlace").value.trim();
-    const className=document.getElementById("userClass").value.trim();
-    btn.disabled=true;btn.textContent="Submitting...";
-    if(syncText) syncText.style.display="block";
-    document.querySelectorAll(".option").forEach(o=>o.style.pointerEvents="none");
-    try{
-        const res=await fetch(`${API_BASE}/api/submit-attempt`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mobile,chapter:currentChapter,lecture:currentLecture,selectedAnswers,askedQuestionIndexes,name,place,className})});
-        const data=await res.json();
-        if(res.ok&&data.success){setTimeout(()=>showResults(data.correctCount,data.totalQuestions),500);}
-        else if(!data.allowed){showAlreadyAttempted();}
+async function submitAnswer(timedOut = false) {
+    const btn = document.getElementById("submitAnswerBtn"), syncText = document.getElementById("sync-text");
+    const mobile = document.getElementById("userMobile").value.trim();
+    const name = document.getElementById("userName").value.trim();
+    const place = document.getElementById("userPlace").value.trim();
+    const className = document.getElementById("userClass").value.trim();
+    btn.disabled = true; btn.textContent = "Submitting...";
+    if (syncText) syncText.style.display = "block";
+    document.querySelectorAll(".option").forEach(o => o.style.pointerEvents = "none");
+    try {
+        const res = await fetch(`${API_BASE}/api/submit-attempt`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mobile, chapter: currentChapter, lecture: currentLecture, selectedAnswers, askedQuestionIndexes, name, place, className }) });
+        const data = await res.json();
+        if (res.ok && data.success) { setTimeout(() => showResults(data.correctCount, data.totalQuestions), 500); }
+        else if (!data.allowed) { showAlreadyAttempted(); }
         else throw new Error("Server error");
-    }catch(err){console.error(err);btn.disabled=false;btn.textContent="Retry Submit";if(syncText)syncText.textContent="Sync failed. Please try again.";}
+    } catch (err) { console.error(err); btn.disabled = false; btn.textContent = "Retry Submit"; if (syncText) syncText.textContent = "Sync failed. Please try again."; }
 }
 
 /* ── RESULTS ── */
-function showResults(correctCount,totalQuestions){
+function showResults(correctCount, totalQuestions) {
     setStep(3);
     document.getElementById("quiz-page").classList.add("hidden");
-    const rp=document.getElementById("result-page");
-    rp.classList.remove("hidden");rp.classList.add("slide-in");
-    history.pushState({step:"result"},"","");
-    const pct=totalQuestions>0?correctCount/totalQuestions:0;
-    const name=document.getElementById("userName").value.trim();
-    let icon,title,subtitle;
-    if(pct===1){icon="🏆";title="Perfect Score!";subtitle="Absolutely brilliant!";fireConfetti();}
-    else if(pct>=0.7){icon="🎉";title="Great Job!";subtitle="Solid understanding!";fireConfetti(0.5);}
-    else if(pct>=0.5){icon="💪";title="Good Effort!";subtitle="Keep practicing!";}
-    else{icon="📚";title="Keep Studying!";subtitle="Revisit the lecture and try again.";}
-    document.getElementById("result-icon").textContent=icon;
-    document.getElementById("result-title").textContent=title;
-    document.getElementById("result-correct").textContent=correctCount;
-    document.getElementById("result-total").textContent=totalQuestions;
-    const ring=document.getElementById("scoreRingFill");
-    if(ring){
-        const circumference=283;
-        const clampedPct=Math.max(0,Math.min(1,pct));
-        ring.style.strokeDasharray=String(circumference);
-        ring.style.strokeDashoffset=String(circumference);
-        requestAnimationFrame(()=>{
-            ring.style.strokeDashoffset=String(circumference-(circumference*clampedPct));
+    const rp = document.getElementById("result-page");
+    rp.classList.remove("hidden"); rp.classList.add("slide-in");
+    history.pushState({ step: "result" }, "", "");
+    const pct = totalQuestions > 0 ? correctCount / totalQuestions : 0;
+    const name = document.getElementById("userName").value.trim();
+    let icon, title, subtitle;
+    if (pct === 1) { icon = "🏆"; title = "Perfect Score!"; subtitle = "Absolutely brilliant!"; fireConfetti(); }
+    else if (pct >= 0.7) { icon = "🎉"; title = "Great Job!"; subtitle = "Solid understanding!"; fireConfetti(0.5); }
+    else if (pct >= 0.5) { icon = "💪"; title = "Good Effort!"; subtitle = "Keep practicing!"; }
+    else { icon = "📚"; title = "Keep Studying!"; subtitle = "Revisit the lecture and try again."; }
+    document.getElementById("result-icon").textContent = icon;
+    document.getElementById("result-title").textContent = title;
+    document.getElementById("result-correct").textContent = correctCount;
+    document.getElementById("result-total").textContent = totalQuestions;
+    const ring = document.getElementById("scoreRingFill");
+    if (ring) {
+        const circumference = 283;
+        const clampedPct = Math.max(0, Math.min(1, pct));
+        ring.style.strokeDasharray = String(circumference);
+        ring.style.strokeDashoffset = String(circumference);
+        requestAnimationFrame(() => {
+            ring.style.strokeDashoffset = String(circumference - (circumference * clampedPct));
         });
     }
-    document.getElementById("result-subtitle").textContent=subtitle;
-    document.getElementById("result-name").textContent=`👤 ${name}`;
-    document.getElementById("result-chapter").textContent=`📚 ${currentChapter}`;
-    document.getElementById("result-lecture-meta").textContent=`🎬 Lecture ${currentLecture}`;
-    const breakdown=document.getElementById("result-breakdown");
-    breakdown.innerHTML="";
-    const letters=["A","B","C","D"];
-    currentQuestionSet.forEach((q,i)=>{
-        const correctIdxs=q.correctIndexes||[q.correctIndex||0];
-        let isCorrectAns=false;
-        if(q.isMultiCorrect){const sel=Array.isArray(selectedAnswers[i])?[...selectedAnswers[i]].map(Number).sort((a,b)=>a-b):[];isCorrectAns=JSON.stringify(sel)===JSON.stringify([...correctIdxs].map(Number).sort((a,b)=>a-b));}
-        else{isCorrectAns=Number(selectedAnswers[i])===Number(correctIdxs[0]);}
-        const item=document.createElement("div");
-        item.className=`breakdown-item ${isCorrectAns?"ok":"wrong"}`;
-        const correctStr=correctIdxs.map(x=>letters[x]).join(", ");
-        item.innerHTML=`<span>${isCorrectAns?"✅":"❌"}</span><span style="flex:1">Q${i+1}: ${q.question.length>50?q.question.slice(0,50)+"…":q.question}</span><span style="font-size:0.72rem;opacity:0.6">${isCorrectAns?"Correct":`Ans: ${correctStr}`}</span>`;
+    document.getElementById("result-subtitle").textContent = subtitle;
+    document.getElementById("result-name").textContent = `👤 ${name}`;
+    document.getElementById("result-chapter").textContent = `📚 ${currentChapter}`;
+    document.getElementById("result-lecture-meta").textContent = `🎬 Lecture ${currentLecture}`;
+    const breakdown = document.getElementById("result-breakdown");
+    breakdown.innerHTML = "";
+    const letters = ["A", "B", "C", "D"];
+    currentQuestionSet.forEach((q, i) => {
+        const correctIdxs = q.correctIndexes || [q.correctIndex || 0];
+        let isCorrectAns = false;
+        if (q.isMultiCorrect) { const sel = Array.isArray(selectedAnswers[i]) ? [...selectedAnswers[i]].map(Number).sort((a, b) => a - b) : []; isCorrectAns = JSON.stringify(sel) === JSON.stringify([...correctIdxs].map(Number).sort((a, b) => a - b)); }
+        else { isCorrectAns = Number(selectedAnswers[i]) === Number(correctIdxs[0]); }
+        const item = document.createElement("div");
+        item.className = `breakdown-item ${isCorrectAns ? "ok" : "wrong"}`;
+        const correctStr = correctIdxs.map(x => letters[x]).join(", ");
+        item.innerHTML = `<span>${isCorrectAns ? "✅" : "❌"}</span><span style="flex:1">Q${i + 1}: ${q.question.length > 50 ? q.question.slice(0, 50) + "…" : q.question}</span><span style="font-size:0.72rem;opacity:0.6">${isCorrectAns ? "Correct" : `Ans: ${correctStr}`}</span>`;
         breakdown.appendChild(item);
     });
     renderMath(breakdown);
 }
 
-function fireConfetti(intensity=1){confetti({particleCount:Math.floor(120*intensity),spread:80,origin:{y:0.6},colors:["#6366f1","#8b5cf6","#06b6d4","#10b981"]});}
+function fireConfetti(intensity = 1) { confetti({ particleCount: Math.floor(120 * intensity), spread: 80, origin: { y: 0.6 }, colors: ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981"] }); }
 
-function setStep(n){document.querySelectorAll(".step").forEach((el,i)=>{el.classList.remove("active","done");if(i+1<n)el.classList.add("done");if(i+1===n)el.classList.add("active");});}
+function setStep(n) { document.querySelectorAll(".step").forEach((el, i) => { el.classList.remove("active", "done"); if (i + 1 < n) el.classList.add("done"); if (i + 1 === n) el.classList.add("active"); }); }
 
-function showAlreadyAttempted(){shakeForm();const e=document.getElementById("already-msg");if(e)e.remove();const m=document.createElement("div");m.id="already-msg";m.className="already-msg";m.innerHTML="🚫 <strong>Already Attempted</strong><br>This number has already answered this lecture's questions.";document.getElementById("loginForm").appendChild(m);}
+function showAlreadyAttempted() { shakeForm(); const e = document.getElementById("already-msg"); if (e) e.remove(); const m = document.createElement("div"); m.id = "already-msg"; m.className = "already-msg"; m.innerHTML = "🚫 <strong>Already Attempted</strong><br>This number has already answered this lecture's questions."; document.getElementById("loginForm").appendChild(m); }
 
-function shakeForm(){const f=document.getElementById("loginForm");f.style.animation="shake 0.4s";setTimeout(()=>f.style.animation="",400);}
-function showFormError(msg){const e=document.getElementById("form-error");if(e)e.remove();const el=document.createElement("div");el.id="form-error";el.className="already-msg";el.textContent=msg;document.getElementById("loginForm").appendChild(el);setTimeout(()=>el.remove(),4000);}
+function shakeForm() { const f = document.getElementById("loginForm"); f.style.animation = "shake 0.4s"; setTimeout(() => f.style.animation = "", 400); }
+function showFormError(msg) { const e = document.getElementById("form-error"); if (e) e.remove(); const el = document.createElement("div"); el.id = "form-error"; el.className = "already-msg"; el.textContent = msg; document.getElementById("loginForm").appendChild(el); setTimeout(() => el.remove(), 4000); }
 
 // Browser back button
-history.replaceState({step:"login"},"","");
-window.addEventListener("popstate",function(e){
-    const s=e.state;if(!s)return;
-    if(s.step==="quiz"||s.step==="result"){
+history.replaceState({ step: "login" }, "", "");
+window.addEventListener("popstate", function (e) {
+    const s = e.state; if (!s) return;
+    if (s.step === "quiz" || s.step === "result") {
         document.getElementById("quiz-page").classList.add("hidden");
         document.getElementById("result-page").classList.add("hidden");
         document.getElementById("login-page").classList.remove("hidden");
@@ -346,20 +493,20 @@ window.addEventListener("popstate",function(e){
 });
 
 /* ── THEME TOGGLE ── */
-function togglePortalTheme(){
-    const html=document.documentElement;
-    const isLight=html.getAttribute("data-theme")==="light";
-    html.setAttribute("data-theme",isLight?"dark":"light");
-    const btn=document.getElementById("themeToggle");
-    if(btn) btn.textContent=isLight?"🌙":"☀️";
-    localStorage.setItem("grip-theme",isLight?"dark":"light");
+function togglePortalTheme() {
+    const html = document.documentElement;
+    const isLight = html.getAttribute("data-theme") === "light";
+    html.setAttribute("data-theme", isLight ? "dark" : "light");
+    const btn = document.getElementById("themeToggle");
+    if (btn) btn.textContent = isLight ? "🌙" : "☀️";
+    localStorage.setItem("grip-theme", isLight ? "dark" : "light");
 }
 
-(function(){
-    const saved=localStorage.getItem("grip-theme");
-    if(saved==="light"){
-        document.documentElement.setAttribute("data-theme","light");
-        const btn=document.getElementById("themeToggle");
-        if(btn) btn.textContent="☀️";
+(function () {
+    const saved = localStorage.getItem("grip-theme");
+    if (saved === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+        const btn = document.getElementById("themeToggle");
+        if (btn) btn.textContent = "☀️";
     }
 })();
