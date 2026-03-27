@@ -695,7 +695,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
                 body: JSON.stringify({
                     model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                    max_tokens: 10000,
+                    max_tokens: 8192,
                     temperature: 0.1,
                     messages: [{ role: "user", content: contentParts }]
                 })
