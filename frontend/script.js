@@ -60,11 +60,53 @@ async function loadChapters(){
         const sel=document.getElementById("chapterList");
         sel.innerHTML='';
         chapters.forEach(ch=>{const o=document.createElement("option");o.value=ch;sel.appendChild(o);});
+        const chapterInput=document.getElementById("chapterSelect");
+        if(chapterInput&&chapterInput.value.trim()){
+            loadLecturesForChapter(chapterInput.value.trim());
+        }
     }catch(e){console.error("chapters:",e);}
 }
 
-// Since the user manually inputs a number for lectures, we do not need the dynamic lecture loading behavior anymore.
-// We keep the chapter input listener empty or remove it.
+async function loadLecturesForChapter(chapter){
+    const lectureList=document.getElementById("lectureList");
+    const lectureInput=document.getElementById("lectureSelect");
+    if(!lectureList||!lectureInput) return;
+
+    lectureList.innerHTML='';
+    if(!chapter){
+        lectureInput.placeholder="Search Lecture Number…";
+        return;
+    }
+
+    try{
+        const res=await fetch(`${API_BASE}/api/lectures/${encodeURIComponent(chapter)}`);
+        if(!res.ok){
+            lectureInput.placeholder="No lectures found for chapter";
+            return;
+        }
+        const lectures=await res.json();
+        (lectures||[]).forEach(lec=>{
+            const o=document.createElement("option");
+            o.value=String(lec);
+            lectureList.appendChild(o);
+        });
+        lectureInput.placeholder=lectures.length?"Search Lecture Number…":"No lectures found for chapter";
+    }catch(e){
+        console.error("lectures:",e);
+        lectureInput.placeholder="Failed to load lectures";
+    }
+}
+
+const chapterSelectInput=document.getElementById("chapterSelect");
+const lectureSelectInput=document.getElementById("lectureSelect");
+if(chapterSelectInput&&lectureSelectInput){
+    const onChapterUpdate=()=>{
+        lectureSelectInput.value="";
+        loadLecturesForChapter(chapterSelectInput.value.trim());
+    };
+    chapterSelectInput.addEventListener("input",onChapterUpdate);
+    chapterSelectInput.addEventListener("change",onChapterUpdate);
+}
 
 /* ── LOGIN ── */
 document.getElementById("loginForm").addEventListener("submit",async(e)=>{
@@ -74,11 +116,17 @@ document.getElementById("loginForm").addEventListener("submit",async(e)=>{
     const place=document.getElementById("userPlace").value.trim();
     const className=document.getElementById("userClass").value.trim();
     const chapter=document.getElementById("chapterSelect").value;
-    const lecture=document.getElementById("lectureSelect").value;
+    const lecture=document.getElementById("lectureSelect").value.trim();
     const btnText=document.getElementById("submitBtnText");
     if(!/^[0-9]{10}$/.test(mobile)){shakeForm();showFormError("Please enter a valid 10-digit mobile number.");return;}
     if(!chapter){shakeForm();showFormError("Please select a chapter.");return;}
     if(!lecture){shakeForm();showFormError("Please select a lecture.");return;}
+    const availableLectures=[...document.querySelectorAll("#lectureList option")].map(o=>String(o.value));
+    if(availableLectures.length&&!availableLectures.includes(lecture)){
+        shakeForm();
+        showFormError("Please select a valid lecture from the dropdown list.");
+        return;
+    }
     btnText.textContent="Checking...";
     try{
         const qRes=await fetch(`${API_BASE}/api/question/${encodeURIComponent(chapter)}/${encodeURIComponent(lecture)}`);
@@ -245,6 +293,16 @@ function showResults(correctCount,totalQuestions){
     document.getElementById("result-title").textContent=title;
     document.getElementById("result-correct").textContent=correctCount;
     document.getElementById("result-total").textContent=totalQuestions;
+    const ring=document.getElementById("scoreRingFill");
+    if(ring){
+        const circumference=283;
+        const clampedPct=Math.max(0,Math.min(1,pct));
+        ring.style.strokeDasharray=String(circumference);
+        ring.style.strokeDashoffset=String(circumference);
+        requestAnimationFrame(()=>{
+            ring.style.strokeDashoffset=String(circumference-(circumference*clampedPct));
+        });
+    }
     document.getElementById("result-subtitle").textContent=subtitle;
     document.getElementById("result-name").textContent=`👤 ${name}`;
     document.getElementById("result-chapter").textContent=`📚 ${currentChapter}`;
