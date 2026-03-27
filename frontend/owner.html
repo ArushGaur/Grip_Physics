@@ -2927,7 +2927,7 @@
                     <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
                         onclick="clearLectureSelection()">✕ Cancel</button>
                 </div>
-                <div style="margin-bottom:14px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+                <div style="margin-bottom:14px;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap">
                     <select id="lecViewMode" onchange="handleViewModeChange()" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;min-width:150px">
                         <option value="topic">Topic Wise</option>
                         <option value="lecture">Lecture Wise</option>
@@ -3529,7 +3529,7 @@
 
         function showChapterViewH() { showChapterView(); history.pushState({ type: "mqChapter" }, "", ""); }
         function showLectureViewH(ch) { showLectureViewForChapter(ch); history.pushState({ type: "mqLecture", chapter: ch }, "", ""); }
-        function showQuestionViewH(idx) { showQuestionView(idx); history.pushState({ type: "mqQuestion", idx }, "", ""); }
+        function showQuestionViewH(idx, sqIdx) { showQuestionView(idx, sqIdx); history.pushState({ type: "mqQuestion", idx, sqIdx }, "", ""); }
 
         window.addEventListener("popstate", e => {
             const s = e.state;
@@ -3537,7 +3537,7 @@
             if (s.type === "section") { showSection(s.name, false); return; }
             if (s.type === "mqChapter") { showChapterView(); return; }
             if (s.type === "mqLecture") { if (s.chapter) showLectureViewForChapter(s.chapter); else showChapterView(); return; }
-            if (s.type === "mqQuestion") { if (typeof s.idx === "number") showQuestionView(s.idx); else showLectureView(); return; }
+            if (s.type === "mqQuestion") { if (typeof s.idx === "number") showQuestionView(s.idx, s.sqIdx); else showLectureView(); return; }
         });
 
         /* ══════════════════════════════════════════════════════════════════
@@ -4484,10 +4484,10 @@
                     ${q.isMultiCorrect
                         ? `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answers:</label>
                            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">
-                               ${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}
+                               ${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""} onchange="updateEqOptHighlightMulti(${qi})"> ${l}</label>`).join("")}
                            </div>`
                         : `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answer:</label>
-                           <select id="eq_correct_${qi}" class="admin-select" style="border-radius:var(--radius-sm);padding:6px 12px;font-size:0.85rem;outline:none;margin-top:5px">
+                           <select id="eq_correct_${qi}" class="admin-select" style="border-radius:var(--radius-sm);padding:6px 12px;font-size:0.85rem;outline:none;margin-top:5px" onchange="updateEqOptHighlight(${qi})">
                                ${LETTERS.map((l, i) => `<option value="${i}" ${ci[0] === i ? "selected" : ""}>${l} — ${q.options[i] || ""}</option>`).join("")}
                            </select>`
                     }
@@ -4699,6 +4699,18 @@
             }
         });
 
+        function updateEqOptHighlight(qi) {
+            const sel = parseInt(document.getElementById(`eq_correct_${qi}`)?.value ?? -1);
+            const container = document.getElementById(`eq_${qi}`);
+            if (!container) return;
+            container.querySelectorAll(".eq-opt").forEach((el, oi) => { el.classList.toggle("correct", oi === sel); });
+        }
+        function updateEqOptHighlightMulti(qi) {
+            const checked = [...document.querySelectorAll(`.eq_correct_multi_${qi}:checked`)].map(c => parseInt(c.value));
+            const container = document.getElementById(`eq_${qi}`);
+            if (!container) return;
+            container.querySelectorAll(".eq-opt").forEach((el, oi) => { el.classList.toggle("correct", checked.includes(oi)); });
+        }
         function removeExtractedQ(qi) {
             pushUndo(snapshotState());
             document.getElementById(`eq_${qi}`)?.remove();
@@ -5303,7 +5315,7 @@
                     return (q.questions || []).map((sq, sqIdx) => {
                         const gi = allQuestions.indexOf(q);
                         const previewText = stripMath((sq.question || "").substring(0, 60));
-                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi})">
+                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
                             <div class="lecture-card-num">Q${qIndex++}</div>
                             <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
                             <div style="font-size:0.78rem;margin-bottom:3px">Lecture ${q.lecture}</div>
@@ -5328,13 +5340,16 @@
         }
 
         /* ── Question view with rendered math ── */
-        function showQuestionView(gi) {
+        function showQuestionView(gi, sqIdx) {
             mqCurrentLectureIdx = gi;
             const q = allQuestions[gi]; if (!q) return;
+            // If sqIdx provided, only show that specific sub-question
+            const filterSingle = typeof sqIdx === "number";
+            const subsToRender = filterSingle ? [[q.questions[sqIdx], sqIdx]] : (q.questions || []).map((s, i) => [s, i]);
             document.getElementById("mq-lecture-view").style.display = "none";
             document.getElementById("mq-question-view").style.display = "block";
             document.getElementById("mq-question-title").textContent = `${q.chapter} — Lecture ${q.lecture}`;
-            document.getElementById("mq-question-subtitle").textContent = `${(q.questions || []).length} question(s) · ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}`;
+            document.getElementById("mq-question-subtitle").textContent = filterSingle ? `Question ${sqIdx + 1} of ${(q.questions || []).length}` : `${(q.questions || []).length} question(s) · ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}`;
 
             const el = document.getElementById("mq-question-content");
             el.innerHTML = `<div class="form-row" style="margin-bottom:16px">
@@ -5342,7 +5357,7 @@
                 <div class="field"><label>Lecture</label><input id="iqe-lecture" type="number" min="1" value="${q.lecture}" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:0.87rem;outline:none;width:100%;font-family:'Outfit',sans-serif"></div>
             </div>
             <div id="iqe-questions-container">
-                ${(q.questions || []).map((sub, si) => {
+                ${subsToRender.map(([sub, si]) => {
                 const ci = sub.correctIndexes || [sub.correctIndex || 0];
                 const hasImg = sub.questionImage;
                 const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)"><img src="data:image/png;base64,${sub.questionImage}" alt="Question diagram" style="max-width:100%;max-height:250px;display:block;margin:0 auto;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'250px':'none'"></div>` : '';
@@ -5378,7 +5393,7 @@
 
             // Render math after DOM is fully inserted
             setTimeout(() => {
-                (q.questions || []).forEach((sub, si) => {
+                subsToRender.forEach(([sub, si]) => {
                     const prev = document.getElementById(`iqe_preview_${si}`);
                     if (prev) { prev.textContent = sub.question; renderMath(prev); }
                     LETTERS.forEach((l, oi) => {
@@ -5441,7 +5456,7 @@
                     return (q.questions || []).map((sq, sqIdx) => {
                         const gi = allQuestions.indexOf(q);
                         const previewText = stripMath((sq.question || "").substring(0, 60));
-                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi})">
+                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
                             <div class="lecture-card-num">Q${qIndex++}</div>
                             <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
                             <div style="font-size:0.78rem;margin-bottom:3px">Lecture ${q.lecture}</div>
