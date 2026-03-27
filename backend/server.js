@@ -682,7 +682,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
-    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY question visible across all question images in order. Do not stop at 10; return all questions.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly and keep stem text before (a).\n- Single-letter options like A/B/C/D are valid option text, not empty.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct answer key (e.g., A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.`;
+    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY question visible across all question images in order. Do not stop at 10; return all questions.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly and keep stem text before (a).\n- Single-letter options like A/B/C/D are valid option text, not empty.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct answer key (e.g., A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.\n\nEquation formatting (IMPORTANT):\n- Preserve equations in KaTeX-friendly LaTeX using $...$ (inline) or $$...$$ (display).\n- Convert common symbols: pi->$\\pi$, omega->$\\omega$, epsilon->$\\varepsilon$, sin->$\\sin$, cos->$\\cos$.\n- Preserve superscripts/subscripts: T^4 as $T^4$, T_1 as $T_1$, s^-1 as $s^{-1}$.\n- Fractions should use \\frac where appropriate (e.g. $\\frac{1}{2}mv^2$).\n- Do not leave broken delimiters like a single trailing $.`;
     try {
         const requestExtraction = async (extraInstruction = "") => {
             const contentParts = [];
@@ -804,11 +804,30 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         }
 
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
+
+        const normalizeMathText = (val) => {
+            let s = String(val || "").trim();
+            if (!s) return s;
+
+            // Support common LLM delimiters and convert to KaTeX auto-render delimiters used by frontend.
+            s = s.replace(/\\\(([\s\S]*?)\\\)/g, (_, m) => `$${m}$`);
+            s = s.replace(/\\\[([\s\S]*?)\\\]/g, (_, m) => `$$${m}$$`);
+
+            // Remove obvious broken trailing artifacts from model output.
+            s = s.replace(/\s*\$\\\$\s*$/, "").trim();
+
+            // If an odd number of unescaped '$' remains, close it.
+            const dollarCount = (s.match(/(^|[^\\])\$/g) || []).length;
+            if (dollarCount % 2 === 1) s += "$";
+
+            return s;
+        };
+
         parsed = parsed.map((q) => {
-            if (q.question) q.question = q.question.replace(/\s*\$\\\$\s*$/, "").trim();
+            if (q.question) q.question = normalizeMathText(q.question);
 
             const options = Array.isArray(q.options) ? q.options : [];
-            q.options = [...options, "", "", ""].slice(0, 4).map((o) => (o || "").replace(/\s*\$\\\$\s*$/, "").trim());
+            q.options = [...options, "", "", ""].slice(0, 4).map((o) => normalizeMathText(o));
 
             let ci = Array.isArray(q.correctIndexes) ? q.correctIndexes : [];
             if (!ci.length && typeof q.correctIndex === "number") ci = [q.correctIndex];
