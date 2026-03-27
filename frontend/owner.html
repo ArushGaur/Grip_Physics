@@ -31,31 +31,31 @@
     <style>
         /* THEME TOKENS */
         :root {
-            --bg: #171b2b;
-            --bg-card: #1d2337;
-            --bg-input: #252d44;
-            --bg-hover: #2b3450;
-            --bg-sidebar: #1b2234;
-            --border: rgba(203, 214, 255, 0.13);
-            --border-focus: #8790f6;
-            --accent: #8891ff;
-            --accent-2: #a68af3;
-            --accent-3: #39c8a5;
-            --accent-4: #e5bc72;
-            --accent-glow: rgba(136, 145, 255, 0.16);
-            --success: #39c8a5;
-            --error: #ec7c7c;
-            --warn: #e5bc72;
-            --text: #e3e9ff;
-            --text-dim: rgba(227, 233, 255, 0.8);
-            --text-muted: rgba(227, 233, 255, 0.66);
+            --bg: #0d1420;
+            --bg-card: #141f2f;
+            --bg-input: #1a283b;
+            --bg-hover: #223249;
+            --bg-sidebar: #101a2a;
+            --border: rgba(184, 213, 242, 0.16);
+            --border-focus: #63b3ff;
+            --accent: #56a9ff;
+            --accent-2: #2ed2b4;
+            --accent-3: #2ed2b4;
+            --accent-4: #f3b96f;
+            --accent-glow: rgba(86, 169, 255, 0.2);
+            --success: #2ed2b4;
+            --error: #f08e8e;
+            --warn: #f3b96f;
+            --text: #e7f1ff;
+            --text-dim: rgba(231, 241, 255, 0.82);
+            --text-muted: rgba(231, 241, 255, 0.66);
             --sidebar-w: 228px;
             --radius: 14px;
             --radius-sm: 9px;
             --radius-xs: 6px;
             --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
-            --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7);
+            --shadow-card: 0 8px 28px rgba(0, 0, 0, 0.32);
+            --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.62);
         }
 
         [data-theme="light"] {
@@ -100,8 +100,8 @@
         }
 
         [data-theme="dark"] body {
-            background: radial-gradient(ellipse 90% 60% at 15% 0%, rgba(91, 95, 239, 0.09) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 40% at 85% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 60%), var(--bg);
+            background: radial-gradient(ellipse 90% 60% at 15% 0%, rgba(86, 169, 255, 0.12) 0%, transparent 62%),
+                radial-gradient(ellipse 60% 40% at 85% 100%, rgba(46, 210, 180, 0.09) 0%, transparent 62%), var(--bg);
         }
 
         /* LOGIN */
@@ -117,7 +117,7 @@
         }
 
         [data-theme="dark"] #loginOverlay {
-            background: radial-gradient(ellipse at 30% 40%, rgba(91, 95, 239, 0.1), var(--bg));
+            background: radial-gradient(ellipse at 30% 40%, rgba(86, 169, 255, 0.14), var(--bg));
         }
 
         .login-card {
@@ -2920,13 +2920,6 @@
                         <p id="mq-lecture-count" style="font-size:0.78rem;color:var(--text-dim);margin:2px 0 0"></p>
                     </div>
                 </div>
-                <div id="lec-mass-delete-bar" class="mass-delete-bar">
-                    <span id="lec-mass-delete-count" style="font-size:0.82rem;color:var(--error)"></span>
-                    <button class="btn btn-danger" style="padding:7px 14px;font-size:0.82rem"
-                        onclick="massDeleteLectures()">🗑 Delete Selected Lectures</button>
-                    <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
-                        onclick="clearLectureSelection()">✕ Cancel</button>
-                </div>
                 <div id="lec-toolbar" style="margin-bottom:14px;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap">
                     <select id="lecViewMode" onchange="handleViewModeChange()" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;min-width:150px">
                         <option value="topic">Topic Wise</option>
@@ -2934,8 +2927,6 @@
                     </select>
                     <input type="text" id="lecTopicFilter" placeholder="Filter by Topic..." oninput="filterLectureCards()" style="flex:1;min-width:180px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
                     <input type="number" id="lecNumFilter" placeholder="Filter by Lecture #" oninput="filterLectureCards()" style="width:160px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
-                    <button class="btn btn-warn" style="padding:8px 14px;font-size:0.82rem" id="lecSelectModeBtn"
-                        onclick="toggleLectureSelectMode()">☐ Select Lectures</button>
                     <button class="btn btn-warn" style="padding:8px 14px;font-size:0.82rem" id="lecSelectModeQBtn"
                         onclick="toggleQuestionSelectMode()">☐ Select Questions</button>
                 </div>
@@ -3188,7 +3179,7 @@
         <div class="modal-box">
             <div style="font-size:2rem;margin-bottom:10px">🗑</div>
             <h3>Delete Selected?</h3>
-            <p id="lecMassDeleteModalText">This cannot be undone.</p>
+            <p id="lecMassDeleteModalText">Delete selected questions? This cannot be undone.</p>
             <div class="modal-actions"><button class="btn btn-danger"
                     onclick="handleMassDeleteConfirm()">Delete</button><button class="btn btn-ghost"
                     onclick="closeModal('lecMassDeleteModal')">Cancel</button></div>
@@ -3278,7 +3269,6 @@
         let mqCurrentChapter = null, mqCurrentLectureIdx = null, mqCurrentTopic = null, mqCurrentLectureNum = null;
         let mqPrevView = null; // 'chapter', 'topic', 'lecture'
         let selectModeOn = false, selectedLectures = new Set();
-        let lecSelectModeOn = false, selectedLectureKeys = new Set();
         let qSelectModeOn = false, selectedQuestions = new Set();
         let _chartData = null;
         let _pendingConfirmAction = null, _pendingCancelAction = null;
@@ -4692,8 +4682,6 @@
                 const cropData = currentCropper.getData();
                 if (!cropData || cropData.width < 1 || cropData.height < 1) {
                     showErrorModal("No crop area selected. Please drag to select a region first.", "No selection");
-                    btn.innerHTML = '💾 Save Exact Crop';
-                    btn.disabled = false;
                     return;
                 }
                 const canvas = currentCropper.getCroppedCanvas({
@@ -4702,8 +4690,6 @@
                 });
                 if (!canvas) {
                     showErrorModal("Failed to generate crop. Try selecting a different area.", "Crop error");
-                    btn.innerHTML = '💾 Save Exact Crop';
-                    btn.disabled = false;
                     return;
                 }
 
@@ -4714,9 +4700,10 @@
                 closeCropper();
             } catch (e) {
                 showErrorModal("Failed to crop image: " + e.message);
+            } finally {
+                btn.innerHTML = '💾 Save Exact Crop';
+                btn.disabled = false;
             }
-            btn.innerHTML = '💾 Save Exact Crop';
-            btn.disabled = false;
         }
         window.saveCropperData = saveCropperData;
         window.closeCropper = closeCropper;
@@ -5222,85 +5209,8 @@
             renderChapterCards(allQuestions.filter(x => (x.chapter || "").toLowerCase().includes(f) || String(x.lecture).includes(f)));
         }
 
-        /* ── Lecture-level select/delete ── */
-        function toggleLectureSelectMode() {
-            // Turn off question select mode if on
-            if (qSelectModeOn) {
-                qSelectModeOn = false;
-                selectedQuestions.clear();
-                document.getElementById("lecSelectModeQBtn").textContent = "☐ Select Questions";
-                document.getElementById("lec-mass-delete-q-bar").classList.remove("visible");
-            }
-            
-            lecSelectModeOn = !lecSelectModeOn; selectedLectureKeys.clear();
-            const btn = document.getElementById("lecSelectModeBtn");
-            btn.textContent = lecSelectModeOn ? "✓ Done" : "☐ Select Lectures";
-            document.getElementById("lec-mass-delete-bar").classList.remove("visible");
-            const grid = document.getElementById("lectureCardsGrid");
-            if (lecSelectModeOn) grid.classList.add("lec-select-mode");
-            else grid.classList.remove("lec-select-mode");
-        }
-        let lastSelectedLectureIdx = -1;
-        function toggleLectureSelect(e, chapter, lecture, gridIdx) {
-            const lecs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === chapter).sort((a, b) => Number(a.lecture) - Number(b.lecture));
-            let targetIndices = [gridIdx];
-
-            if (e && e.shiftKey && lastSelectedLectureIdx !== -1) {
-                targetIndices = [];
-                const start = Math.min(lastSelectedLectureIdx, gridIdx);
-                const end = Math.max(lastSelectedLectureIdx, gridIdx);
-                for (let i = start; i <= end; i++) targetIndices.push(i);
-            }
-
-            const targetKey = `${chapter}::${lecture}`;
-            const willSelect = !selectedLectureKeys.has(targetKey);
-
-            targetIndices.forEach(i => {
-                const l = lecs[i];
-                if (!l) return;
-                const k = `${chapter}::${l.lecture}`;
-                if (willSelect) selectedLectureKeys.add(k);
-                else selectedLectureKeys.delete(k);
-            });
-
-            lastSelectedLectureIdx = gridIdx;
-            updateLecMassDeleteBar();
-
-            document.querySelectorAll(".lecture-card").forEach(c => {
-                if (c.dataset.ch === chapter) {
-                    const lk = `${chapter}::${c.dataset.lec}`;
-                    const isSel = selectedLectureKeys.has(lk);
-                    c.classList.toggle("selected-lec", isSel);
-                    const cb = c.querySelector(".lec-checkbox"); if (cb) cb.checked = isSel;
-                }
-            });
-        }
-        function updateLecMassDeleteBar() {
-            const bar = document.getElementById("lec-mass-delete-bar");
-            const count = document.getElementById("lec-mass-delete-count");
-            bar.classList.toggle("visible", selectedLectureKeys.size > 0);
-            count.textContent = `${selectedLectureKeys.size} lecture(s) selected`;
-        }
-        function clearLectureSelection() {
-            lecSelectModeOn = false; selectedLectureKeys.clear();
-            document.getElementById("lecSelectModeBtn").textContent = "☐ Select Lectures";
-            document.getElementById("lec-mass-delete-bar").classList.remove("visible");
-            const grid = document.getElementById("lectureCardsGrid");
-            if (grid) grid.classList.remove("lec-select-mode");
-            if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
-        }
-        window.clearLectureSelection = clearLectureSelection;
-
         /* ── Question-level select/delete ── */
         function toggleQuestionSelectMode() {
-            // Turn off lecture select mode if on
-            if (lecSelectModeOn) {
-                lecSelectModeOn = false;
-                selectedLectureKeys.clear();
-                document.getElementById("lecSelectModeBtn").textContent = "☐ Select Lectures";
-                document.getElementById("lec-mass-delete-bar").classList.remove("visible");
-            }
-            
             qSelectModeOn = !qSelectModeOn; selectedQuestions.clear();
             const btn = document.getElementById("lecSelectModeQBtn");
             btn.textContent = qSelectModeOn ? "✓ Done" : "☐ Select Questions";
@@ -5440,41 +5350,10 @@
             }
         }
         
-        let _massDeleteType = 'lecture';
-        function massDeleteLectures() {
-            if (!selectedLectureKeys.size) return;
-            _massDeleteType = 'lecture';
-            document.getElementById("lecMassDeleteModalText").textContent = `Delete ${selectedLectureKeys.size} selected lecture(s) from "${mqCurrentChapter}"? This cannot be undone.`;
-            openModal("lecMassDeleteModal");
-        }
-        window.massDeleteLectures = massDeleteLectures;
-        
         async function handleMassDeleteConfirm() {
-            if (qSelectModeOn && selectedQuestions.size > 0) {
-                await confirmQuestionMassDelete();
-            } else {
-                await confirmLecMassDelete();
-            }
+            await confirmQuestionMassDelete();
         }
         window.handleMassDeleteConfirm = handleMassDeleteConfirm;
-        async function confirmLecMassDelete() {
-            closeModal("lecMassDeleteModal");
-            showDeleteProgress("Removing lectures...");
-            const items = [...selectedLectureKeys].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; });
-            const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) });
-            if (r.ok) { 
-                const d = await r.json(); 
-                hideDeleteProgress();
-                showSuccessModal("Deleted!", `${d.deleted || items.length} lecture(s) deleted successfully.`);
-                clearLectureSelection(); 
-                await loadQuestionsAdmin(); 
-                if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter); 
-            }
-            else { 
-                hideDeleteProgress();
-                showErrorModal(await extractErrorMessage(r, "Mass delete failed."), "Delete failed"); 
-            }
-        }
 
         /* ── View switching ── */
         function showChapterView() {
@@ -5505,9 +5384,6 @@
             document.getElementById("mq-question-view").style.display = "none";
             document.getElementById("mq-chapter-title").textContent = ch;
             document.getElementById("mq-lecture-count").textContent = lecs.length + " lecture(s)";
-            lecSelectModeOn = false; selectedLectureKeys.clear();
-            document.getElementById("lecSelectModeBtn").textContent = "☐ Select Lectures";
-            document.getElementById("lec-mass-delete-bar").classList.remove("visible");
             const grid = document.getElementById("lectureCardsGrid");
             grid.className = "";
             
@@ -5650,7 +5526,6 @@
             const lec = el.dataset.lec;
             const gi = parseInt(el.dataset.gi);
             const idx = parseInt(el.dataset.idx);
-            if (lecSelectModeOn) { toggleLectureSelect(e, ch, lec, idx); return; }
             showQuestionViewH(gi);
         }
         function showLectureView() {
@@ -5679,7 +5554,6 @@
             // Hide toolbar and select buttons in question view
             const toolbar = document.getElementById("lec-toolbar");
             if (toolbar) toolbar.style.display = "none";
-            document.getElementById("lecSelectModeBtn").style.display = "none";
             document.getElementById("lecSelectModeQBtn").style.display = "none";
 
             // Find position in the navigation list
@@ -5799,7 +5673,6 @@
             // Show toolbar and select buttons
             const toolbar = document.getElementById("lec-toolbar");
             if (toolbar) toolbar.style.display = "";
-            document.getElementById("lecSelectModeBtn").style.display = "";
             document.getElementById("lecSelectModeQBtn").style.display = "";
             
             if (mqPrevView === 'topic' && mqCurrentChapter && mqCurrentTopic) {
@@ -6321,7 +6194,9 @@
         }
 
         function showStudentDetail(id) {
-            const student = allStudents.find(s => (s._id || s.mobile) === id) || allStudents.find(s => (s.mobile || s._id) === id);
+            const targetId = String(id ?? "");
+            const student = allStudents.find(s => String(s._id ?? "") === targetId)
+                || allStudents.find(s => String(s.mobile ?? "") === targetId);
             if (!student) {
                 showErrorModal("Student not found in the records.", "Error");
                 return;
