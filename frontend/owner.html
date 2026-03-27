@@ -3295,6 +3295,7 @@
         let allStudents = [], allQuestions = [], pendingReplaceData = null;
         let pendingDeleteChapter = null, pendingDeleteLecture = null, pendingDeleteQuestionIndex = undefined;
         let qImagesBase64 = [], aImagesBase64 = [], extractedQuestions = [];
+        const MAX_IMPORT_IMAGES = 10;
         let manualQuestionCount = 0;
         let undoStack = [], redoStack = [];
         let mqCurrentChapter = null, mqCurrentLectureIdx = null, mqCurrentTopic = null, mqCurrentLectureNum = null;
@@ -4281,21 +4282,32 @@
             refreshPreviews();
         }
 
-        async function handleQFiles(input) {
-            for (const f of input.files) {
-                if (!f) continue;
+        async function addImagesWithLimit(files, type) {
+            const target = type === "q" ? qImagesBase64 : aImagesBase64;
+            const label = type === "q" ? "question screenshots" : "answer key screenshots";
+            let added = 0;
+
+            for (const f of files) {
+                if (!f || !f.type?.startsWith("image/")) continue;
+                if (target.length >= MAX_IMPORT_IMAGES) {
+                    showErrorModal(`You can upload up to ${MAX_IMPORT_IMAGES} ${label}. Remove some images to add more.`, "Limit reached");
+                    break;
+                }
                 pushUndo(snapshotState());
-                qImagesBase64.push(await fileToBase64(f));
+                target.push(await fileToBase64(f));
+                added++;
             }
+
+            return added;
+        }
+
+        async function handleQFiles(input) {
+            await addImagesWithLimit(input.files || [], "q");
             refreshPreviews();
         }
 
         async function handleAFiles(input) {
-            for (const f of input.files) {
-                if (!f) continue;
-                pushUndo(snapshotState());
-                aImagesBase64.push(await fileToBase64(f));
-            }
+            await addImagesWithLimit(input.files || [], "a");
             refreshPreviews();
         }
 
@@ -4329,14 +4341,13 @@
                 if (!item.type.startsWith("image/")) continue;
                 e.preventDefault();
                 const f = item.getAsFile();
-                const b64 = await fileToBase64(f);
-                pushUndo(snapshotState());
+                if (!f) break;
                 // Paste goes to answer images if we already have question images but no answer images
                 if (document.getElementById("ak-tab-screenshot").classList.contains("active")
                     && qImagesBase64.length > 0 && aImagesBase64.length === 0) {
-                    aImagesBase64.push(b64);
+                    await addImagesWithLimit([f], "a");
                 } else {
-                    qImagesBase64.push(b64);
+                    await addImagesWithLimit([f], "q");
                 }
                 refreshPreviews();
                 break;
@@ -4351,12 +4362,7 @@
             z.addEventListener("dragleave", () => z.classList.remove("dragover"));
             z.addEventListener("drop", async e => {
                 e.preventDefault(); z.classList.remove("dragover");
-                for (const f of e.dataTransfer.files) {
-                    if (!f || !f.type.startsWith("image/")) continue;
-                    const b64 = await fileToBase64(f);
-                    pushUndo(snapshotState());
-                    if (zid === "qZone") qImagesBase64.push(b64); else aImagesBase64.push(b64);
-                }
+                await addImagesWithLimit(e.dataTransfer.files || [], zid === "qZone" ? "q" : "a");
                 refreshPreviews();
             });
         });
@@ -4615,9 +4621,27 @@
         let currentCropper = null;
         let currentCropQi = null;
         let currentCropScreenIdx = 0;
+        let cropperReady = false;
+        let cropperLoadToken = 0;
+
+        function setCropSaveBtnLoading(isLoading, label = '💾 Save Exact Crop') {
+            const btn = document.getElementById("saveCropBtn");
+            if (!btn) return;
+            if (isLoading) {
+                btn.innerHTML = '<span class="spinner"></span>&nbsp; Saving...';
+                btn.disabled = true;
+            } else {
+                btn.innerHTML = label;
+                btn.disabled = !cropperReady;
+            }
+        }
 
         function _initCropperForScreen(screenIdx) {
             currentCropScreenIdx = screenIdx;
+            cropperReady = false;
+            const localToken = ++cropperLoadToken;
+            setCropSaveBtnLoading(false, '⏳ Preparing Cropper...');
+
             const b64 = qImagesBase64[screenIdx];
             const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
             const img = document.getElementById("cropTarget");
@@ -4639,6 +4663,7 @@
 
             // Wait for image to load before init
             img.onload = () => {
+                if (localToken !== cropperLoadToken) return;
                 currentCropper = new Cropper(img, {
                     viewMode: 1,
                     dragMode: 'crop',
@@ -4657,6 +4682,9 @@
                     wheelZoomRatio: 0.1,
                     toggleDragModeOnDblclick: true,
                     ready() {
+                        if (localToken !== cropperLoadToken) return;
+                        cropperReady = true;
+                        setCropSaveBtnLoading(false);
                         // Drag mode = crop by default; dbl-click toggles to move (pan)
                     }
                 });
@@ -4695,6 +4723,8 @@
 
             currentCropQi = qi;
             openModal("cropModal");
+            cropperReady = false;
+            setCropSaveBtnLoading(false, '⏳ Preparing Cropper...');
 
             setTimeout(() => {
                 _initCropperForScreen(screenIdx);
@@ -4723,6 +4753,7 @@
                 currentCropper.destroy();
                 currentCropper = null;
             }
+            cropperReady = false;
             currentCropQi = null;
             currentCropScreenIdx = 0;
             const img = document.getElementById("cropTarget");
@@ -4735,14 +4766,12 @@
                 showErrorModal("No question selected for cropping.", "Error");
                 return;
             }
-            if (!currentCropper) {
+            if (!currentCropper || !cropperReady) {
                 showErrorModal("Cropper is still loading. Please wait a moment and try again.", "Wait");
                 return;
             }
 
-            const btn = document.getElementById("saveCropBtn");
-            btn.innerHTML = '<span class="spinner"></span>&nbsp; Saving...';
-            btn.disabled = true;
+            setCropSaveBtnLoading(true);
 
             try {
                 const cropData = currentCropper.getData();
@@ -4771,8 +4800,7 @@
             } catch (e) {
                 showErrorModal("Failed to crop image: " + e.message);
             } finally {
-                btn.innerHTML = '💾 Save Exact Crop';
-                btn.disabled = false;
+                setCropSaveBtnLoading(false);
             }
         }
         window.saveCropperData = saveCropperData;
