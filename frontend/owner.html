@@ -1348,7 +1348,7 @@
 
         .stu-detail-progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
+            background: #22c55e;
             border-radius: 10px;
             transition: width 0.6s ease;
             width: 0%;
@@ -2800,7 +2800,8 @@
                             id="existingChapters"></datalist></div>
                     <div class="field"><label>Lecture Number</label><input id="aq-lecture" type="number" min="1"
                             placeholder="e.g. 5"></div>
-                    <div class="field"><label>Topic Name</label><input id="aq-topic" placeholder="e.g. Introduction"></div>
+                    <div class="field"><label>Topic Name</label><input id="aq-topic" placeholder="e.g. Introduction">
+                    </div>
                 </div>
                 <div id="aqQuestionsContainer"></div>
                 <button class="btn btn-ghost mt-12" onclick="addManualQuestion()">+ Add Another Question</button>
@@ -2825,7 +2826,8 @@
                         <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">3 questions → lectures 4,
                             5, 6</div>
                     </div>
-                    <div class="field"><label>Topic Name</label><input id="imp-topic" placeholder="e.g. Introduction"></div>
+                    <div class="field"><label>Topic Name</label><input id="imp-topic" placeholder="e.g. Introduction">
+                    </div>
                 </div>
                 <div class="field" style="margin-top:8px">
                     <label>📄 Question Screenshots <span style="color:var(--accent);font-weight:500">— paste (Ctrl+V),
@@ -2913,20 +2915,26 @@
             </div>
             <div id="mq-lecture-view" style="display:none">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-                    <button class="btn btn-ghost" onclick="goBackMQ()"
-                        style="padding:7px 14px;font-size:0.85rem">← Back</button>
+                    <button class="btn btn-ghost" onclick="goBackMQ()" style="padding:7px 14px;font-size:0.85rem">←
+                        Back</button>
                     <div style="flex:1">
                         <h2 id="mq-chapter-title" style="font-size:1.05rem;font-weight:800;margin:0"></h2>
                         <p id="mq-lecture-count" style="font-size:0.78rem;color:var(--text-dim);margin:2px 0 0"></p>
                     </div>
                 </div>
-                <div id="lec-toolbar" style="margin-bottom:14px;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap">
-                    <select id="lecViewMode" onchange="handleViewModeChange()" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;min-width:150px">
+                <div id="lec-toolbar"
+                    style="margin-bottom:14px;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap">
+                    <select id="lecViewMode" onchange="handleViewModeChange()"
+                        style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;min-width:150px">
                         <option value="topic">Topic Wise</option>
                         <option value="lecture">Lecture Wise</option>
                     </select>
-                    <input type="text" id="lecTopicFilter" placeholder="Filter by Topic..." oninput="filterLectureCards()" style="flex:1;min-width:180px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
-                    <input type="number" id="lecNumFilter" placeholder="Filter by Lecture #" oninput="filterLectureCards()" style="width:160px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
+                    <input type="text" id="lecTopicFilter" placeholder="Filter by Topic..."
+                        oninput="filterLectureCards()"
+                        style="flex:1;min-width:180px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
+                    <input type="number" id="lecNumFilter" placeholder="Filter by Lecture #"
+                        oninput="filterLectureCards()"
+                        style="width:160px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;display:none">
                     <button class="btn btn-warn" style="padding:8px 14px;font-size:0.82rem" id="lecSelectModeQBtn"
                         onclick="toggleQuestionSelectMode()">☐ Select Questions</button>
                 </div>
@@ -2947,9 +2955,11 @@
                             style="padding:7px 14px;font-size:0.85rem">← Back</button>
                         <div class="qview-actions">
                             <button class="btn btn-ghost" id="mq-prev-btn" onclick="navigateQuestion(-1)"
-                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Previous question">◀ Prev</button>
+                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Previous question">◀
+                                Prev</button>
                             <button class="btn btn-ghost" id="mq-next-btn" onclick="navigateQuestion(1)"
-                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Next question">Next ▶</button>
+                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Next question">Next
+                                ▶</button>
                             <button class="btn btn-primary" onclick="saveInlineEdit()"
                                 style="padding:8px 16px;font-size:0.85rem">💾 Save</button>
                             <button class="btn btn-ghost" onclick="cancelInlineEdit()"
@@ -3079,7 +3089,9 @@
             <h3>Replace Existing Question?</h3>
             <p>A question for this lecture already exists. Replace it?</p>
             <div class="modal-actions"><button class="btn btn-danger" onclick="confirmReplace()">Replace</button><button
-                    class="btn btn-ghost" onclick="closeModal('replaceModal'); document.getElementById('saveProgressOverlay')?.style.setProperty('display', 'flex', 'important');">Cancel</button></div>
+                    class="btn btn-ghost"
+                    onclick="closeModal('replaceModal'); document.getElementById('saveProgressOverlay')?.style.setProperty('display', 'flex', 'important');">Cancel</button>
+            </div>
         </div>
     </div>
     <div class="modal-overlay" id="logoutModal">
@@ -3097,6 +3109,14 @@
             <h3 id="successModalTitle">Success</h3>
             <p id="successModalText">Done.</p><button class="btn btn-primary btn-full"
                 onclick="closeModal('successModal')">OK</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="errorModal">
+        <div class="modal-box">
+            <div style="font-size:2.4rem;margin-bottom:10px">⚠️</div>
+            <h3 id="errorModalTitle">Error</h3>
+            <p id="errorModalText">Something went wrong.</p><button class="btn btn-primary btn-full"
+                onclick="closeModal('errorModal')">OK</button>
         </div>
     </div>
     <div class="modal-overlay" id="studentDetailModal">
@@ -3203,7 +3223,8 @@
             <input type="text" id="promptModalInput" class="table-search" style="margin:15px 0;width:100%">
             <div class="modal-actions"><button class="btn btn-primary" id="promptModalOkBtn"
                     onclick="confirmPromptAction()">OK</button><button class="btn btn-ghost"
-                    onclick="cancelPromptAction(); document.getElementById('promptModalInput').value = '';">Cancel</button></div>
+                    onclick="cancelPromptAction(); document.getElementById('promptModalInput').value = '';">Cancel</button>
+            </div>
         </div>
     </div>
     <div class="modal-overlay" id="unsavedModal">
@@ -3225,13 +3246,19 @@
         <div class="modal-box"
             style="width:900px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;padding:24px 28px;">
             <h3 style="margin-bottom:6px">✂️ Crop Diagram from Screenshot</h3>
-            <p style="margin-bottom:10px;font-size:0.82rem;color:var(--text-dim)">Scroll/pan inside the box when zoomed. Drag to select the diagram region.</p>
+            <p style="margin-bottom:10px;font-size:0.82rem;color:var(--text-dim)">Scroll/pan inside the box when zoomed.
+                Drag to select the diagram region.</p>
 
             <!-- Image navigation bar (shown only when multiple screenshots exist) -->
             <div id="cropImageNav" style="display:none;align-items:center;gap:10px;margin-bottom:10px;width:100%">
-                <button type="button" onclick="cropNavPrev()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">◀ Prev</button>
-                <span id="cropNavLabel" style="font-size:0.82rem;color:var(--text-dim);flex:1;text-align:center">Image 1 / 1</span>
-                <button type="button" onclick="cropNavNext()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">Next ▶</button>
+                <button type="button" onclick="cropNavPrev()"
+                    style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">◀
+                    Prev</button>
+                <span id="cropNavLabel" style="font-size:0.82rem;color:var(--text-dim);flex:1;text-align:center">Image 1
+                    / 1</span>
+                <button type="button" onclick="cropNavNext()"
+                    style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">Next
+                    ▶</button>
             </div>
 
             <!-- Crop container: overflow:hidden so Cropper.js controls scrolling internally -->
@@ -3240,12 +3267,16 @@
                 <img id="cropTarget" style="display:block;max-width:100%;">
             </div>
 
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:0.8rem;color:var(--text-dim)">
-                <span>🔍 Scroll = zoom | Drag = select crop area | <kbd style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:1px 5px">Dbl-click</kbd> = toggle pan mode | Drag crop edges = resize</span>
+            <div
+                style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:0.8rem;color:var(--text-dim)">
+                <span>🔍 Scroll = zoom | Drag = select crop area | <kbd
+                        style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:1px 5px">Dbl-click</kbd>
+                    = toggle pan mode | Drag crop edges = resize</span>
             </div>
 
             <div class="modal-actions" style="margin-top:auto;width:100%">
-                <button type="button" class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact Crop</button>
+                <button type="button" class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact
+                    Crop</button>
                 <button type="button" class="btn btn-ghost" onclick="closeCropper()">Cancel</button>
             </div>
         </div>
@@ -3296,9 +3327,9 @@
                 document.getElementById("promptModalText").textContent = text || "Please enter a value:";
                 document.getElementById("promptModalInput").value = defaultValue;
 
-                const cleanup = () => { 
-                    _pendingConfirmAction = null; 
-                    _pendingCancelAction = null; 
+                const cleanup = () => {
+                    _pendingConfirmAction = null;
+                    _pendingCancelAction = null;
                     document.getElementById("promptModalInput").removeEventListener("keydown", handlePromptKeydown);
                 };
                 const handlePromptKeydown = (e) => {
@@ -3322,8 +3353,8 @@
             });
         }
         function confirmPromptAction() { if (_pendingConfirmAction) _pendingConfirmAction(); }
-        function cancelPromptAction() { 
-            if (_pendingCancelAction) _pendingCancelAction(); 
+        function cancelPromptAction() {
+            if (_pendingCancelAction) _pendingCancelAction();
             else { closeModal('confirmModal'); closeModal('promptModal'); }
         }
 
@@ -4485,6 +4516,10 @@
                             <span style="font-size:0.7rem;opacity:0.6">Lec #</span>
                             <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
                         </div>
+                        <div style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:999px;padding:3px">
+                            <button type="button" onclick="toggleEqAnswerMode(${qi}, false)" style="border:none;border-radius:999px;padding:4px 9px;font-size:0.72rem;cursor:pointer;font-family:inherit;${q.isMultiCorrect ? "background:transparent;color:var(--text-dim)" : "background:var(--accent);color:#fff"}">Single</button>
+                            <button type="button" onclick="toggleEqAnswerMode(${qi}, true)" style="border:none;border-radius:999px;padding:4px 9px;font-size:0.72rem;cursor:pointer;font-family:inherit;${q.isMultiCorrect ? "background:var(--warn);color:#1f1300" : "background:transparent;color:var(--text-dim)"}">Multi</button>
+                        </div>
                     </div>
                     <button class="btn btn-danger" style="padding:4px 10px;font-size:0.74rem" onclick="removeExtractedQ(${qi})">✕</button>
                 </div>
@@ -4500,23 +4535,54 @@
                         <input value="${(opt || "").replace(/"/g, "&quot;")}" id="eq_opt_${qi}_${oi}" style="flex:1;background:transparent;border:none;color:var(--text);font-size:0.82rem;outline:none;font-family:'Outfit',sans-serif">
                     </div>`).join("")}
                 </div>
-                <div style="margin-top:10px">
-                    ${q.isMultiCorrect
-                        ? `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answers:</label>
-                           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">
-                               ${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""} onchange="updateEqOptHighlightMulti(${qi})"> ${l}</label>`).join("")}
-                           </div>`
-                        : `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answer:</label>
-                           <select id="eq_correct_${qi}" class="admin-select" style="border-radius:var(--radius-sm);padding:6px 12px;font-size:0.85rem;outline:none;margin-top:5px" onchange="updateEqOptHighlight(${qi})">
-                               ${LETTERS.map((l, i) => `<option value="${i}" ${ci[0] === i ? "selected" : ""}>${l} — ${q.options[i] || ""}</option>`).join("")}
-                           </select>`
-                    }
-                </div>`;
+                <div id="eq_answer_wrap_${qi}" style="margin-top:10px">${buildEqAnswerControls(q, qi, ci)}</div>`;
 
                 container.appendChild(div);
             });
 
             renderMath(container);
+        }
+
+        function buildEqAnswerControls(q, qi, ci) {
+            if (q.isMultiCorrect) {
+                return `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answers:</label>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">
+                            ${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""} onchange="updateEqOptHighlightMulti(${qi})"> ${l}</label>`).join("")}
+                        </div>`;
+            }
+            return `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answer:</label>
+                    <select id="eq_correct_${qi}" class="admin-select" style="border-radius:var(--radius-sm);padding:6px 12px;font-size:0.85rem;outline:none;margin-top:5px" onchange="updateEqOptHighlight(${qi})">
+                        ${LETTERS.map((l, i) => `<option value="${i}" ${ci[0] === i ? "selected" : ""}>${l} — ${q.options[i] || ""}</option>`).join("")}
+                    </select>`;
+        }
+
+        function toggleEqAnswerMode(qi, makeMulti) {
+            const q = extractedQuestions[qi];
+            if (!q) return;
+            const item = document.getElementById(`eq_${qi}`);
+            if (!item) return;
+
+            const qTextEl = item.querySelector(`#eq_q_${qi}`);
+            const lecEl = item.querySelector(`#eq_lec_${qi}`);
+            if (qTextEl) q.question = qTextEl.value;
+            if (lecEl) q.assignedLecture = parseInt(lecEl.value, 10) || q.assignedLecture || 1;
+            q.options = [0, 1, 2, 3].map(oi => item.querySelector(`#eq_opt_${qi}_${oi}`)?.value || "");
+
+            const checked = [...item.querySelectorAll(`.eq_correct_multi_${qi}:checked`)].map(c => parseInt(c.value)).filter(Number.isInteger);
+            const singleEl = item.querySelector(`#eq_correct_${qi}`);
+            const singleVal = singleEl ? parseInt(singleEl.value) : NaN;
+            let current = checked.length ? checked : (Number.isInteger(singleVal) ? [singleVal] : (Array.isArray(q.correctIndexes) ? q.correctIndexes : [0]));
+            current = [...new Set(current.filter(i => Number.isInteger(i) && i >= 0 && i < 4))];
+
+            if (makeMulti) {
+                q.correctIndexes = current.length ? current : [0];
+                q.isMultiCorrect = true;
+            } else {
+                q.correctIndexes = [current.length ? current[0] : 0];
+                q.isMultiCorrect = false;
+            }
+
+            renderExtractedQuestions(extractedQuestions);
         }
 
         /** Build the HTML for a manual diagram upload zone */
@@ -4895,10 +4961,10 @@
         ══════════════════════════════════════════════════════════════════ */
         async function submitQuestions(chapter, lecture, questions, replace = false, topic = "") {
             const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture, topic, questions, replace }) });
-            if (r.ok) { 
+            if (r.ok) {
                 const data = await r.json();
-                showSuccessModal("Saved!", `${questions.length} question(s) added to Lecture ${lecture}. Total: ${data.total || questions.length}.`); 
-                await loadQuestionsAdmin(); if(typeof loadChaptersAdmin === 'function') loadChaptersAdmin(); 
+                showSuccessModal("Saved!", `${questions.length} question(s) added to Lecture ${lecture}. Total: ${data.total || questions.length}.`);
+                await loadQuestionsAdmin(); if (typeof loadChaptersAdmin === 'function') loadChaptersAdmin();
             }
             else { showErrorModal(await extractErrorMessage(r, "Failed to save questions."), "Save failed"); }
         }
@@ -4910,7 +4976,7 @@
             const d = pendingReplaceData;
             const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: d.chapter, lecture: d.lecture, topic: d.topic, questions: d.questions, replace: true }) });
             if (progOverlay) progOverlay.remove();
-            if (r.ok) { showSuccessModal("Replaced!", "Lecture questions were replaced."); await loadQuestionsAdmin(); if(typeof loadChaptersAdmin === 'function') loadChaptersAdmin(); }
+            if (r.ok) { showSuccessModal("Replaced!", "Lecture questions were replaced."); await loadQuestionsAdmin(); if (typeof loadChaptersAdmin === 'function') loadChaptersAdmin(); }
             else { showErrorModal(await extractErrorMessage(r, "Replace failed."), "Replace failed"); }
         }
 
@@ -4972,7 +5038,7 @@
             const topicFilter = document.getElementById("lecTopicFilter");
             const lecFilter = document.getElementById("lecNumFilter");
             const grid = document.getElementById("lectureCardsGrid");
-            
+
             if (mode === "topic") {
                 topicFilter.style.display = "";
                 lecFilter.style.display = "none";
@@ -4980,7 +5046,7 @@
                 topicFilter.style.display = "none";
                 lecFilter.style.display = "";
             }
-            
+
             if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
         }
 
@@ -5007,10 +5073,10 @@
         async function renameTopic(encodedCh, encodedTopic) {
             const ch = decodeURIComponent(encodedCh);
             const oldTopic = decodeURIComponent(encodedTopic);
-            const newTopic = await askPromptModalPromise({ 
-                title: "Rename Topic", 
-                text: `Enter new topic name for "${oldTopic || "(No Topic)"}" inside Chapter "${ch}":`, 
-                defaultValue: oldTopic 
+            const newTopic = await askPromptModalPromise({
+                title: "Rename Topic",
+                text: `Enter new topic name for "${oldTopic || "(No Topic)"}" inside Chapter "${ch}":`,
+                defaultValue: oldTopic
             });
             if (newTopic === null || newTopic.trim() === oldTopic || !newTopic.trim()) return;
             const confirmed = await askConfirmModalPromise({ title: "Confirm Rename", text: `Rename topic to "${newTopic.trim()}"?`, confirmText: "Rename" });
@@ -5021,9 +5087,9 @@
                 const r = await fetch(`${API_BASE}/api/admin/rename-topic`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter: ch, oldName: oldTopic, newName: newTopic.trim() }) });
                 const data = await r.json();
                 hideDeleteProgress();
-                if (r.ok && data.success) { 
-                    showSuccessModal("Renamed!", "Topic renamed successfully."); 
-                    await loadQuestionsAdmin(); 
+                if (r.ok && data.success) {
+                    showSuccessModal("Renamed!", "Topic renamed successfully.");
+                    await loadQuestionsAdmin();
                     renderChapterCards(allQuestions);
                     if (document.getElementById("mq-lecture-view").style.display === "block" && mqCurrentChapter) {
                         showLectureViewForChapter(mqCurrentChapter);
@@ -5032,19 +5098,19 @@
                     }
                 }
                 else { showErrorModal(data.error || "Failed to rename topic", "Error"); }
-            } catch (e) { 
+            } catch (e) {
                 hideDeleteProgress();
-                console.error("Rename Topic error:", e); 
-                showErrorModal(e.message, "Error"); 
+                console.error("Rename Topic error:", e);
+                showErrorModal(e.message, "Error");
             }
         }
 
         async function renameChapter(encodedName) {
             const oldName = decodeURIComponent(encodedName);
-            const newName = await askPromptModalPromise({ 
-                title: "Rename Chapter", 
-                text: `Enter new name for chapter: "${oldName}"\n\nThis will apply to all lectures in this chapter.`, 
-                defaultValue: oldName 
+            const newName = await askPromptModalPromise({
+                title: "Rename Chapter",
+                text: `Enter new name for chapter: "${oldName}"\n\nThis will apply to all lectures in this chapter.`,
+                defaultValue: oldName
             });
             if (!newName || !newName.trim() || newName.trim() === oldName) return;
 
@@ -5201,16 +5267,16 @@
             showDeleteProgress("Removing items...");
             const items = [...selectedLectures].map(k => { const [ch, ...rest] = k.split("::"); return { chapter: ch, lecture: rest.join("::") }; });
             const r = await fetch(`${API_BASE}/api/admin/mass-delete`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) });
-            if (r.ok) { 
-                const d = await r.json(); 
+            if (r.ok) {
+                const d = await r.json();
                 hideDeleteProgress();
                 showSuccessModal("Deleted!", `${d.deleted || items.length} item(s) deleted successfully.`);
-                clearSelection(); 
-                await loadQuestionsAdmin(); 
+                clearSelection();
+                await loadQuestionsAdmin();
             }
-            else { 
+            else {
                 hideDeleteProgress();
-                showErrorModal(await extractErrorMessage(r, "Mass delete failed."), "Delete failed"); 
+                showErrorModal(await extractErrorMessage(r, "Mass delete failed."), "Delete failed");
             }
         }
         function filterChapterCards(q) {
@@ -5227,7 +5293,7 @@
             const grid = document.getElementById("lectureCardsGrid");
             if (qSelectModeOn) grid.classList.add("lec-select-mode");
             else grid.classList.remove("lec-select-mode");
-            
+
             // Refresh to show checkboxes
             if (mqCurrentChapter && mqCurrentLectureNum !== null) {
                 handleLectureNumClick(null, null, mqCurrentChapter, mqCurrentLectureNum);
@@ -5235,7 +5301,7 @@
                 handleTopicCardClick(null, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
             }
         }
-        
+
         function toggleQuestionSelect(e, gi, sqIdx) {
             const key = `${gi}:${sqIdx}`;
             if (selectedQuestions.has(key)) {
@@ -5244,12 +5310,12 @@
                 selectedQuestions.add(key);
             }
             updateQuestionMassDeleteBar();
-            
+
             // Update checkbox visual
             const checkbox = document.querySelector(`.lecture-card[data-gi="${gi}"][data-sqidx="${sqIdx}"] .lec-checkbox`);
             if (checkbox) checkbox.checked = selectedQuestions.has(key);
         }
-        
+
         function updateQuestionMassDeleteBar() {
             const bar = document.getElementById("lec-mass-delete-q-bar");
             const countSpan = document.getElementById("lec-mass-delete-q-count");
@@ -5260,7 +5326,7 @@
                 bar.classList.remove("visible");
             }
         }
-        
+
         function clearQuestionSelection(skipRefresh = false) {
             qSelectModeOn = false; selectedQuestions.clear();
             document.getElementById("lecSelectModeQBtn").textContent = "☐ Select Questions";
@@ -5269,7 +5335,7 @@
             if (grid) grid.classList.remove("lec-select-mode");
 
             if (skipRefresh) return;
-            
+
             // Refresh to hide checkboxes
             if (mqCurrentChapter && mqCurrentLectureNum !== null) {
                 handleLectureNumClick(null, null, mqCurrentChapter, mqCurrentLectureNum);
@@ -5278,55 +5344,55 @@
             }
         }
         window.clearQuestionSelection = clearQuestionSelection;
-        
+
         async function massDeleteQuestions() {
             if (!selectedQuestions.size) return;
-            
+
             // Get the lecture from the first selected question
             const firstKey = [...selectedQuestions][0];
             const [gi, sqIdx] = firstKey.split(':').map(Number);
             const lecture = allQuestions[gi];
-            
+
             if (!lecture) {
                 showErrorModal("Cannot find the lecture to delete questions from.");
                 return;
             }
-            
+
             // Update current context for proper refresh
             mqCurrentChapter = lecture.chapter;
             mqCurrentLectureNum = Number(lecture.lecture);
-            
+
             const qIndices = [...selectedQuestions].map(k => parseInt(k.split(':')[1])).sort((a, b) => b - a);
-            
+
             document.getElementById("lecMassDeleteModalText").textContent = `Delete ${selectedQuestions.size} selected question(s) from "${lecture.chapter || "No chapter"} / Lecture ${lecture.lecture}"? This cannot be undone.`;
             openModal("lecMassDeleteModal");
         }
         window.massDeleteQuestions = massDeleteQuestions;
-        
+
         async function confirmQuestionMassDelete() {
             closeModal("lecMassDeleteModal");
-            
+
             // Get the lecture from the first selected question
             const firstKey = [...selectedQuestions][0];
             const [gi, sqIdx] = firstKey.split(':').map(Number);
             const lecture = allQuestions[gi];
-            
+
             if (!lecture) {
                 showErrorModal("Cannot find the lecture.");
                 return;
             }
-            
+
             const qIndices = [...selectedQuestions].map(k => parseInt(k.split(':')[1])).sort((a, b) => b - a);
-            
+
             showDeleteProgress("Deleting questions...");
-            
+
             // Remove questions in reverse order to maintain correct indices
             qIndices.forEach(idx => {
                 if (lecture.questions && lecture.questions[idx]) {
                     lecture.questions.splice(idx, 1);
                 }
             });
-            
+
             try {
                 const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(lecture.chapter || "_none_")}/${encodeURIComponent(lecture.lecture)}`, {
                     method: "PUT",
@@ -5339,13 +5405,13 @@
                         questions: lecture.questions
                     })
                 });
-                
+
                 if (r.ok) {
                     hideDeleteProgress();
                     showSuccessModal("Deleted!", `${qIndices.length} question(s) deleted successfully.`);
                     clearQuestionSelection(true);
                     await loadQuestionsAdmin();
-                    
+
                     // Refresh the view
                     if (mqCurrentTopic) {
                         handleTopicCardClick(null, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
@@ -5362,7 +5428,7 @@
                 showErrorModal(e.message || "Delete failed.", "Delete failed");
             }
         }
-        
+
         async function handleMassDeleteConfirm() {
             await confirmQuestionMassDelete();
         }
@@ -5376,7 +5442,7 @@
             setQuestionSelectButtonVisible(false);
             mqCurrentChapter = null; mqCurrentLectureIdx = null; mqCurrentTopic = null; mqCurrentLectureNum = null; mqPrevView = null;
         }
-        
+
         function goBackMQ() {
             if (mqPrevView === 'topic' && mqCurrentChapter) {
                 showLectureViewForChapter(mqCurrentChapter);
@@ -5387,7 +5453,7 @@
             }
             mqPrevView = null;
         }
-        
+
         function showLectureViewForChapter(ch) {
             mqCurrentChapter = ch;
             mqCurrentTopic = null;
@@ -5404,7 +5470,7 @@
             document.getElementById("mq-lecture-count").textContent = lecs.length + " lecture(s)";
             const grid = document.getElementById("lectureCardsGrid");
             grid.className = "";
-            
+
             if (viewMode === "topic") {
                 const topics = {};
                 lecs.forEach(q => {
@@ -5445,12 +5511,12 @@
                 }).join("");
             }
         }
-        
+
         function handleLectureNumClick(e, el, ch, lecNum) {
             const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum));
             const allQs = qs.flatMap(q => q.questions || []);
             const totalQ = allQs.length;
-            
+
             if (totalQ > 0) {
                 mqCurrentChapter = ch;
                 mqCurrentLectureNum = lecNum;
@@ -5484,7 +5550,7 @@
                 }).join("");
             }
         }
-        
+
         function handleTopicCardClick(e, el, ch, encodedTopic) {
             const topic = decodeURIComponent(encodedTopic);
             const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && (q.topic || "(No Topic)") === topic);
@@ -5572,7 +5638,7 @@
             document.getElementById("mq-lecture-view").style.display = "none";
             document.getElementById("mq-question-view").style.display = "block";
             document.getElementById("mq-question-title").textContent = `${q.chapter} — Lecture ${q.lecture}`;
-            
+
             // Hide toolbar and select buttons in question view
             const toolbar = document.getElementById("lec-toolbar");
             if (toolbar) toolbar.style.display = "none";
@@ -5691,12 +5757,12 @@
             document.getElementById("mq-question-view").style.display = "none";
             document.getElementById("mq-lecture-view").style.display = "block";
             document.getElementById("mq-chapter-view").style.display = "none";
-            
+
             // Show toolbar and select buttons
             const toolbar = document.getElementById("lec-toolbar");
             if (toolbar) toolbar.style.display = "";
             document.getElementById("lecSelectModeQBtn").style.display = "";
-            
+
             if (mqPrevView === 'topic' && mqCurrentChapter && mqCurrentTopic) {
                 // Re-render the topic question list
                 const ch = mqCurrentChapter;
@@ -5972,17 +6038,17 @@
             const gi = mqCurrentLectureIdx;
             const q = allQuestions[gi];
             if (!q) return;
-            
+
             // Get the question index from URL or default to 0
             const urlParams = new URLSearchParams(window.location.search);
-            const sqIdx = mqCurrentSqIdx >= 0 && _mqQuestionList[mqCurrentSqIdx] 
-                ? _mqQuestionList[mqCurrentSqIdx].sqIdx 
+            const sqIdx = mqCurrentSqIdx >= 0 && _mqQuestionList[mqCurrentSqIdx]
+                ? _mqQuestionList[mqCurrentSqIdx].sqIdx
                 : 0;
-            
+
             pendingDeleteChapter = q.chapter || "_none_";
             pendingDeleteLecture = q.lecture;
             pendingDeleteQuestionIndex = sqIdx;
-            
+
             document.getElementById("deleteModalText").textContent = `Delete question ${sqIdx + 1} from "${q.chapter || "No chapter"} / Lecture ${q.lecture}"? This will remove only this question.`;
             window._deleteFromInline = true;
             openModal("deleteModal");
@@ -5991,20 +6057,20 @@
 
         async function confirmDelete() {
             closeModal("deleteModal");
-            
+
             // Check if it's a single question delete (from inline edit)
             if (window._deleteFromInline && pendingDeleteQuestionIndex !== undefined) {
                 showDeleteProgress("Deleting question...");
                 try {
                     const gi = allQuestions.findIndex(q => (q.chapter || "_none_") === (pendingDeleteChapter || "_none_") && String(q.lecture) === String(pendingDeleteLecture));
                     if (gi === -1) throw new Error("Question not found");
-                    
+
                     const lecture = allQuestions[gi];
                     if (!lecture || !lecture.questions) throw new Error("Invalid question data");
-                    
+
                     // Remove the specific question
                     lecture.questions.splice(pendingDeleteQuestionIndex, 1);
-                    
+
                     // Save back to server
                     const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, {
                         method: "PUT",
@@ -6017,12 +6083,12 @@
                             questions: lecture.questions
                         })
                     });
-                    
+
                     if (r.ok) {
                         hideDeleteProgress();
                         showSuccessModal("Deleted!", "Question deleted successfully.");
                         await loadQuestionsAdmin();
-                        
+
                         // Refresh the view
                         if (window._deleteFromInline) {
                             window._deleteFromInline = false;
@@ -6044,7 +6110,7 @@
                 }
                 return;
             }
-            
+
             // Original behavior for deleting entire lecture
             showDeleteProgress("Deleting question...");
             const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(pendingDeleteChapter)}/${encodeURIComponent(pendingDeleteLecture)}`, { method: "DELETE", credentials: "include" });
@@ -6053,9 +6119,9 @@
                 showSuccessModal("Deleted!", "Question deleted successfully.");
                 await loadQuestionsAdmin();
                 if (window._deleteFromInline) { window._deleteFromInline = false; showLectureView(); }
-            } else { 
+            } else {
                 hideDeleteProgress();
-                showErrorModal(await extractErrorMessage(r, "Delete failed."), "Delete failed"); 
+                showErrorModal(await extractErrorMessage(r, "Delete failed."), "Delete failed");
             }
         }
 
@@ -6265,9 +6331,15 @@
                 return "Needs Improvement";
             };
 
-            const csvEscape = (value) => {
-                const str = String(value ?? '');
-                return `"${str.replace(/"/g, '""')}"`;
+            const safeCell = (value) => {
+                const raw = String(value ?? '').replace(/[\r\n]+/g, ' ').trim();
+                // Prevent spreadsheet formula injection while keeping values human-readable.
+                const guarded = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+                return `"${guarded.replace(/"/g, '""')}"`;
+            };
+
+            const addRow = (lines, cells) => {
+                lines.push(cells.map(safeCell).join(','));
             };
 
             let rows = allStudents
@@ -6295,25 +6367,67 @@
 
             const stats = getStudentStats(rows);
             const chapters = new Set(rows.map(r => r.chapter).filter(Boolean));
+            const now = new Date();
+            const sortLabelMap = {
+                recent: 'Most Recent',
+                name: 'Name (A-Z)',
+                'score-desc': 'Score (High to Low)',
+                'score-asc': 'Score (Low to High)'
+            };
+
+            const bandBuckets = { Excellent: 0, Good: 0, Average: 0, 'Needs Improvement': 0 };
+            rows.forEach((s) => {
+                const band = performanceBand(toPct(s));
+                bandBuckets[band] = (bandBuckets[band] || 0) + 1;
+            });
+
+            const topRows = [...rows].sort((a, b) => {
+                const scoreDelta = toPct(b) - toPct(a);
+                if (scoreDelta !== 0) return scoreDelta;
+                return Number(b.correctCount || 0) - Number(a.correctCount || 0);
+            }).slice(0, 10);
 
             const lines = [];
-            lines.push("Grip Physics Student Report");
-            lines.push(`Generated At,${csvEscape(new Date().toLocaleString())}`);
-            lines.push(`Total Records,${rows.length}`);
-            lines.push(`Unique Chapters,${chapters.size}`);
-            lines.push(`Average Score,${stats.avgScore}%`);
-            lines.push(`Top Score,${stats.topScore}%`);
-            lines.push("");
+            // Excel-friendly delimiter hint.
+            lines.push('sep=,');
+            addRow(lines, ['GRIP PHYSICS - STUDENT PERFORMANCE REPORT']);
+            lines.push('');
 
-            lines.push("Summary Metric,Value");
-            lines.push(`Students Included,${rows.length}`);
-            lines.push(`Average Score %,${stats.avgScore}`);
-            lines.push(`Top Score %,${stats.topScore}`);
-            lines.push(`Current Chapter Filter,${csvEscape(chapterFilter || 'All Chapters')}`);
-            lines.push(`Current Sort,${csvEscape(sortFilter)}`);
-            lines.push("");
+            addRow(lines, ['Report Info', 'Value']);
+            addRow(lines, ['Generated At', now.toLocaleString()]);
+            addRow(lines, ['Records Included', rows.length]);
+            addRow(lines, ['Unique Chapters', chapters.size]);
+            addRow(lines, ['Chapter Filter', chapterFilter || 'All Chapters']);
+            addRow(lines, ['Sort Mode', sortLabelMap[sortFilter] || sortFilter]);
+            lines.push('');
 
-            lines.push("Rank,Name,Mobile,Class,Place,Chapter,Lecture,Correct,Wrong,Total,Score %,Performance,Attempt Time");
+            addRow(lines, ['Score Summary', 'Value']);
+            addRow(lines, ['Average Score (%)', stats.avgScore]);
+            addRow(lines, ['Top Score (%)', stats.topScore]);
+            addRow(lines, ['Total Attempts', stats.attempts || rows.length]);
+            lines.push('');
+
+            addRow(lines, ['Performance Bands', 'Students']);
+            addRow(lines, ['Excellent (80-100%)', bandBuckets.Excellent]);
+            addRow(lines, ['Good (60-79%)', bandBuckets.Good]);
+            addRow(lines, ['Average (40-59%)', bandBuckets.Average]);
+            addRow(lines, ['Needs Improvement (<40%)', bandBuckets['Needs Improvement']]);
+            lines.push('');
+
+            addRow(lines, ['Top 10 Students', 'Score (%)', 'Correct', 'Total', 'Chapter', 'Lecture']);
+            if (!topRows.length) {
+                addRow(lines, ['No student data available']);
+            } else {
+                topRows.forEach((s) => {
+                    const total = Number(s.totalQuestions || 0);
+                    const correct = Number(s.correctCount || 0);
+                    addRow(lines, [s.name || 'Unknown', toPct(s), correct, total, s.chapter || '', s.lecture || '']);
+                });
+            }
+            lines.push('');
+
+            addRow(lines, ['Detailed Student Records']);
+            addRow(lines, ['Rank', 'Name', 'Mobile', 'Class', 'Place', 'Chapter', 'Lecture', 'Correct', 'Wrong', 'Total', 'Score (%)', 'Performance', 'Attempt Time']);
 
             rows.forEach((s, idx) => {
                 const total = Number(s.totalQuestions || 0);
@@ -6321,31 +6435,32 @@
                 const wrong = Math.max(0, total - correct);
                 const pct = toPct(s);
                 const timeStr = s.time ? new Date(s.time).toLocaleString() : '';
-                const mobileLiteral = s.mobile ? `="${String(s.mobile)}"` : '';
+                const mobileText = s.mobile ? `'${String(s.mobile)}` : '';
 
-                lines.push([
+                addRow(lines, [
                     idx + 1,
-                    csvEscape(s.name || ''),
-                    csvEscape(mobileLiteral),
-                    csvEscape(s.className || ''),
-                    csvEscape(s.place || ''),
-                    csvEscape(s.chapter || ''),
-                    csvEscape(s.lecture || ''),
+                    s.name || '',
+                    mobileText,
+                    s.className || '',
+                    s.place || '',
+                    s.chapter || '',
+                    s.lecture || '',
                     correct,
                     wrong,
                     total,
                     pct,
-                    csvEscape(performanceBand(pct)),
-                    csvEscape(timeStr),
-                ].join(','));
+                    performanceBand(pct),
+                    timeStr,
+                ]);
             });
 
-            const csv = "\uFEFF" + lines.join("\n");
+            const csv = "\uFEFF" + lines.join("\r\n");
             const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.href = url; link.download = `GripPhysics_Report_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.href = url; link.download = `GripPhysics_Student_Report_${now.toISOString().slice(0, 10)}.csv`;
             link.click();
+            URL.revokeObjectURL(url);
         }
 
         /* ══════════════════════════════════════════════════════════════════
@@ -6406,7 +6521,18 @@
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
         window.closeModal = closeModal;
         function showSuccessModal(title, text) { document.getElementById("successModalTitle").textContent = title || "Success"; document.getElementById("successModalText").textContent = text || "Done."; openModal("successModal"); }
-        function showErrorModal(text, title = "Something went wrong") { document.getElementById("errorModalTitle").textContent = title || "Error"; document.getElementById("errorModalText").textContent = text || "Something went wrong."; openModal("errorModal"); }
+        function showErrorModal(text, title = "Something went wrong") {
+            const titleEl = document.getElementById("errorModalTitle");
+            const textEl = document.getElementById("errorModalText");
+            const modal = document.getElementById("errorModal");
+            if (titleEl && textEl && modal) {
+                titleEl.textContent = title || "Error";
+                textEl.textContent = text || "Something went wrong.";
+                openModal("errorModal");
+                return;
+            }
+            alert(`${title || "Error"}: ${text || "Something went wrong."}`);
+        }
 
         async function extractErrorMessage(res, fallback = "Request failed.") {
             try { const data = await res.json(); return data?.error || data?.message || fallback; } catch { return fallback; }
