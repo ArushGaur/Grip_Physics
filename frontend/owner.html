@@ -2927,7 +2927,7 @@
                     <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
                         onclick="clearLectureSelection()">✕ Cancel</button>
                 </div>
-                <div style="margin-bottom:14px;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap">
+                <div id="lec-toolbar" style="margin-bottom:14px;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap">
                     <select id="lecViewMode" onchange="handleViewModeChange()" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;min-width:150px">
                         <option value="topic">Topic Wise</option>
                         <option value="lecture">Lecture Wise</option>
@@ -4675,47 +4675,48 @@
         }
 
         function saveCropperData() {
-            if (!currentCropper || currentCropQi === null) return;
+            if (currentCropQi === null) {
+                showErrorModal("No question selected for cropping.", "Error");
+                return;
+            }
+            if (!currentCropper) {
+                showErrorModal("Cropper is still loading. Please wait a moment and try again.", "Wait");
+                return;
+            }
 
             const btn = document.getElementById("saveCropBtn");
             btn.innerHTML = '<span class="spinner"></span>&nbsp; Saving...';
             btn.disabled = true;
 
-            setTimeout(() => {
-                try {
-                    // Get a reasonable resolution crop
-                    const cropData = currentCropper.getData();
-                    if (!cropData || cropData.width < 1 || cropData.height < 1) {
-                        showErrorModal("No crop area selected. Please drag to select a region first.", "No selection");
-                        btn.innerHTML = '💾 Save Exact Crop';
-                        btn.disabled = false;
-                        return;
-                    }
-                    const canvas = currentCropper.getCroppedCanvas({
-                        maxWidth: 1200,
-                        maxHeight: 1200
-                    });
-                    if (!canvas) {
-                        showErrorModal("Failed to generate crop. Try selecting a different area.", "Crop error");
-                        btn.innerHTML = '💾 Save Exact Crop';
-                        btn.disabled = false;
-                        return;
-                    }
-
-                    // Convert to base64
-                    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-                    const b64 = dataUrl.split(",")[1];
-
-                    // Set it as the manual image
-                    setEqManualImage(currentCropQi, b64);
-                    closeCropper();
-                } catch (e) {
-                    showErrorModal("Failed to crop image: " + e.message);
-                } finally {
+            try {
+                const cropData = currentCropper.getData();
+                if (!cropData || cropData.width < 1 || cropData.height < 1) {
+                    showErrorModal("No crop area selected. Please drag to select a region first.", "No selection");
                     btn.innerHTML = '💾 Save Exact Crop';
                     btn.disabled = false;
+                    return;
                 }
-            }, 150);
+                const canvas = currentCropper.getCroppedCanvas({
+                    maxWidth: 1200,
+                    maxHeight: 1200
+                });
+                if (!canvas) {
+                    showErrorModal("Failed to generate crop. Try selecting a different area.", "Crop error");
+                    btn.innerHTML = '💾 Save Exact Crop';
+                    btn.disabled = false;
+                    return;
+                }
+
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+                const b64 = dataUrl.split(",")[1];
+
+                setEqManualImage(currentCropQi, b64);
+                closeCropper();
+            } catch (e) {
+                showErrorModal("Failed to crop image: " + e.message);
+            }
+            btn.innerHTML = '💾 Save Exact Crop';
+            btn.disabled = false;
         }
         window.saveCropperData = saveCropperData;
         window.closeCropper = closeCropper;
@@ -5288,6 +5289,7 @@
             if (grid) grid.classList.remove("lec-select-mode");
             if (mqCurrentChapter) showLectureViewForChapter(mqCurrentChapter);
         }
+        window.clearLectureSelection = clearLectureSelection;
 
         /* ── Question-level select/delete ── */
         function toggleQuestionSelectMode() {
@@ -5354,33 +5356,45 @@
                 handleTopicCardClick(event, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
             }
         }
+        window.clearQuestionSelection = clearQuestionSelection;
         
         async function massDeleteQuestions() {
             if (!selectedQuestions.size) return;
             
-            const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === mqCurrentChapter && Number(q.lecture) === Number(mqCurrentLectureNum));
-            if (gi === -1) {
+            // Get the lecture from the first selected question
+            const firstKey = [...selectedQuestions][0];
+            const [gi, sqIdx] = firstKey.split(':').map(Number);
+            const lecture = allQuestions[gi];
+            
+            if (!lecture) {
                 showErrorModal("Cannot find the lecture to delete questions from.");
                 return;
             }
             
-            const lecture = allQuestions[gi];
+            // Update current context for proper refresh
+            mqCurrentChapter = lecture.chapter;
+            mqCurrentLectureNum = Number(lecture.lecture);
+            
             const qIndices = [...selectedQuestions].map(k => parseInt(k.split(':')[1])).sort((a, b) => b - a);
             
             document.getElementById("lecMassDeleteModalText").textContent = `Delete ${selectedQuestions.size} selected question(s) from "${lecture.chapter || "No chapter"} / Lecture ${lecture.lecture}"? This cannot be undone.`;
             openModal("lecMassDeleteModal");
         }
+        window.massDeleteQuestions = massDeleteQuestions;
         
         async function confirmQuestionMassDelete() {
             closeModal("lecMassDeleteModal");
             
-            const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === mqCurrentChapter && Number(q.lecture) === Number(mqCurrentLectureNum));
-            if (gi === -1) {
+            // Get the lecture from the first selected question
+            const firstKey = [...selectedQuestions][0];
+            const [gi, sqIdx] = firstKey.split(':').map(Number);
+            const lecture = allQuestions[gi];
+            
+            if (!lecture) {
                 showErrorModal("Cannot find the lecture.");
                 return;
             }
             
-            const lecture = allQuestions[gi];
             const qIndices = [...selectedQuestions].map(k => parseInt(k.split(':')[1])).sort((a, b) => b - a);
             
             showDeleteProgress("Deleting questions...");
@@ -5393,7 +5407,7 @@
             });
             
             try {
-                const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(lecture.chapter)}/${encodeURIComponent(lecture.lecture)}`, {
+                const r = await fetch(`${API_BASE}/api/admin/question/${encodeURIComponent(lecture.chapter || "_none_")}/${encodeURIComponent(lecture.lecture)}`, {
                     method: "PUT",
                     credentials: "include",
                     headers: { "Content-Type": "application/json" },
@@ -5410,9 +5424,11 @@
                     showSuccessModal("Deleted!", `${qIndices.length} question(s) deleted successfully.`);
                     clearQuestionSelection();
                     await loadQuestionsAdmin();
-                    if (lecture.questions.length === 0) {
-                        goBackFromQuestion();
-                    } else {
+                    
+                    // Refresh the view
+                    if (mqCurrentTopic) {
+                        handleTopicCardClick(event, null, mqCurrentChapter, encodeURIComponent(mqCurrentTopic));
+                    } else if (mqCurrentLectureNum !== null) {
                         showLectureViewForChapter(mqCurrentChapter);
                     }
                 } else {
@@ -5431,6 +5447,7 @@
             document.getElementById("lecMassDeleteModalText").textContent = `Delete ${selectedLectureKeys.size} selected lecture(s) from "${mqCurrentChapter}"? This cannot be undone.`;
             openModal("lecMassDeleteModal");
         }
+        window.massDeleteLectures = massDeleteLectures;
         
         async function handleMassDeleteConfirm() {
             if (qSelectModeOn && selectedQuestions.size > 0) {
@@ -5439,6 +5456,7 @@
                 await confirmLecMassDelete();
             }
         }
+        window.handleMassDeleteConfirm = handleMassDeleteConfirm;
         async function confirmLecMassDelete() {
             closeModal("lecMassDeleteModal");
             showDeleteProgress("Removing lectures...");
@@ -5657,6 +5675,12 @@
             document.getElementById("mq-lecture-view").style.display = "none";
             document.getElementById("mq-question-view").style.display = "block";
             document.getElementById("mq-question-title").textContent = `${q.chapter} — Lecture ${q.lecture}`;
+            
+            // Hide toolbar and select buttons in question view
+            const toolbar = document.getElementById("lec-toolbar");
+            if (toolbar) toolbar.style.display = "none";
+            document.getElementById("lecSelectModeBtn").style.display = "none";
+            document.getElementById("lecSelectModeQBtn").style.display = "none";
 
             // Find position in the navigation list
             const listIdx = _mqQuestionList.findIndex(e => e.gi === gi && (sqIdx === undefined || e.sqIdx === sqIdx));
@@ -5771,6 +5795,13 @@
             document.getElementById("mq-question-view").style.display = "none";
             document.getElementById("mq-lecture-view").style.display = "block";
             document.getElementById("mq-chapter-view").style.display = "none";
+            
+            // Show toolbar and select buttons
+            const toolbar = document.getElementById("lec-toolbar");
+            if (toolbar) toolbar.style.display = "";
+            document.getElementById("lecSelectModeBtn").style.display = "";
+            document.getElementById("lecSelectModeQBtn").style.display = "";
+            
             if (mqPrevView === 'topic' && mqCurrentChapter && mqCurrentTopic) {
                 // Re-render the topic question list
                 const ch = mqCurrentChapter;
@@ -5784,8 +5815,14 @@
                 grid.innerHTML = qs.flatMap(q => {
                     return (q.questions || []).map((sq, sqIdx) => {
                         const gi = allQuestions.indexOf(q);
+                        const isMulti = sq.isMultiCorrect || (sq.correctIndexes || [sq.correctIndex || 0]).length > 1;
                         const previewText = stripMath((sq.question || "").substring(0, 60));
-                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
+                        const qKey = `${gi}:${sqIdx}`;
+                        const isChecked = selectedQuestions.has(qKey) ? 'checked' : '';
+                        const checkboxHtml = qSelectModeOn ? `<input type="checkbox" class="lec-checkbox" ${isChecked} onclick="event.stopPropagation(); toggleQuestionSelect(event, ${gi}, ${sqIdx})" style="position:absolute;top:8px;right:8px;width:18px;height:18px;cursor:pointer;accent-color:var(--accent);z-index:10">` : '';
+                        const clickHandler = qSelectModeOn ? `onclick="event.stopPropagation(); toggleQuestionSelect(event, ${gi}, ${sqIdx})"` : `onclick="showQuestionViewH(${gi}, ${sqIdx})"`;
+                        return `<div class="lecture-card ${isMulti ? "has-multi" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" data-gi="${gi}" data-sqidx="${sqIdx}" style="position:relative" ${clickHandler}>
+                            ${checkboxHtml}
                             <div class="lecture-card-num">Q${qIndex++}</div>
                             <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
                             <div style="font-size:0.78rem;margin-bottom:3px">Lecture ${q.lecture}</div>
@@ -5805,8 +5842,14 @@
                 grid.innerHTML = allQs.map((sq, idx) => {
                     const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum) && q.questions?.includes(sq));
                     const sqIdx = allQuestions[gi]?.questions?.indexOf(sq) ?? idx;
+                    const isMulti = sq.isMultiCorrect || (sq.correctIndexes || [sq.correctIndex || 0]).length > 1;
                     const previewText = stripMath((sq.question || "").substring(0, 60));
-                    return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
+                    const qKey = `${gi}:${sqIdx}`;
+                    const isChecked = selectedQuestions.has(qKey) ? 'checked' : '';
+                    const checkboxHtml = qSelectModeOn ? `<input type="checkbox" class="lec-checkbox" ${isChecked} onclick="event.stopPropagation(); toggleQuestionSelect(event, ${gi}, ${sqIdx})" style="position:absolute;top:8px;right:8px;width:18px;height:18px;cursor:pointer;accent-color:var(--accent);z-index:10">` : '';
+                    const clickHandler = qSelectModeOn ? `onclick="event.stopPropagation(); toggleQuestionSelect(event, ${gi}, ${sqIdx})"` : `onclick="showQuestionViewH(${gi}, ${sqIdx})"`;
+                    return `<div class="lecture-card ${isMulti ? "has-multi" : ""}" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" data-gi="${gi}" data-sqidx="${sqIdx}" style="position:relative" ${clickHandler}>
+                        ${checkboxHtml}
                         <div class="lecture-card-num">Q${idx + 1}</div>
                         <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
                         <div style="font-size:0.78rem;margin-bottom:3px">${(sq.options || []).length} options</div>
@@ -6279,7 +6322,10 @@
 
         function showStudentDetail(id) {
             const student = allStudents.find(s => (s._id || s.mobile) === id) || allStudents.find(s => (s.mobile || s._id) === id);
-            if (!student) return;
+            if (!student) {
+                showErrorModal("Student not found in the records.", "Error");
+                return;
+            }
             let correct, total;
             if (typeof student.correctCount === "number") { correct = student.correctCount; total = student.totalQuestions || 1; }
             else { correct = student.correct ? 1 : 0; total = 1; }
@@ -6299,6 +6345,7 @@
             document.getElementById("sdd-mobile").textContent = student.mobile || '—';
             openModal("studentDetailModal");
         }
+        window.showStudentDetail = showStudentDetail;
 
         /* ══════════════════════════════════════════════════════════════════
            CSV EXPORT
@@ -6373,6 +6420,7 @@
         ══════════════════════════════════════════════════════════════════ */
         function openModal(id) { document.getElementById(id).style.display = "flex"; }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
+        window.closeModal = closeModal;
         function showSuccessModal(title, text) { document.getElementById("successModalTitle").textContent = title || "Success"; document.getElementById("successModalText").textContent = text || "Done."; openModal("successModal"); }
         function showErrorModal(text, title = "Something went wrong") { document.getElementById("errorModalTitle").textContent = title || "Error"; document.getElementById("errorModalText").textContent = text || "Something went wrong."; openModal("errorModal"); }
 
