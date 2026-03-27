@@ -4661,9 +4661,19 @@
 
             img.src = `data:${mime};base64,${b64}`;
 
-            // Wait for image to load before init
-            img.onload = () => {
+            // Wait for image to load before init (guard against duplicate init on cached images)
+            let didInit = false;
+            const initCropper = () => {
+                if (didInit) return;
+                didInit = true;
                 if (localToken !== cropperLoadToken) return;
+                img.onload = null;
+
+                if (currentCropper) {
+                    try { currentCropper.destroy(); } catch { }
+                    currentCropper = null;
+                }
+
                 currentCropper = new Cropper(img, {
                     viewMode: 1,
                     dragMode: 'crop',
@@ -4689,8 +4699,12 @@
                     }
                 });
             };
-            // If already cached / same src, trigger manually
-            if (img.complete && img.naturalWidth) img.onload();
+
+            img.onload = initCropper;
+            if (img.complete && img.naturalWidth) {
+                // Use async tick to avoid re-entrant onload/init ordering issues.
+                setTimeout(initCropper, 0);
+            }
         }
 
         function cropNavPrev() {
@@ -4774,29 +4788,60 @@
             setCropSaveBtnLoading(true);
 
             try {
-                const cropData = currentCropper.getData();
-                if (!cropData || cropData.width < 1 || cropData.height < 1) {
-                    showErrorModal("No crop area selected. Please drag to select a region first.", "No selection");
-                    return;
-                }
-                const canvas = currentCropper.getCroppedCanvas({
-                    maxWidth: 1200,
-                    maxHeight: 1200
-                });
-                if (!canvas) {
-                    showErrorModal("Failed to generate crop. Try selecting a different area.", "Crop error");
-                    return;
-                }
+                const doSave = () => {
+                    const cropData = currentCropper.getData();
+                    if (!cropData || cropData.width < 1 || cropData.height < 1) {
+                        showErrorModal("No crop area selected. Please drag to select a region first.", "No selection");
+                        return false;
+                    }
 
-                const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-                const b64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : "";
-                if (!b64) {
-                    showErrorModal("Failed to encode crop image. Please try again.", "Crop error");
+                    const canvas = currentCropper.getCroppedCanvas({
+                        maxWidth: 1200,
+                        maxHeight: 1200
+                    });
+                    if (!canvas) {
+                        showErrorModal("Failed to generate crop. Try selecting a different area.", "Crop error");
+                        return false;
+                    }
+
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+                    const b64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : "";
+                    if (!b64) {
+                        showErrorModal("Failed to encode crop image. Please try again.", "Crop error");
+                        return false;
+                    }
+
+                    setEqManualImage(currentCropQi, b64);
+                    closeCropper();
+                    return true;
+                };
+
+                try {
+                    doSave();
+                } catch (innerErr) {
+                    const msg = String(innerErr?.message || innerErr || "").toLowerCase();
+                    const isCropperStateErr = msg.includes("rotate") || msg.includes("imagedata") || msg.includes("undefined");
+                    if (!isCropperStateErr) throw innerErr;
+
+                    // Recover from rare internal Cropper state corruption by reinitializing once.
+                    const recoverScreenIdx = currentCropScreenIdx;
+                    _initCropperForScreen(recoverScreenIdx);
+
+                    setTimeout(() => {
+                        try {
+                            if (!currentCropper || !cropperReady) {
+                                showErrorModal("Cropper reloaded. Please click Save again.", "Cropper reset");
+                                return;
+                            }
+                            doSave();
+                        } catch (retryErr) {
+                            showErrorModal("Failed to crop image: " + retryErr.message);
+                        } finally {
+                            setCropSaveBtnLoading(false);
+                        }
+                    }, 120);
                     return;
                 }
-
-                setEqManualImage(currentCropQi, b64);
-                closeCropper();
             } catch (e) {
                 showErrorModal("Failed to crop image: " + e.message);
             } finally {
