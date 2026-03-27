@@ -9,6 +9,7 @@ const QUOTES = [
 
 let currentQuestionSet=null, currentLecture=null, currentChapter=null;
 let currentQuestionIndex=0, selectedAnswers=[], timerInterval=null;
+let askedQuestionIndexes=[];
 
 document.getElementById("quote").innerText = QUOTES[Math.floor(Math.random()*QUOTES.length)];
 
@@ -89,8 +90,9 @@ document.getElementById("loginForm").addEventListener("submit",async(e)=>{
         await fetch(`${API_BASE}/api/student-register`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,mobile,place,className,chapter,lecture})});
         currentChapter=chapter;currentLecture=lecture;
         // Select exactly 1 uniformly random question from the lecture's pool
-        let allQs=(questionData.questions||[]).map(q=>({
+        let allQs=(questionData.questions||[]).map((q, idx)=>({
             ...q,
+            _sourceIndex: idx,
             options:Array.isArray(q.options)?q.options:[],
             correctIndexes:Array.isArray(q.correctIndexes)?q.correctIndexes:[q.correctIndex??0],
         }));
@@ -100,6 +102,7 @@ document.getElementById("loginForm").addEventListener("submit",async(e)=>{
         } else {
             currentQuestionSet = [];
         }
+        askedQuestionIndexes=currentQuestionSet.map(q=>q._sourceIndex).filter(i=>Number.isInteger(i));
         currentQuestionIndex=0;
         selectedAnswers=currentQuestionSet.map(q=>q.isMultiCorrect?[]:null);
         setStep(2);
@@ -216,7 +219,7 @@ async function submitAnswer(timedOut=false){
     if(syncText) syncText.style.display="block";
     document.querySelectorAll(".option").forEach(o=>o.style.pointerEvents="none");
     try{
-        const res=await fetch(`${API_BASE}/api/submit-attempt`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mobile,chapter:currentChapter,lecture:currentLecture,selectedAnswers,name,place,className})});
+        const res=await fetch(`${API_BASE}/api/submit-attempt`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mobile,chapter:currentChapter,lecture:currentLecture,selectedAnswers,askedQuestionIndexes,name,place,className})});
         const data=await res.json();
         if(res.ok&&data.success){setTimeout(()=>showResults(data.correctCount,data.totalQuestions),500);}
         else if(!data.allowed){showAlreadyAttempted();}
