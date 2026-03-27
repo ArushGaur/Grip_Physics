@@ -177,7 +177,7 @@ app.use(cors({
     exposedHeaders: ["set-cookie"],
     maxAge: 86400,
 }));
-app.use(express.json({ limit: "20mb" }));
+app.use(express.json({ limit: "60mb" }));
 app.use(session({
     secret: SESSION_SECRET,
     resave: false,
@@ -510,6 +510,60 @@ app.delete("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, re
     res.json({ success: true });
 });
 
+app.put("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, res) => {
+    try {
+        const rawChapter = decodeURIComponent(req.params.chapter || "");
+        const lecture = decodeURIComponent(req.params.lecture || "");
+        const { chapter, topic, questions } = req.body || {};
+
+        if (!lecture) return res.status(400).json({ error: "Lecture is required." });
+        if (!Array.isArray(questions)) return res.status(400).json({ error: "Questions array is required." });
+
+        const chapterForMatch = (rawChapter === "_none_" || rawChapter === "") ? null : rawChapter;
+        const chapterForSave = (chapter === "_none_" || chapter === "") ? null : (chapter ?? chapterForMatch);
+
+        let existing;
+        if (chapterForMatch) {
+            const r = await db.execute({
+                sql: "SELECT * FROM questions WHERE chapter = ? AND lecture = ? LIMIT 1",
+                args: [chapterForMatch, lecture]
+            });
+            existing = r.rows[0] || null;
+        } else {
+            const r = await db.execute({
+                sql: "SELECT * FROM questions WHERE (chapter IS NULL OR chapter = '') AND lecture = ? LIMIT 1",
+                args: [lecture]
+            });
+            existing = r.rows[0] || null;
+        }
+
+        if (!existing) return res.status(404).json({ error: "Lecture not found." });
+
+        const normalizedQuestions = questions.map((q) => {
+            const opts = Array.isArray(q?.options) ? q.options : [];
+            const ciRaw = Array.isArray(q?.correctIndexes) ? q.correctIndexes : [typeof q?.correctIndex === "number" ? q.correctIndex : 0];
+            const ci = [...new Set(ciRaw.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n >= 0 && n < 4))];
+            return {
+                question: String(q?.question || "").trim(),
+                options: [...opts, "", "", ""].slice(0, 4).map((o) => String(o || "")),
+                correctIndexes: ci.length ? ci : [0],
+                isMultiCorrect: ci.length > 1,
+                questionImage: q?.questionImage || null,
+            };
+        });
+
+        await db.execute({
+            sql: "UPDATE questions SET chapter = ?, topic = ?, questions_json = ?, updated_at = ? WHERE id = ?",
+            args: [chapterForSave, topic || existing.topic || "", JSON.stringify(normalizedQuestions), Date.now(), existing.id]
+        });
+
+        await refreshCache(chapterForSave, lecture);
+        res.json({ success: true, updated: normalizedQuestions.length });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post("/api/admin/mass-delete", requireAdmin, async (req, res) => {
     const { items } = req.body;
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No items" });
@@ -623,6 +677,8 @@ app.post("/api/admin/migrate", requireAdmin, async (req, res) => {
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     const { questionImages, answerImages, manualAnswerKey } = req.body;
     if (!questionImages || !Array.isArray(questionImages) || !questionImages.length) return res.status(400).json({ error: "At least one question image required" });
+    if (questionImages.length > 10) return res.status(400).json({ error: "You can upload up to 10 question screenshots." });
+    if (Array.isArray(answerImages) && answerImages.length > 10) return res.status(400).json({ error: "You can upload up to 10 answer key screenshots." });
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
@@ -737,6 +793,12 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 
 // ── Catch-all
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
+app.use((err, req, res, next) => {
+    if (err?.type === "entity.too.large") {
+        return res.status(413).json({ error: "Uploaded images are too large. Use fewer/smaller images (max 10)." });
+    }
+    next(err);
+});
 app.use((err, req, res, next) => { console.error("Unhandled:", err); res.status(500).json({ error: "Internal server error" }); });
 
 // ── START
