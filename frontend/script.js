@@ -252,8 +252,8 @@ function showResults(correctCount,totalQuestions){
     currentQuestionSet.forEach((q,i)=>{
         const correctIdxs=q.correctIndexes||[q.correctIndex||0];
         let isCorrectAns=false;
-        if(q.isMultiCorrect){const sel=Array.isArray(selectedAnswers[i])?[...selectedAnswers[i]].sort():[];isCorrectAns=JSON.stringify(sel)===JSON.stringify([...correctIdxs].sort());}
-        else{isCorrectAns=selectedAnswers[i]===correctIdxs[0];}
+        if(q.isMultiCorrect){const sel=Array.isArray(selectedAnswers[i])?[...selectedAnswers[i]].map(Number).sort((a,b)=>a-b):[];isCorrectAns=JSON.stringify(sel)===JSON.stringify([...correctIdxs].map(Number).sort((a,b)=>a-b));}
+        else{isCorrectAns=Number(selectedAnswers[i])===Number(correctIdxs[0]);}
         const item=document.createElement("div");
         item.className=`breakdown-item ${isCorrectAns?"ok":"wrong"}`;
         const correctStr=correctIdxs.map(x=>letters[x]).join(", ");
