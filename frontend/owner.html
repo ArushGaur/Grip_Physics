@@ -3241,7 +3241,7 @@
             </div>
 
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:0.8rem;color:var(--text-dim)">
-                <span>🔍 Scroll = zoom &nbsp;|&nbsp; Drag = pan &nbsp;|&nbsp; <kbd style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:1px 5px">Dbl-click</kbd> = draw/move crop box &nbsp;|&nbsp; Drag crop corner = resize</span>
+                <span>🔍 Scroll = zoom | Drag = select crop area | <kbd style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:1px 5px">Dbl-click</kbd> = toggle pan mode | Drag crop edges = resize</span>
             </div>
 
             <div class="modal-actions" style="margin-top:auto;width:100%">
@@ -4574,23 +4574,24 @@
             // Wait for image to load before init
             img.onload = () => {
                 currentCropper = new Cropper(img, {
-                    viewMode: 2,          // Allow canvas to move freely inside/outside container
-                    dragMode: 'move',     // Default drag = pan the canvas
-                    autoCrop: true,       // Show crop box immediately
-                    autoCropArea: 0.6,    // Crop box covers 60% of canvas initially
+                    viewMode: 1,
+                    dragMode: 'crop',
+                    autoCrop: true,
+                    autoCropArea: 0.65,
+                    movable: true,
+                    scalable: true,
                     background: true,
                     zoomable: true,
+                    zoomOnWheel: true,
                     zoomOnTouch: true,
                     guides: true,
                     highlight: true,
                     cropBoxResizable: true,
                     cropBoxMovable: true,
-                    wheelZoomRatio: 0.08,
-                    toggleDragModeOnDblclick: true, // Dbl-click switches between move/crop
+                    wheelZoomRatio: 0.1,
+                    toggleDragModeOnDblclick: true,
                     ready() {
-                        // Keep drag mode as 'move' so users can pan after zooming
-                        // Double-click to switch to crop-draw mode
-                        this.cropper.setDragMode('move');
+                        // Drag mode = crop by default; dbl-click toggles to move (pan)
                     }
                 });
             };
@@ -4672,10 +4673,23 @@
             setTimeout(() => {
                 try {
                     // Get a reasonable resolution crop
+                    const cropData = currentCropper.getData();
+                    if (!cropData || cropData.width < 1 || cropData.height < 1) {
+                        showErrorModal("No crop area selected. Please drag to select a region first.", "No selection");
+                        btn.innerHTML = '💾 Save Exact Crop';
+                        btn.disabled = false;
+                        return;
+                    }
                     const canvas = currentCropper.getCroppedCanvas({
                         maxWidth: 1200,
                         maxHeight: 1200
                     });
+                    if (!canvas) {
+                        showErrorModal("Failed to generate crop. Try selecting a different area.", "Crop error");
+                        btn.innerHTML = '💾 Save Exact Crop';
+                        btn.disabled = false;
+                        return;
+                    }
 
                     // Convert to base64
                     const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
@@ -4824,22 +4838,35 @@
             ov.id = "saveProgressOverlay";
             ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center";
             const totalQuestions = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
-            ov.innerHTML = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:36px 44px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:320px;box-shadow:0 12px 48px rgba(0,0,0,0.45)"><div style="font-size:3rem;line-height:1">💾</div><div style="font-size:1.3rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:280px;height:7px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease-out;width:0%"></div></div><div style="font-size:0.88rem;color:var(--text-dim);font-weight:500" id="progText">0 / ${totalQuestions} questions saved</div></div>`;
+            ov.innerHTML = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:36px 44px;display:flex;flex-direction:column;align-items:center;gap:14px;min-width:360px;box-shadow:0 12px 48px rgba(0,0,0,0.45)">
+                <div style="font-size:3rem;line-height:1">💾</div>
+                <div style="font-size:1.2rem;font-weight:700;color:var(--text)">Saving Questions…</div>
+                <div style="width:320px;height:10px;background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;position:relative">
+                    <div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2),var(--accent));background-size:200% 100%;border-radius:8px;transition:width 0.35s cubic-bezier(.4,0,.2,1);width:0%;animation:progShimmer 1.5s ease infinite"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;width:320px;align-items:center">
+                    <span style="font-size:0.85rem;color:var(--text-dim);font-weight:500" id="progText">Preparing…</span>
+                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace" id="progPct">0%</span>
+                </div>
+            </div>
+            <style>@keyframes progShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>`;
             document.body.appendChild(ov);
 
             let savedQ = 0, saved = 0, failed = [];
             for (const lec of lectures) {
                 const lecQCount = groups[lec].length;
                 // Show that we're saving this lecture
-                document.getElementById("progText").textContent = `Saving ${savedQ + lecQCount > totalQuestions ? totalQuestions : savedQ + 1}–${Math.min(savedQ + lecQCount, totalQuestions)} / ${totalQuestions} questions…`;
+                document.getElementById("progText").textContent = `Saving lecture ${lec}…`;
                 const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec] }) });
                 if (r.ok) {
                     const data = await r.json();
                     // Increment one by one with small visual delay for feedback
                     for (let qi = 0; qi < lecQCount; qi++) {
                         savedQ++;
-                        document.getElementById("progBar").style.width = Math.round((savedQ / totalQuestions) * 100) + "%";
+                        const pct = Math.round((savedQ / totalQuestions) * 100);
+                        document.getElementById("progBar").style.width = pct + "%";
                         document.getElementById("progText").textContent = `${savedQ} / ${totalQuestions} questions saved`;
+                        document.getElementById("progPct").textContent = pct + "%";
                         if (qi < lecQCount - 1) await new Promise(r => setTimeout(r, 60));
                     }
                     saved++;
@@ -5472,8 +5499,9 @@
                 const ci = sub.correctIndexes || [sub.correctIndex || 0];
                 const hasImg = sub.questionImage && sub.questionImage.length > 0;
                 const _imgData = hasImg ? sub.questionImage : '';
-                const imgMime = hasImg ? (_imgData.startsWith('/9j/') ? 'image/jpeg' : _imgData.startsWith('iVBOR') ? 'image/png' : _imgData.startsWith('R0lGO') ? 'image/gif' : 'image/jpeg') : '';
-                const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);text-align:center;background:rgba(0,0,0,0.1)"><img src="data:${imgMime};base64,${_imgData}" alt="Question diagram" style="max-width:100%;max-height:280px;display:inline-block;object-fit:contain;cursor:pointer;border-radius:var(--radius-sm)" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'280px':'none'" onerror="this.parentElement.innerHTML='<div style=\\'padding:12px;color:var(--error);font-size:0.82rem\\''>⚠️ Image failed to load</div>'"></div>` : '';
+                const isUrl = _imgData.startsWith('http://') || _imgData.startsWith('https://');
+                const imgSrc = isUrl ? _imgData : `data:${_imgData.startsWith('/9j/') ? 'image/jpeg' : _imgData.startsWith('iVBOR') ? 'image/png' : 'image/jpeg'};base64,${_imgData}`;
+                const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);text-align:center;background:rgba(0,0,0,0.1)"><img src="${imgSrc}" alt="Question diagram" style="max-width:100%;max-height:280px;display:inline-block;object-fit:contain;cursor:pointer;border-radius:var(--radius-sm)" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'280px':'none'" onerror="this.parentElement.innerHTML='<div style=\\'padding:12px;color:var(--error);font-size:0.82rem\\''>⚠️ Image failed to load</div>'"></div>` : '';
                 const isMulti = sub.isMultiCorrect || ci.length > 1;
                 return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
@@ -5545,7 +5573,9 @@
         }
 
         function handleQuestionViewBack() {
-            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
+            _pendingNavDelta = 0;
+            const snapshotChanged = _originalEditSnapshot !== _getEditSnapshot();
+            if (_hasUnsavedEdits || snapshotChanged) {
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
@@ -5606,7 +5636,9 @@
         }
 
         function cancelInlineEdit() {
-            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
+            _pendingNavDelta = 0;
+            const snapshotChanged = _originalEditSnapshot !== _getEditSnapshot();
+            if (_hasUnsavedEdits || snapshotChanged) {
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
