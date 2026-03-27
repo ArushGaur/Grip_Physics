@@ -11,7 +11,7 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "icon-1.jpg",
+      "src": "icon-1.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
