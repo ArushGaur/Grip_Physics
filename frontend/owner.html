@@ -3295,7 +3295,6 @@
         let allStudents = [], allQuestions = [], pendingReplaceData = null;
         let pendingDeleteChapter = null, pendingDeleteLecture = null, pendingDeleteQuestionIndex = undefined;
         let qImagesBase64 = [], aImagesBase64 = [], extractedQuestions = [];
-        const MAX_IMPORT_IMAGES = 10;
         let manualQuestionCount = 0;
         let undoStack = [], redoStack = [];
         let mqCurrentChapter = null, mqCurrentLectureIdx = null, mqCurrentTopic = null, mqCurrentLectureNum = null;
@@ -4282,32 +4281,21 @@
             refreshPreviews();
         }
 
-        async function addImagesWithLimit(files, type) {
-            const target = type === "q" ? qImagesBase64 : aImagesBase64;
-            const label = type === "q" ? "question screenshots" : "answer key screenshots";
-            let added = 0;
-
-            for (const f of files) {
-                if (!f || !f.type?.startsWith("image/")) continue;
-                if (target.length >= MAX_IMPORT_IMAGES) {
-                    showErrorModal(`You can upload up to ${MAX_IMPORT_IMAGES} ${label}. Remove some images to add more.`, "Limit reached");
-                    break;
-                }
-                pushUndo(snapshotState());
-                target.push(await fileToBase64(f));
-                added++;
-            }
-
-            return added;
-        }
-
         async function handleQFiles(input) {
-            await addImagesWithLimit(input.files || [], "q");
+            for (const f of input.files) {
+                if (!f) continue;
+                pushUndo(snapshotState());
+                qImagesBase64.push(await fileToBase64(f));
+            }
             refreshPreviews();
         }
 
         async function handleAFiles(input) {
-            await addImagesWithLimit(input.files || [], "a");
+            for (const f of input.files) {
+                if (!f) continue;
+                pushUndo(snapshotState());
+                aImagesBase64.push(await fileToBase64(f));
+            }
             refreshPreviews();
         }
 
@@ -4341,13 +4329,14 @@
                 if (!item.type.startsWith("image/")) continue;
                 e.preventDefault();
                 const f = item.getAsFile();
-                if (!f) break;
+                const b64 = await fileToBase64(f);
+                pushUndo(snapshotState());
                 // Paste goes to answer images if we already have question images but no answer images
                 if (document.getElementById("ak-tab-screenshot").classList.contains("active")
                     && qImagesBase64.length > 0 && aImagesBase64.length === 0) {
-                    await addImagesWithLimit([f], "a");
+                    aImagesBase64.push(b64);
                 } else {
-                    await addImagesWithLimit([f], "q");
+                    qImagesBase64.push(b64);
                 }
                 refreshPreviews();
                 break;
@@ -4362,7 +4351,12 @@
             z.addEventListener("dragleave", () => z.classList.remove("dragover"));
             z.addEventListener("drop", async e => {
                 e.preventDefault(); z.classList.remove("dragover");
-                await addImagesWithLimit(e.dataTransfer.files || [], zid === "qZone" ? "q" : "a");
+                for (const f of e.dataTransfer.files) {
+                    if (!f || !f.type.startsWith("image/")) continue;
+                    const b64 = await fileToBase64(f);
+                    pushUndo(snapshotState());
+                    if (zid === "qZone") qImagesBase64.push(b64); else aImagesBase64.push(b64);
+                }
                 refreshPreviews();
             });
         });
