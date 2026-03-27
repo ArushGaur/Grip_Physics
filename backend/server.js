@@ -680,7 +680,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
-    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY question visible across all question images in order.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly and keep stem text before (a).\n- Single-letter options like A/B/C/D are valid option text, not empty.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct answer key (e.g., A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.\n\nEquation formatting (IMPORTANT):\n- Preserve equations in KaTeX-friendly LaTeX using $...$ (inline) or $$...$$ (display).\n- Convert common symbols: pi->$\\pi$, omega->$\\omega$, epsilon->$\\varepsilon$, sin->$\\sin$, cos->$\\cos$.\n- Preserve superscripts/subscripts: T^4 as $T^4$, T_1 as $T_1$, s^-1 as $s^{-1}$.\n- Fractions should use \\frac where appropriate (e.g. $\\frac{1}{2}mv^2$).\n- Do not leave broken delimiters like a single trailing $.`;
+    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY SINGLE question visible across ALL question images in order. Do NOT skip any question, even if it seems incomplete. Count all questions in the images and make sure your array has the same count.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly and keep stem text before (a).\n- Single-letter options like A/B/C/D are valid option text, not empty.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct answer key (e.g., A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.\n\nEquation formatting (IMPORTANT):\n- Preserve equations in KaTeX-friendly LaTeX using $...$ (inline) or $$...$$ (display).\n- Convert common symbols: pi->$\\pi$, omega->$\\omega$, epsilon->$\\varepsilon$, sin->$\\sin$, cos->$\\cos$.\n- Preserve superscripts/subscripts: T^4 as $T^4$, T_1 as $T_1$, s^-1 as $s^{-1}$.\n- Fractions should use \\frac where appropriate (e.g. $\\frac{1}{2}mv^2$).\n- Do not leave broken delimiters like a single trailing $.`;
     try {
         const requestExtraction = async (extraInstruction = "") => {
             const contentParts = [];
@@ -693,7 +693,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
                 body: JSON.stringify({
                     model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                    max_tokens: 6000,
+                    max_tokens: 8000,
                     temperature: 0.1,
                     messages: [{ role: "user", content: contentParts }]
                 })
@@ -709,7 +709,58 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             return String((data.choices?.[0]?.message?.content) || "").trim();
         };
 
-        const raw = await requestExtraction();
+        // Per-image extraction helper — sends only ONE question image at a time (plus all answer images).
+        // This avoids token truncation when the user uploads many images with many questions.
+        const requestExtractionForImage = async (singleQuestionImg, extraInstruction = "") => {
+            const contentParts = [];
+            contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(singleQuestionImg)};base64,${singleQuestionImg}` } });
+            for (const img of (answerImages || [])) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
+            contentParts.push({ type: "text", text: extraInstruction ? `${prompt}\n\n${extraInstruction}` : prompt });
+
+            const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
+                body: JSON.stringify({
+                    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                    max_tokens: 8000,
+                    temperature: 0.1,
+                    messages: [{ role: "user", content: contentParts }]
+                })
+            });
+
+            if (!r.ok) {
+                const e = await r.json().catch(() => ({}));
+                const msg = (e.error && e.error.message) || "Groq error";
+                throw new Error(msg);
+            }
+
+            const data = await r.json();
+            return String((data.choices?.[0]?.message?.content) || "").trim();
+        };
+
+        // Initial pass: extract per-image when multiple images uploaded (avoids output truncation).
+        // If only one image, fall back to the combined call (requestExtraction) as before.
+        let raw;
+        if (questionImages.length > 1) {
+            const perImageResults = [];
+            for (let i = 0; i < questionImages.length; i++) {
+                try {
+                    const imgInstruction = `This is question image ${i + 1} of ${questionImages.length}. Extract ALL questions from THIS image only.`;
+                    const imgRaw = await requestExtractionForImage(questionImages[i], imgInstruction);
+                    perImageResults.push(imgRaw);
+                } catch (imgErr) {
+                    console.warn(`Per-image extraction failed for image ${i + 1}:`, imgErr.message);
+                }
+            }
+            // Combine all per-image JSON arrays into one raw string for unified parsing below
+            raw = `[${perImageResults.map(r => {
+                const clean = String(r || "").replace(/\`\`\`json/gi, "").replace(/\`\`\`/g, "").trim();
+                const s = clean.indexOf("["), e = clean.lastIndexOf("]");
+                return (s !== -1 && e > s) ? clean.slice(s + 1, e) : clean;
+            }).filter(Boolean).join(",")}]`;
+        } else {
+            raw = await requestExtraction();
+        }
 
         const cleanJsonText = (txt) => String(txt || "")
             .replace(/```json/gi, "```")
@@ -820,25 +871,45 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         };
 
         // Continue extraction in bounded passes to recover questions often dropped in a single response.
-        for (let pass = 1; pass <= 4; pass++) {
+        let consecutiveEmptyPasses = 0;
+        for (let pass = 1; pass <= 6; pass++) {
             try {
                 const lastStem = String(parsed?.[parsed.length - 1]?.question || "").replace(/\s+/g, " ").slice(0, 180);
-                const seenPreview = (parsed || []).slice(-5).map((q) => `- ${String(q?.question || "").replace(/\s+/g, " ").slice(0, 120)}`).join("\n");
+                // Show ALL already-extracted question numbers so the model knows exactly what to skip
+                const allSeenNums = parsed
+                    .map(q => extractQuestionNumber(q))
+                    .filter(n => Number.isInteger(n))
+                    .sort((a, b) => a - b);
+                const seenNumsStr = allSeenNums.length ? `Already extracted question numbers: ${allSeenNums.join(", ")}.` : "";
+                // Also show last 10 stems for context
+                const seenPreview = (parsed || []).slice(-10).map((q) => `- ${String(q?.question || "").replace(/\s+/g, " ").slice(0, 120)}`).join("\n");
                 const continuationInstruction = [
-                    `Continuation pass ${pass}: return ONLY remaining unseen questions from the same images.`,
+                    `Continuation pass ${pass}: return ONLY questions NOT yet extracted from the same images.`,
                     `Keep original order and do not repeat already extracted items.`,
-                    lastStem ? `The last extracted stem was: "${lastStem}".` : "",
-                    seenPreview ? `Already extracted stems (do not repeat):\n${seenPreview}` : "",
+                    seenNumsStr,
+                    lastStem ? `The last extracted question stem was: "${lastStem}".` : "",
+                    seenPreview ? `Last 10 already extracted stems (DO NOT repeat these):\n${seenPreview}` : "",
+                    `Total extracted so far: ${parsed.length} questions.`,
                     `Output JSON array only. If no new questions remain, return [].`
                 ].filter(Boolean).join("\n\n");
 
                 const rawNext = await requestExtraction(continuationInstruction);
                 const parsedNext = parseAiQuestions(rawNext);
-                if (!Array.isArray(parsedNext) || !parsedNext.length) break;
+                if (!Array.isArray(parsedNext) || !parsedNext.length) {
+                    consecutiveEmptyPasses++;
+                    // Only stop after 2 consecutive empty passes (model confirmed nothing left twice)
+                    if (consecutiveEmptyPasses >= 2) break;
+                    continue;
+                }
 
                 const added = mergeUniqueQuestions(parsedNext);
 
-                if (added === 0) break;
+                if (added === 0) {
+                    consecutiveEmptyPasses++;
+                    if (consecutiveEmptyPasses >= 2) break;
+                } else {
+                    consecutiveEmptyPasses = 0;
+                }
             } catch (contErr) {
                 console.warn(`Continuation extraction pass ${pass} skipped:`, contErr.message);
                 break;
@@ -849,18 +920,37 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         const numberedCount = parsed.reduce((acc, q) => acc + (Number.isInteger(extractQuestionNumber(q)) ? 1 : 0), 0);
         const hasMostlyNumberedQuestions = parsed.length > 0 && (numberedCount / parsed.length) >= 0.5;
         if (hasMostlyNumberedQuestions) {
+            // Find actual max question number seen so we know when to stop
+            const maxSeenNum = parsed.reduce((max, q) => {
+                const n = extractQuestionNumber(q);
+                return Number.isInteger(n) && n > max ? n : max;
+            }, 0);
+            // Scan up to 20 beyond the last seen number, minimum 60
+            const upperBound = Math.max(60, maxSeenNum + 20);
+
             let emptyRangePasses = 0;
             const rangeSize = 10;
-            for (let rangeStart = 1; rangeStart <= 60; rangeStart += rangeSize) {
+            for (let rangeStart = 1; rangeStart <= upperBound; rangeStart += rangeSize) {
                 if (emptyRangePasses >= 2) break;
                 const rangeEnd = rangeStart + rangeSize - 1;
+
+                // Skip this range entirely if we already have all numbers in it
+                const numsInRange = [];
+                for (let n = rangeStart; n <= rangeEnd; n++) numsInRange.push(n);
+                const seenInRange = numsInRange.filter(n => parsed.some(q => extractQuestionNumber(q) === n));
+                if (seenInRange.length === numsInRange.length) { emptyRangePasses++; continue; }
+
+                // Pass the already-seen numbers so the model skips them
+                const alreadySeenInRange = seenInRange.length ? `Already extracted in this range: Q${seenInRange.join(", Q")}. Skip these.` : "";
+
                 try {
                     const rangeInstruction = [
                         `Numbered-sequence pass: extract questions whose printed question numbers are in range ${rangeStart} to ${rangeEnd}.`,
                         `Include ONLY questions whose number prefix is in this range, exclude all others.`,
+                        alreadySeenInRange,
                         `Do not repeat already extracted questions.`,
                         `Return JSON array only; return [] if none in this range.`
-                    ].join("\n");
+                    ].filter(Boolean).join("\n");
 
                     const rawRange = await requestExtraction(rangeInstruction);
                     const parsedRange = parseAiQuestions(rawRange);
