@@ -2927,7 +2927,7 @@
                     <button class="btn btn-ghost" style="padding:7px 14px;font-size:0.82rem"
                         onclick="clearLectureSelection()">✕ Cancel</button>
                 </div>
-                <div style="margin-bottom:14px;display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap">
+                <div style="margin-bottom:14px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
                     <select id="lecViewMode" onchange="handleViewModeChange()" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:0.87rem;outline:none;min-width:150px">
                         <option value="topic">Topic Wise</option>
                         <option value="lecture">Lecture Wise</option>
@@ -2946,10 +2946,6 @@
                         <button class="btn btn-ghost" onclick="handleQuestionViewBack()"
                             style="padding:7px 14px;font-size:0.85rem">← Back</button>
                         <div class="qview-actions">
-                            <button class="btn btn-ghost" id="mq-prev-btn" onclick="navigateQuestion(-1)"
-                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Previous question">◀ Prev</button>
-                            <button class="btn btn-ghost" id="mq-next-btn" onclick="navigateQuestion(1)"
-                                style="padding:8px 14px;font-size:0.85rem;display:none" title="Next question">Next ▶</button>
                             <button class="btn btn-primary" onclick="saveInlineEdit()"
                                 style="padding:8px 16px;font-size:0.85rem">💾 Save</button>
                             <button class="btn btn-ghost" onclick="cancelInlineEdit()"
@@ -3191,8 +3187,8 @@
             <h3 id="confirmModalTitle">Please Confirm</h3>
             <p id="confirmModalText">Are you sure?</p>
             <div class="modal-actions"><button class="btn btn-danger" id="confirmModalOkBtn"
-                    onclick="confirmConfirmModal()">Confirm</button><button class="btn btn-ghost"
-                    onclick="cancelConfirmModal()">Cancel</button></div>
+                    onclick="confirmPromptAction()">Confirm</button><button class="btn btn-ghost"
+                    onclick="cancelPromptAction()">Cancel</button></div>
         </div>
     </div>
     <div class="modal-overlay" id="promptModal">
@@ -3221,71 +3217,15 @@
         </div>
     </div>
 
-    <!-- Student Detail Modal -->
-    <div class="modal-overlay" id="studentDetailModal">
-        <div class="modal-box" style="max-width:420px;padding:28px 30px">
-            <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-                <div id="sdd-avatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0"></div>
-                <div>
-                    <div id="sdd-name" style="font-size:1rem;font-weight:700;color:var(--text)"></div>
-                    <div id="sdd-meta" style="font-size:0.78rem;color:var(--text-dim);margin-top:2px"></div>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
-                <div style="background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:var(--radius-sm);padding:12px;text-align:center">
-                    <div style="font-size:1.2rem;font-weight:800;color:var(--success)" id="sdd-correct">0</div>
-                    <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Correct</div>
-                </div>
-                <div style="background:rgba(242,92,92,0.08);border:1px solid rgba(242,92,92,0.2);border-radius:var(--radius-sm);padding:12px;text-align:center">
-                    <div style="font-size:1.2rem;font-weight:800;color:var(--error)" id="sdd-wrong">0</div>
-                    <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Wrong</div>
-                </div>
-                <div style="background:rgba(91,95,239,0.08);border:1px solid rgba(91,95,239,0.2);border-radius:var(--radius-sm);padding:12px;text-align:center">
-                    <div style="font-size:1.2rem;font-weight:800;color:var(--accent)" id="sdd-total">0</div>
-                    <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total</div>
-                </div>
-            </div>
-            <div style="margin-bottom:16px">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                    <span style="font-size:0.78rem;color:var(--text-dim)">Score</span>
-                    <span style="font-size:0.85rem;font-weight:700;color:var(--accent)" id="sdd-score-pct">0%</span>
-                </div>
-                <div style="width:100%;height:8px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden">
-                    <div id="sdd-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease;width:0%"></div>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;font-size:0.82rem">
-                <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px"><span style="color:var(--text-dim)">📍 Place:</span> <span id="sdd-place">—</span></div>
-                <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px"><span style="color:var(--text-dim)">🎓 Class:</span> <span id="sdd-class">—</span></div>
-                <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;grid-column:1/-1"><span style="color:var(--text-dim)">📱 Mobile:</span> <span id="sdd-mobile" style="font-family:'JetBrains Mono',monospace">—</span></div>
-            </div>
-            <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('studentDetailModal')" style="width:100%">Close</button></div>
-        </div>
-    </div>
-
     <div class="modal-overlay" id="cropModal" style="display:none;z-index:9999">
         <div class="modal-box"
-            style="width:900px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;padding:24px 28px;">
-            <h3 style="margin-bottom:6px">✂️ Crop Diagram from Screenshot</h3>
-            <p style="margin-bottom:10px;font-size:0.82rem;color:var(--text-dim)">Scroll/pan inside the box when zoomed. Drag to select the diagram region.</p>
-
-            <!-- Image navigation bar (shown only when multiple screenshots exist) -->
-            <div id="cropImageNav" style="display:none;align-items:center;gap:10px;margin-bottom:10px;width:100%">
-                <button onclick="cropNavPrev()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">◀ Prev</button>
-                <span id="cropNavLabel" style="font-size:0.82rem;color:var(--text-dim);flex:1;text-align:center">Image 1 / 1</span>
-                <button onclick="cropNavNext()" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem">Next ▶</button>
-            </div>
-
-            <!-- Crop container: overflow:hidden so Cropper.js controls scrolling internally -->
+            style="width:800px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;">
+            <h3>✂️ Crop Diagram from Screenshot</h3>
+            <p style="margin-bottom:10px">Drag boundaries to select the diagram exactly. Leave tight margins.</p>
             <div id="cropContainer"
-                style="width:100%;height:62vh;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:16px;overflow:hidden;position:relative;">
-                <img id="cropTarget" style="display:block;max-width:100%;">
+                style="width:100%;height:60vh;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:20px;overflow:auto;position:relative;display:flex;align-items:center;justify-content:center;">
+                <img id="cropTarget" style="display:block;max-width:none;max-height:none;">
             </div>
-
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:0.8rem;color:var(--text-dim)">
-                <span>🔍 Scroll = zoom | Drag = select crop area | <kbd style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:1px 5px">Dbl-click</kbd> = toggle pan mode | Drag crop edges = resize</span>
-            </div>
-
             <div class="modal-actions" style="margin-top:auto;width:100%">
                 <button class="btn btn-primary" id="saveCropBtn" onclick="saveCropperData()">💾 Save Exact Crop</button>
                 <button class="btn btn-ghost" onclick="closeCropper()">Cancel</button>
@@ -3316,8 +3256,6 @@
         let _pendingConfirmAction = null, _pendingCancelAction = null;
         let _hasUnsavedEdits = false;
         let _originalEditSnapshot = null;
-        let mqCurrentSqIdx = -1;          // index in _mqQuestionList of current question
-        let _mqQuestionList = [];         // [{gi, sqIdx}] — flat ordered list for prev/next nav
 
         function askConfirmModalPromise({ title, text, confirmText }) {
             return new Promise(resolve => {
@@ -3591,7 +3529,7 @@
 
         function showChapterViewH() { showChapterView(); history.pushState({ type: "mqChapter" }, "", ""); }
         function showLectureViewH(ch) { showLectureViewForChapter(ch); history.pushState({ type: "mqLecture", chapter: ch }, "", ""); }
-        function showQuestionViewH(idx, sqIdx) { showQuestionView(idx, sqIdx); history.pushState({ type: "mqQuestion", idx, sqIdx }, "", ""); }
+        function showQuestionViewH(idx) { showQuestionView(idx); history.pushState({ type: "mqQuestion", idx }, "", ""); }
 
         window.addEventListener("popstate", e => {
             const s = e.state;
@@ -3599,7 +3537,7 @@
             if (s.type === "section") { showSection(s.name, false); return; }
             if (s.type === "mqChapter") { showChapterView(); return; }
             if (s.type === "mqLecture") { if (s.chapter) showLectureViewForChapter(s.chapter); else showChapterView(); return; }
-            if (s.type === "mqQuestion") { if (typeof s.idx === "number") showQuestionView(s.idx, s.sqIdx); else showLectureView(); return; }
+            if (s.type === "mqQuestion") { if (typeof s.idx === "number") showQuestionView(s.idx); else showLectureView(); return; }
         });
 
         /* ══════════════════════════════════════════════════════════════════
@@ -4449,8 +4387,7 @@
                 }
 
                 status.className = "extract-status success";
-                const lecNums = [...new Set(parsed.map((_, i) => startLec))];
-                status.innerHTML = `✅ Found ${parsed.length} question(s) — all assigned to Lecture ${startLec}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${imgCount} with diagrams${imgSummary}.` : ""}`;
+                status.innerHTML = `✅ Found ${parsed.length} question(s) — lectures ${startLec}–${startLec + parsed.length - 1}. ${parsed.filter(q => q.isMultiCorrect).length} multi-correct.${imgCount > 0 ? ` 🖼 ${imgCount} with diagrams${imgSummary}.` : ""}`;
 
                 renderExtractedQuestions(extractedQuestions);
                 document.getElementById("extractedList").style.display = "block";
@@ -4524,7 +4461,7 @@
                         ${q.isMultiCorrect ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:20px;color:var(--warn)">✦ Multi</span>' : ""}
                         ${q.hasImage ? '<span style="font-size:0.7rem;padding:2px 8px;background:rgba(6,214,160,0.12);border:1px solid rgba(6,214,160,0.3);border-radius:20px;color:var(--accent-3)">🖼 Has Image</span>' : ""}
                         <div style="display:flex;align-items:center;gap:5px;background:rgba(91,95,239,0.08);border:1px solid rgba(91,95,239,0.2);border-radius:7px;padding:3px 10px">
-                            <span style="font-size:0.7rem;opacity:0.6">Lec #</span>
+                            <span style="font-size:0.7rem;opacity:0.6">Q #</span>
                             <input type="number" id="eq_lec_${qi}" value="${q.assignedLecture}" min="1" style="width:50px;background:transparent;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.88rem;font-weight:700;outline:none;text-align:center">
                         </div>
                     </div>
@@ -4546,10 +4483,10 @@
                     ${q.isMultiCorrect
                         ? `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answers:</label>
                            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">
-                               ${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""} onchange="updateEqOptHighlightMulti(${qi})"> ${l}</label>`).join("")}
+                               ${LETTERS.map((l, i) => `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.85rem"><input type="checkbox" class="eq_correct_multi_${qi}" value="${i}" ${ci.includes(i) ? "checked" : ""}> ${l}</label>`).join("")}
                            </div>`
                         : `<label style="font-size:0.75rem;color:var(--text-dim)">Correct Answer:</label>
-                           <select id="eq_correct_${qi}" class="admin-select" style="border-radius:var(--radius-sm);padding:6px 12px;font-size:0.85rem;outline:none;margin-top:5px" onchange="updateEqOptHighlight(${qi})">
+                           <select id="eq_correct_${qi}" class="admin-select" style="border-radius:var(--radius-sm);padding:6px 12px;font-size:0.85rem;outline:none;margin-top:5px">
                                ${LETTERS.map((l, i) => `<option value="${i}" ${ci[0] === i ? "selected" : ""}>${l} — ${q.options[i] || ""}</option>`).join("")}
                            </select>`
                     }
@@ -4590,68 +4527,6 @@
         /* ── Diagram manual upload helpers ── */
         let currentCropper = null;
         let currentCropQi = null;
-        let currentCropScreenIdx = 0;
-
-        function _initCropperForScreen(screenIdx) {
-            currentCropScreenIdx = screenIdx;
-            const b64 = qImagesBase64[screenIdx];
-            const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
-            const img = document.getElementById("cropTarget");
-
-            // Update nav label
-            const navBar = document.getElementById("cropImageNav");
-            const navLabel = document.getElementById("cropNavLabel");
-            if (qImagesBase64.length > 1) {
-                navBar.style.display = "flex";
-                navLabel.textContent = `Image ${screenIdx + 1} / ${qImagesBase64.length}`;
-            } else {
-                navBar.style.display = "none";
-            }
-
-            // Destroy previous cropper before changing src
-            if (currentCropper) { currentCropper.destroy(); currentCropper = null; }
-
-            img.src = `data:${mime};base64,${b64}`;
-
-            // Wait for image to load before init
-            img.onload = () => {
-                currentCropper = new Cropper(img, {
-                    viewMode: 1,
-                    dragMode: 'crop',
-                    autoCrop: true,
-                    autoCropArea: 0.65,
-                    movable: true,
-                    scalable: true,
-                    background: true,
-                    zoomable: true,
-                    zoomOnWheel: true,
-                    zoomOnTouch: true,
-                    guides: true,
-                    highlight: true,
-                    cropBoxResizable: true,
-                    cropBoxMovable: true,
-                    wheelZoomRatio: 0.1,
-                    toggleDragModeOnDblclick: true,
-                    ready() {
-                        // Drag mode = crop by default; dbl-click toggles to move (pan)
-                    }
-                });
-            };
-            // If already cached / same src, trigger manually
-            if (img.complete && img.naturalWidth) img.onload();
-        }
-
-        function cropNavPrev() {
-            if (!qImagesBase64.length) return;
-            const prev = (currentCropScreenIdx - 1 + qImagesBase64.length) % qImagesBase64.length;
-            _initCropperForScreen(prev);
-        }
-
-        function cropNavNext() {
-            if (!qImagesBase64.length) return;
-            const next = (currentCropScreenIdx + 1) % qImagesBase64.length;
-            _initCropperForScreen(next);
-        }
 
         function openCropper(qi) {
             if (!qImagesBase64.length) {
@@ -4659,23 +4534,45 @@
                 return;
             }
 
-            // Determine best starting screenshot for this question
+            // Find which screenshot this question belongs to
             const q = extractedQuestions[qi] || {};
             let screenIdx = 0;
             if (q.imageSourceIndex !== undefined) {
                 screenIdx = Math.min(q.imageSourceIndex, qImagesBase64.length - 1);
             } else {
+                // Estimate based on how many screenshots we have vs number of questions
                 const qsPerScreen = Math.max(1, Math.ceil(extractedQuestions.length / qImagesBase64.length));
                 screenIdx = Math.min(Math.floor(qi / qsPerScreen), qImagesBase64.length - 1);
             }
 
+            const b64 = qImagesBase64[screenIdx];
+            const mime = b64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+
             currentCropQi = qi;
+            const img = document.getElementById("cropTarget");
+            img.src = `data:${mime};base64,${b64}`;
+
             openModal("cropModal");
 
+            // Initialize Cropper after modal is visible to ensure correct dimensions
             setTimeout(() => {
-                _initCropperForScreen(screenIdx);
-            }, 60);
+                if (currentCropper) currentCropper.destroy();
+                currentCropper = new Cropper(img, {
+                    viewMode: 0, // Allow crop box to exceed canvas size for scrolling
+                    dragMode: 'crop', // Let the user draw a new crop box anywhere
+                    autoCrop: false, // Don't show a pre-selected box
+                    background: true, // Show checkerboard for clear boundaries
+                    zoomable: true, // Allow zooming for precision
+                    zoomOnTouch: true,
+                    guides: true,
+                    highlight: true,
+                    cropBoxResizable: true,
+                    cropBoxMovable: true,
+                    wheelZoomRatio: 0.1,
+                });
+            }, 50);
 
+            // Add keyboard shortcuts
             document.addEventListener('keydown', handleCropperKeydown);
         }
 
@@ -4699,14 +4596,15 @@
                 currentCropper = null;
             }
             currentCropQi = null;
-            currentCropScreenIdx = 0;
-            const img = document.getElementById("cropTarget");
-            if (img) { img.src = ""; img.onload = null; }
-            document.getElementById("cropImageNav").style.display = "none";
+            document.getElementById("cropTarget").src = "";
         }
 
         function saveCropperData() {
-            if (!currentCropper || currentCropQi === null) return;
+            console.log("saveCropperData called", { currentCropper, currentCropQi, extractedQuestions: extractedQuestions?.length });
+            if (!currentCropper || currentCropQi === null) {
+                console.log("Early return - no cropper or qi");
+                return;
+            }
 
             const btn = document.getElementById("saveCropBtn");
             btn.innerHTML = '<span class="spinner"></span>&nbsp; Saving...';
@@ -4715,38 +4613,27 @@
             setTimeout(() => {
                 try {
                     // Get a reasonable resolution crop
-                    const cropData = currentCropper.getData();
-                    if (!cropData || cropData.width < 1 || cropData.height < 1) {
-                        showErrorModal("No crop area selected. Please drag to select a region first.", "No selection");
-                        btn.innerHTML = '💾 Save Exact Crop';
-                        btn.disabled = false;
-                        return;
-                    }
                     const canvas = currentCropper.getCroppedCanvas({
                         maxWidth: 1200,
                         maxHeight: 1200
                     });
-                    if (!canvas) {
-                        showErrorModal("Failed to generate crop. Try selecting a different area.", "Crop error");
-                        btn.innerHTML = '💾 Save Exact Crop';
-                        btn.disabled = false;
-                        return;
-                    }
 
                     // Convert to base64
                     const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
                     const b64 = dataUrl.split(",")[1];
 
+                    console.log("Setting manual image for qi:", currentCropQi);
                     // Set it as the manual image
                     setEqManualImage(currentCropQi, b64);
                     closeCropper();
                 } catch (e) {
+                    console.error("Crop error:", e);
                     showErrorModal("Failed to crop image: " + e.message);
                 } finally {
                     btn.innerHTML = '💾 Save Exact Crop';
                     btn.disabled = false;
                 }
-            }, 150);
+            }, 10);
         }
 
         function setEqManualImage(qi, b64) {
@@ -4817,18 +4704,6 @@
             }
         });
 
-        function updateEqOptHighlight(qi) {
-            const sel = parseInt(document.getElementById(`eq_correct_${qi}`)?.value ?? -1);
-            const container = document.getElementById(`eq_${qi}`);
-            if (!container) return;
-            container.querySelectorAll(".eq-opt").forEach((el, oi) => { el.classList.toggle("correct", oi === sel); });
-        }
-        function updateEqOptHighlightMulti(qi) {
-            const checked = [...document.querySelectorAll(`.eq_correct_multi_${qi}:checked`)].map(c => parseInt(c.value));
-            const container = document.getElementById(`eq_${qi}`);
-            if (!container) return;
-            container.querySelectorAll(".eq-opt").forEach((el, oi) => { el.classList.toggle("correct", checked.includes(oi)); });
-        }
         function removeExtractedQ(qi) {
             pushUndo(snapshotState());
             document.getElementById(`eq_${qi}`)?.remove();
@@ -4879,38 +4754,16 @@
             const ov = document.createElement("div");
             ov.id = "saveProgressOverlay";
             ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center";
-            const totalQuestions = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
-            ov.innerHTML = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:36px 44px;display:flex;flex-direction:column;align-items:center;gap:14px;min-width:360px;box-shadow:0 12px 48px rgba(0,0,0,0.45)">
-                <div style="font-size:3rem;line-height:1">💾</div>
-                <div style="font-size:1.2rem;font-weight:700;color:var(--text)">Saving Questions…</div>
-                <div style="width:320px;height:10px;background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;position:relative">
-                    <div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2),var(--accent));background-size:200% 100%;border-radius:8px;transition:width 0.35s cubic-bezier(.4,0,.2,1);width:0%;animation:progShimmer 1.5s ease infinite"></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;width:320px;align-items:center">
-                    <span style="font-size:0.85rem;color:var(--text-dim);font-weight:500" id="progText">Preparing…</span>
-                    <span style="font-size:0.85rem;color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace" id="progPct">0%</span>
-                </div>
-            </div>
-            <style>@keyframes progShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>`;
+            ov.innerHTML = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:36px 44px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:320px;box-shadow:0 12px 48px rgba(0,0,0,0.45)"><div style="font-size:3rem;line-height:1">💾</div><div style="font-size:1.3rem;font-weight:700;color:var(--text)">Saving Questions…</div><div style="width:280px;height:7px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden"><div id="progBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:6px;transition:width 0.3s ease-out;width:0%"></div></div><div style="font-size:0.88rem;color:var(--text-dim);font-weight:500" id="progText">0 / ${lectures.length} lectures saved</div></div>`;
             document.body.appendChild(ov);
 
-            let savedQ = 0, saved = 0, failed = [];
+            let saved = 0, failed = [];
             for (const lec of lectures) {
-                const lecQCount = groups[lec].length;
-                // Show that we're saving this lecture
-                document.getElementById("progText").textContent = `Saving lecture ${lec}…`;
+                document.getElementById("progBar").style.width = Math.round((saved / lectures.length) * 100) + "%";
+                document.getElementById("progText").textContent = `${saved} / ${lectures.length} lectures saved…`;
                 const r = await fetch(`${API_BASE}/api/admin/add-question`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chapter, lecture: lec, topic, questions: groups[lec] }) });
                 if (r.ok) {
                     const data = await r.json();
-                    // Increment one by one with small visual delay for feedback
-                    for (let qi = 0; qi < lecQCount; qi++) {
-                        savedQ++;
-                        const pct = Math.round((savedQ / totalQuestions) * 100);
-                        document.getElementById("progBar").style.width = pct + "%";
-                        document.getElementById("progText").textContent = `${savedQ} / ${totalQuestions} questions saved`;
-                        document.getElementById("progPct").textContent = pct + "%";
-                        if (qi < lecQCount - 1) await new Promise(r => setTimeout(r, 60));
-                    }
                     saved++;
                 } else {
                     failed.push(lec);
@@ -4921,8 +4774,8 @@
             openModal("successModal");
             document.getElementById("successModalTitle").textContent = saved > 0 ? "Saved!" : "Failed";
             document.getElementById("successModalText").textContent = failed.length === 0
-                ? `${savedQ} question(s) saved for "${chapter}".`
-                : `Saved: ${savedQ} questions. Failed lectures: ${failed.join(", ")}.`;
+                ? `${saved} lecture(s) saved for "${chapter}".`
+                : `Saved: ${saved}. Failed: ${failed.join(", ")}.`;
             await loadQuestionsAdmin();
             loadChaptersAdmin();
         }
@@ -5128,12 +4981,6 @@
         }
 
         let lastSelectedChapterIdx = -1;
-
-        // Strip LaTeX math delimiters for plain-text card previews
-        function stripMath(text) {
-            if (!text) return '';
-            return text.replace(/\$\$[\s\S]*?\$\$/g, '[equation]').replace(/\$[^$]+\$/g, '[eq]');
-        }
 
         function renderChapterCards(questions) {
             const grid = document.getElementById("chapterCardsGrid"); if (!grid) return;
@@ -5424,15 +5271,12 @@
                 document.getElementById("mq-chapter-title").textContent = `${ch} - Lecture ${lecNum}`;
                 document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
                 const grid = document.getElementById("lectureCardsGrid");
-                // Build navigation list for Prev/Next buttons
-                _mqQuestionList = [];
                 grid.innerHTML = allQs.map((sq, idx) => {
                     const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum) && q.questions?.includes(sq));
-                    const sqIdx = allQuestions[gi]?.questions?.indexOf(sq) ?? idx;
-                    _mqQuestionList.push({ gi, sqIdx });
-                    const previewText = stripMath((sq.question || "").substring(0, 60));
-                    return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
-                        <div class="lecture-card-num">Q${idx + 1}</div>
+                    const previewText = (sq.question || "").substring(0, 40);
+                    const isMulti = sq.isMultiCorrect || (sq.correctIndexes || []).length > 1;
+                    return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi})">
+                        <div class="lecture-card-num">Q${idx + 1}${isMulti ? '<span style="color:var(--warn);margin-left:4px">✦</span>' : ''}</div>
                         <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
                         <div style="font-size:0.78rem;margin-bottom:3px">${(sq.options || []).length} options</div>
                     </div>`;
@@ -5454,41 +5298,20 @@
                 document.getElementById("mq-chapter-title").textContent = `${ch} - ${topic}`;
                 document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
                 const grid = document.getElementById("lectureCardsGrid");
-                // Build navigation list for Prev/Next buttons
-                _mqQuestionList = [];
                 let qIndex = 1;
                 grid.innerHTML = qs.flatMap(q => {
                     return (q.questions || []).map((sq, sqIdx) => {
                         const gi = allQuestions.indexOf(q);
-                        _mqQuestionList.push({ gi, sqIdx });
-                        const previewText = stripMath((sq.question || "").substring(0, 60));
-                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
-                            <div class="lecture-card-num">Q${qIndex++}</div>
+                        const previewText = (sq.question || "").substring(0, 40);
+                        const isMulti = sq.isMultiCorrect || (sq.correctIndexes || []).length > 1;
+                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi})">
+                            <div class="lecture-card-num">Q${qIndex++}${isMulti ? '<span style="color:var(--warn);margin-left:4px">✦</span>' : ''}</div>
                             <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
                             <div style="font-size:0.78rem;margin-bottom:3px">Lecture ${q.lecture}</div>
                         </div>`;
                     });
                 }).join("");
             }
-        }
-        function navigateQuestion(delta) {
-            // Guard unsaved changes
-            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
-                // Store intent and show unsaved modal
-                _pendingNavDelta = delta;
-                openModal('unsavedModal');
-                return;
-            }
-            _doNavigateQuestion(delta);
-        }
-        let _pendingNavDelta = 0;
-        function _doNavigateQuestion(delta) {
-            const newIdx = mqCurrentSqIdx + delta;
-            if (newIdx < 0 || newIdx >= _mqQuestionList.length) return;
-            const { gi, sqIdx } = _mqQuestionList[newIdx];
-            _hasUnsavedEdits = false;
-            showQuestionView(gi, sqIdx);
-            history.pushState({ type: "mqQuestion", idx: gi, sqIdx }, "", "");
         }
         function handleLecCardClick(e, el) {
             const ch = el.dataset.ch;
@@ -5506,35 +5329,13 @@
         }
 
         /* ── Question view with rendered math ── */
-        function showQuestionViewH(gi, sqIdx) {
-            // Wrapper that pushes browser history then shows the question view
-            showQuestionView(gi, sqIdx);
-            history.pushState({ type: "mqQuestion", idx: gi, sqIdx: sqIdx }, "", "");
-        }
-        function showQuestionView(gi, sqIdx) {
+        function showQuestionView(gi) {
             mqCurrentLectureIdx = gi;
             const q = allQuestions[gi]; if (!q) return;
-            // If sqIdx provided, only show that specific sub-question
-            const filterSingle = typeof sqIdx === "number";
-            const subsToRender = filterSingle ? [[q.questions[sqIdx], sqIdx]] : (q.questions || []).map((s, i) => [s, i]);
             document.getElementById("mq-lecture-view").style.display = "none";
             document.getElementById("mq-question-view").style.display = "block";
             document.getElementById("mq-question-title").textContent = `${q.chapter} — Lecture ${q.lecture}`;
-
-            // Find position in the navigation list
-            const listIdx = _mqQuestionList.findIndex(e => e.gi === gi && (sqIdx === undefined || e.sqIdx === sqIdx));
-            mqCurrentSqIdx = listIdx;
-            const inList = _mqQuestionList.length > 1;
-            const posLabel = inList && listIdx >= 0 ? ` · ${listIdx + 1} / ${_mqQuestionList.length}` : '';
-            document.getElementById("mq-question-subtitle").textContent = filterSingle
-                ? `Question ${sqIdx + 1} of ${(q.questions || []).length}${posLabel}`
-                : `${(q.questions || []).length} question(s) · ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}`;
-
-            // Show/hide & enable/disable prev/next buttons
-            const prevBtn = document.getElementById('mq-prev-btn');
-            const nextBtn = document.getElementById('mq-next-btn');
-            if (prevBtn) { prevBtn.style.display = inList ? '' : 'none'; prevBtn.disabled = listIdx <= 0; }
-            if (nextBtn) { nextBtn.style.display = inList ? '' : 'none'; nextBtn.disabled = listIdx < 0 || listIdx >= _mqQuestionList.length - 1; }
+            document.getElementById("mq-question-subtitle").textContent = `${(q.questions || []).length} question(s) · ${q.updatedAt ? new Date(q.updatedAt).toLocaleDateString() : "—"}`;
 
             const el = document.getElementById("mq-question-content");
             el.innerHTML = `<div class="form-row" style="margin-bottom:16px">
@@ -5542,17 +5343,17 @@
                 <div class="field"><label>Lecture</label><input id="iqe-lecture" type="number" min="1" value="${q.lecture}" style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:0.87rem;outline:none;width:100%;font-family:'Outfit',sans-serif"></div>
             </div>
             <div id="iqe-questions-container">
-                ${subsToRender.map(([sub, si]) => {
+                ${(q.questions || []).map((sub, si) => {
                 const ci = sub.correctIndexes || [sub.correctIndex || 0];
-                const hasImg = sub.questionImage && sub.questionImage.length > 0;
-                const _imgData = hasImg ? sub.questionImage : '';
-                const isUrl = _imgData.startsWith('http://') || _imgData.startsWith('https://');
-                const imgSrc = isUrl ? _imgData : `data:${_imgData.startsWith('/9j/') ? 'image/jpeg' : _imgData.startsWith('iVBOR') ? 'image/png' : 'image/jpeg'};base64,${_imgData}`;
-                const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);text-align:center;background:rgba(0,0,0,0.1)"><img src="${imgSrc}" alt="Question diagram" style="max-width:100%;max-height:280px;display:inline-block;object-fit:contain;cursor:pointer;border-radius:var(--radius-sm)" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'280px':'none'" onerror="this.parentElement.innerHTML='<div style=\\'padding:12px;color:var(--error);font-size:0.82rem\\''>⚠️ Image failed to load</div>'"></div>` : '';
+                const hasImg = sub.questionImage;
                 const isMulti = sub.isMultiCorrect || ci.length > 1;
+                const imgHtml = hasImg ? `<div style="margin-bottom:14px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)"><img src="data:image/png;base64,${sub.questionImage}" alt="Question diagram" style="max-width:100%;max-height:250px;display:block;margin:0 auto;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight=='none'?'250px':'none'"></div>` : '';
                 return `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-                            <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px">Question ${si + 1}${hasImg ? ' <span style="color:var(--accent)">📷 Has Image</span>' : ""}</div>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <input type="checkbox" class="question-delete-checkbox" data-si="${si}" style="width:18px;height:18px;cursor:pointer">
+                                <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px">Question ${si + 1}${hasImg ? ' <span style="color:var(--accent)">📷 Has Image</span>' : ''}${isMulti ? ' <span style="color:var(--warn)">✦ Multi</span>' : ''}</div>
+                            </div>
                             <label class="multi-toggle-label">
                                 <input type="checkbox" id="iqe_multi_${si}" ${isMulti ? "checked" : ""} onchange="toggleMultiCorrect(${si})">
                                 <span class="multi-toggle-text">${isMulti ? "✦ Multi-correct" : "○ Single-correct"}</span>
@@ -5577,31 +5378,30 @@
                         </div>
                     </div>`;
             }).join("")}
+            </div>
+            <div style="margin-top:16px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+                <button type="button" onclick="deleteSelectedQuestions()" style="padding:8px 16px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);font-size:0.85rem;color:var(--error);cursor:pointer">🗑 Delete Selected</button>
+                <span style="font-size:0.8rem;color:var(--text-dim)">Select questions to delete</span>
             </div>`;
 
-            // Render math after DOM is fully inserted
-            setTimeout(() => {
-                subsToRender.forEach(([sub, si]) => {
-                    const prev = document.getElementById(`iqe_preview_${si}`);
-                    if (prev) { prev.textContent = sub.question; renderMath(prev); }
-                    LETTERS.forEach((l, oi) => {
-                        const optRender = document.getElementById(`iqe_opt_render_${si}_${oi}`);
-                        if (optRender) { optRender.textContent = (sub.options && sub.options[oi]) || ""; renderMath(optRender); }
-                    });
+            (q.questions || []).forEach((sub, si) => {
+                const prev = document.getElementById(`iqe_preview_${si}`);
+                if (prev) { prev.textContent = sub.question; renderMath(prev); }
+                LETTERS.forEach((l, oi) => {
+                    const optRender = document.getElementById(`iqe_opt_render_${si}_${oi}`);
+                    if (optRender) { optRender.textContent = (sub.options && sub.options[oi]) || ""; renderMath(optRender); }
                 });
-            }, 0);
+            });
 
             // Track unsaved edits
             _hasUnsavedEdits = false;
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    _originalEditSnapshot = _getEditSnapshot();
-                    // Attach oninput listeners to mark edits
-                    document.querySelectorAll('#iqe-questions-container textarea, #iqe-questions-container input, #iqe-chapter, #iqe-lecture').forEach(el => {
-                        el.addEventListener('input', () => { _hasUnsavedEdits = true; });
-                    });
-                }, 120);
-            });
+            setTimeout(() => {
+                _originalEditSnapshot = _getEditSnapshot();
+                // Attach oninput listeners to mark edits
+                document.querySelectorAll('#iqe-questions-container textarea, #iqe-questions-container input, #iqe-chapter, #iqe-lecture').forEach(el => {
+                    el.addEventListener('input', () => { _hasUnsavedEdits = true; });
+                });
+            }, 50);
         }
 
         function _getEditSnapshot() {
@@ -5620,76 +5420,20 @@
         }
 
         function handleQuestionViewBack() {
-            _pendingNavDelta = 0;
-            const snapshotChanged = _originalEditSnapshot !== _getEditSnapshot();
-            if (_hasUnsavedEdits || snapshotChanged) {
+            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
-                goBackFromQuestion();
-            }
-        }
-
-        function goBackFromQuestion() {
-            document.getElementById("mq-question-view").style.display = "none";
-            document.getElementById("mq-lecture-view").style.display = "block";
-            document.getElementById("mq-chapter-view").style.display = "none";
-            if (mqPrevView === 'topic' && mqCurrentChapter && mqCurrentTopic) {
-                // Re-render the topic question list
-                const ch = mqCurrentChapter;
-                const topic = mqCurrentTopic;
-                const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && (q.topic || "(No Topic)") === topic);
-                const totalQ = qs.reduce((sum, x) => sum + (x.questions?.length || 0), 0);
-                document.getElementById("mq-chapter-title").textContent = `${ch} - ${topic}`;
-                document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
-                const grid = document.getElementById("lectureCardsGrid");
-                let qIndex = 1;
-                grid.innerHTML = qs.flatMap(q => {
-                    return (q.questions || []).map((sq, sqIdx) => {
-                        const gi = allQuestions.indexOf(q);
-                        const previewText = stripMath((sq.question || "").substring(0, 60));
-                        return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${q.lecture}" data-qidx="${sqIdx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
-                            <div class="lecture-card-num">Q${qIndex++}</div>
-                            <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
-                            <div style="font-size:0.78rem;margin-bottom:3px">Lecture ${q.lecture}</div>
-                        </div>`;
-                    });
-                }).join("");
-            } else if (mqPrevView === 'lecture' && mqCurrentChapter && mqCurrentLectureNum !== null) {
-                // Re-render the lecture question list
-                const ch = mqCurrentChapter;
-                const lecNum = mqCurrentLectureNum;
-                const qs = allQuestions.filter(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum));
-                const allQs = qs.flatMap(q => q.questions || []);
-                const totalQ = allQs.length;
-                document.getElementById("mq-chapter-title").textContent = `${ch} - Lecture ${lecNum}`;
-                document.getElementById("mq-lecture-count").textContent = `${totalQ} Question${totalQ !== 1 ? 's' : ''}`;
-                const grid = document.getElementById("lectureCardsGrid");
-                grid.innerHTML = allQs.map((sq, idx) => {
-                    const gi = allQuestions.findIndex(q => (q.chapter || "(No Chapter)") === ch && Number(q.lecture) === Number(lecNum) && q.questions?.includes(sq));
-                    const sqIdx = allQuestions[gi]?.questions?.indexOf(sq) ?? idx;
-                    const previewText = stripMath((sq.question || "").substring(0, 60));
-                    return `<div class="lecture-card" data-ch="${ch.replace(/"/g, '&quot;')}" data-lec="${lecNum}" data-qidx="${idx}" onclick="showQuestionViewH(${gi}, ${sqIdx})">
-                        <div class="lecture-card-num">Q${idx + 1}</div>
-                        <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word;">${previewText || 'Empty question'}</div>
-                        <div style="font-size:0.78rem;margin-bottom:3px">${(sq.options || []).length} options</div>
-                    </div>`;
-                }).join("");
-            } else if (mqCurrentChapter) {
-                showLectureViewForChapter(mqCurrentChapter);
-            } else {
-                showChapterView();
+                showLectureView();
             }
         }
 
         function cancelInlineEdit() {
-            _pendingNavDelta = 0;
-            const snapshotChanged = _originalEditSnapshot !== _getEditSnapshot();
-            if (_hasUnsavedEdits || snapshotChanged) {
+            if (_hasUnsavedEdits && _originalEditSnapshot !== _getEditSnapshot()) {
                 openModal('unsavedModal');
             } else {
                 _hasUnsavedEdits = false;
-                goBackFromQuestion();
+                showLectureView();
             }
         }
 
@@ -5697,24 +5441,12 @@
             closeModal('unsavedModal');
             await saveInlineEdit();
             _hasUnsavedEdits = false;
-            if (_pendingNavDelta !== 0) {
-                const delta = _pendingNavDelta; _pendingNavDelta = 0;
-                _doNavigateQuestion(delta);
-            } else {
-                goBackFromQuestion();
-            }
         }
 
         function discardAndGoBack() {
             closeModal('unsavedModal');
             _hasUnsavedEdits = false;
-            if (_pendingNavDelta !== 0) {
-                const delta = _pendingNavDelta; _pendingNavDelta = 0;
-                _doNavigateQuestion(delta);
-            } else {
-                _pendingNavDelta = 0;
-                goBackFromQuestion();
-            }
+            showLectureView();
         }
 
         function updatePreview(si) {
@@ -5917,6 +5649,57 @@
             }
         }
 
+        async function deleteSelectedQuestions() {
+            const checkboxes = document.querySelectorAll('.question-delete-checkbox:checked');
+            const indicesToDelete = Array.from(checkboxes).map(cb => parseInt(cb.dataset.si)).sort((a, b) => b - a);
+            
+            if (indicesToDelete.length === 0) {
+                showErrorModal("Please select at least one question to delete.", "No selection");
+                return;
+            }
+            
+            const confirmed = await askConfirmModalPromise({
+                title: "Delete Questions",
+                text: `Delete ${indicesToDelete.length} question(s)? This cannot be undone.`,
+                confirmText: "Delete"
+            });
+            
+            if (!confirmed) return;
+            
+            const q = allQuestions[mqCurrentLectureIdx];
+            if (!q || !q.questions) return;
+            
+            showDeleteProgress("Deleting questions...");
+            
+            // Remove questions in reverse order to maintain correct indices
+            indicesToDelete.forEach(idx => {
+                q.questions.splice(idx, 1);
+            });
+            
+            const r = await fetch(`${API_BASE}/api/admin/update-question`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chapter: q.chapter,
+                    lecture: q.lecture,
+                    questions: q.questions,
+                    topic: q.topic
+                })
+            });
+            
+            if (r.ok) {
+                hideDeleteProgress();
+                showSuccessModal("Deleted!", `${indicesToDelete.length} question(s) deleted.`);
+                await loadQuestionsAdmin();
+                const gi = allQuestions.findIndex(x => x.chapter === q.chapter && Number(x.lecture) === Number(q.lecture));
+                if (gi !== -1) showQuestionView(gi);
+            } else {
+                hideDeleteProgress();
+                showErrorModal(await extractErrorMessage(r, "Delete failed."), "Delete failed");
+            }
+        }
+
         /* ══════════════════════════════════════════════════════════════════
            STUDENTS
         ══════════════════════════════════════════════════════════════════ */
@@ -6005,7 +5788,7 @@
                 const scoreClass = getScoreClass(pct);
                 const initials = getInitials(s.name);
 
-                return `<div class="stu-card" onclick="showStudentDetail('${(s._id || s.mobile || '').toString().replace(/'/g, "\\'")}')">
+                return `<div class="stu-card" onclick="showStudentDetail('${(s._id ? s._id.toString() : (s.mobile || ''))}')">
                     <div class="stu-card-header">
                         <div class="stu-card-avatar">${initials}</div>
                         <div class="stu-card-info">
@@ -6074,8 +5857,18 @@
         }
 
         function showStudentDetail(id) {
-            const student = allStudents.find(s => (s._id || s.mobile) === id) || allStudents.find(s => (s.mobile || s._id) === id);
-            if (!student) return;
+            console.log("showStudentDetail called with id:", id, "type:", typeof id);
+            const student = allStudents.find(s => {
+                const sId = s._id ? s._id.toString() : (s.mobile || '');
+                const compareId = id ? id.toString() : '';
+                console.log("Comparing:", sId, "==", compareId, "result:", sId === compareId);
+                return sId === compareId;
+            });
+            console.log("Found student:", student);
+            if (!student) {
+                showErrorModal("Student not found.", "Error");
+                return;
+            }
             let correct, total;
             if (typeof student.correctCount === "number") { correct = student.correctCount; total = student.totalQuestions || 1; }
             else { correct = student.correct ? 1 : 0; total = 1; }
@@ -6181,18 +5974,20 @@
             document.getElementById("confirmModalText").textContent = text;
             document.getElementById("confirmModalOkBtn").textContent = confirmText;
             _pendingConfirmAction = onConfirm;
-            _pendingCancelAction = () => { _pendingConfirmAction = null; closeModal("confirmModal"); };
             openModal("confirmModal");
         }
-        async function confirmConfirmModal() {
-            if (typeof _pendingConfirmAction === "function") { const fn = _pendingConfirmAction; _pendingConfirmAction = null; _pendingCancelAction = null; fn(); }
-            else if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(true); _pendingConfirmResolver = null; closeModal("confirmModal"); }
-            else { closeModal("confirmModal"); }
+        function askConfirmModalPromise(opts = {}) {
+            return new Promise(resolve => { _pendingConfirmResolver = resolve; askConfirmModal(opts); });
         }
-        function cancelConfirmModal() {
-            if (typeof _pendingCancelAction === "function") { const fn = _pendingCancelAction; _pendingConfirmAction = null; _pendingCancelAction = null; fn(); }
-            else if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(false); _pendingConfirmResolver = null; closeModal("confirmModal"); }
-            else { _pendingConfirmAction = null; closeModal("confirmModal"); }
+        async function confirmPromptAction() {
+            closeModal("confirmModal");
+            if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(true); _pendingConfirmResolver = null; }
+            if (typeof _pendingConfirmAction === "function") { const fn = _pendingConfirmAction; _pendingConfirmAction = null; await fn(); }
+        }
+        function cancelPromptAction() {
+            if (typeof _pendingConfirmResolver === "function") { _pendingConfirmResolver(false); _pendingConfirmResolver = null; }
+            _pendingConfirmAction = null;
+            closeModal("confirmModal");
         }
 
         /* ══════════════════════════════════════════════════════════════════
