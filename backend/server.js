@@ -682,16 +682,40 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
-    const prompt = `You are a physics teacher extracting MCQ questions from Indian exam papers (JEE/NEET/HC Verma style).\n\n${answerKeyDesc}\n\nTASK: Extract EVERY question from ALL question images and match each to its answer.\nOutput ONLY a raw JSON array. No markdown, no explanation.\n\nMOST CRITICAL RULE — SEPARATING QUESTION FROM OPTIONS:\nIndian exam papers have TWO styles of writing options:\n\nSTYLE 1 — Options listed BELOW the question separately:\n  Q: "Which law states F=ma?"\n  (A) Newton's 1st  (B) Newton's 2nd  (C) Newton's 3rd  (D) Kepler's\n  → question = "Which law states F=ma?"\n  → options = ["Newton's 1st", "Newton's 2nd", "Newton's 3rd", "Kepler's"]\n\nSTYLE 2 — Options EMBEDDED inside question text as (a)(b)(c)(d):\n  "In a semiconductor (a) no free electrons at 0K (b) more electrons than conductor (c) free electrons increase with temp (d) it is an insulator"\n  → question = "In a semiconductor"  [STEM ONLY — stop before the first (a)]\n  → options = ["no free electrons at 0K", "more electrons than conductor", "free electrons increase with temp", "it is an insulator"]\n\n  "Match the following: (a) A (b) B (c) C (d) D"\n  → question = "Match the following:"\n  → options = ["A", "B", "C", "D"]\n\nCRITICAL ENFORCEMENT ON OPTIONS:\n1. IF the option text is JUST A SINGLE LETTER (e.g., "(a) A", "(b) B"), you MUST extract that exact letter (e.g. "A"). Do NOT leave the option blank.\n2. Do NOT mistake single-character options as part of the "(a)" prefix. The letter after the "(a)" is the answer text.\n3. Identify all 4 options exactly as written. The options array MUST always have exactly 4 strings.\n\nJSON format per question:\n{"question":"stem only","options":["A text","B text","C text","D text"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nLaTeX math (KaTeX in $...$):\n- pi→$\\pi$, omega→$\\omega$, epsilon→$\\varepsilon$, T^4→$T^4$, T_1→$T_1$\n- cos→$\\cos$, sin→$\\sin$, 1/2 mv^2→$\\frac{1}{2}mv^2$\n- s^{-1}→$s^{-1}$, E_0 cos(100 pi t)→$E_0\\cos(100\\pi t)$\n- Do NOT add trailing $ at end of plain text sentences\n\nOTHER RULES:\n- hasImage:true if question has a diagram/figure/graph\n- correctIndexes: 0=A,1=B,2=C,3=D. Numbers 1/2/3/4 → 0/1/2/3\n- A,C in answer key → correctIndexes:[0,2], isMultiCorrect:true\n- Extract all questions in the order they appear`;
+    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY question visible across all question images in order. Do not stop at 10; return all questions.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly and keep stem text before (a).\n- Single-letter options like A/B/C/D are valid option text, not empty.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct answer key (e.g., A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.`;
     try {
-        const contentParts = [];
-        for (const img of questionImages) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
-        for (const img of (answerImages || [])) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
-        contentParts.push({ type: "text", text: prompt });
-        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY }, body: JSON.stringify({ model: "meta-llama/llama-4-scout-17b-16e-instruct", max_tokens: 6000, temperature: 0.1, messages: [{ role: "user", content: contentParts }] }) });
-        if (!r.ok) { const e = await r.json(); const msg = (e.error && e.error.message) || "Groq error"; console.error("Groq API error:", msg); return res.status(502).json({ error: msg }); }
-        const data = await r.json();
-        const raw = String((data.choices?.[0]?.message?.content) || "").trim();
+        const requestExtraction = async (extraInstruction = "") => {
+            const contentParts = [];
+            for (const img of questionImages) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
+            for (const img of (answerImages || [])) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
+            contentParts.push({ type: "text", text: extraInstruction ? `${prompt}\n\n${extraInstruction}` : prompt });
+
+            const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
+                body: JSON.stringify({
+                    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                    max_tokens: 10000,
+                    temperature: 0.1,
+                    messages: [{ role: "user", content: contentParts }]
+                })
+            });
+
+            if (!r.ok) {
+                const e = await r.json().catch(() => ({}));
+                const msg = (e.error && e.error.message) || "Groq error";
+                throw new Error(msg);
+            }
+
+            const data = await r.json();
+            return {
+                raw: String((data.choices?.[0]?.message?.content) || "").trim(),
+                finishReason: String(data.choices?.[0]?.finish_reason || "")
+            };
+        };
+
+        const firstPass = await requestExtraction();
+        const raw = firstPass.raw;
 
         const cleanJsonText = (txt) => String(txt || "")
             .replace(/```json/gi, "```")
@@ -755,6 +779,30 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             console.error("Extract parse failed. Raw AI output sample:", raw.slice(0, 500));
             return res.status(500).json({ error: "Could not parse AI response. Please try again once; if it still fails, use manual answer key or cleaner screenshots." });
         }
+
+        // If the model likely truncated at ~10 items, run a continuation pass and merge.
+        const likelyTruncated = firstPass.finishReason === "length" || parsed.length === 10;
+        if (likelyTruncated) {
+            try {
+                const continuationInstruction = `Your previous response returned ${parsed.length} question(s). Continue extracting ONLY remaining unseen questions from the same images. Return JSON array only. If none remain, return []`;
+                const secondPass = await requestExtraction(continuationInstruction);
+                const more = parseAiQuestions(secondPass.raw) || [];
+                if (Array.isArray(more) && more.length) {
+                    const keyOf = (q) => `${String(q?.question || "").trim().toLowerCase()}||${JSON.stringify((q?.options || []).map(o => String(o || "").trim().toLowerCase()))}`;
+                    const seen = new Set(parsed.map(keyOf));
+                    for (const q of more) {
+                        const k = keyOf(q);
+                        if (!seen.has(k)) {
+                            seen.add(k);
+                            parsed.push(q);
+                        }
+                    }
+                }
+            } catch (contErr) {
+                console.warn("Continuation extraction skipped:", contErr.message);
+            }
+        }
+
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
         parsed = parsed.map((q) => {
             if (q.question) q.question = q.question.replace(/\s*\$\\\$\s*$/, "").trim();
