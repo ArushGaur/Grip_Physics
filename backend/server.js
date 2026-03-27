@@ -635,13 +635,70 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY }, body: JSON.stringify({ model: "meta-llama/llama-4-scout-17b-16e-instruct", max_tokens: 6000, temperature: 0.1, messages: [{ role: "user", content: contentParts }] }) });
         if (!r.ok) { const e = await r.json(); const msg = (e.error && e.error.message) || "Groq error"; console.error("Groq API error:", msg); return res.status(502).json({ error: msg }); }
         const data = await r.json();
-        let text = ((data.choices?.[0]?.message?.content) || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
-        text = text.replace(/\s*\$\\\$\s*"/g, '"').replace(/\s*\$\\s\$\s*"/g, '"');
-        const arrStart = text.indexOf("["), arrEnd = text.lastIndexOf("]");
-        if (arrStart === -1 || arrEnd === -1) return res.status(500).json({ error: "AI did not return valid JSON." });
-        text = text.slice(arrStart, arrEnd + 1);
-        let parsed;
-        try { parsed = JSON.parse(text); } catch { text = text.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}"); try { parsed = JSON.parse(text); } catch { return res.status(500).json({ error: "Could not parse AI response. Try clearer images." }); } }
+        const raw = String((data.choices?.[0]?.message?.content) || "").trim();
+
+        const cleanJsonText = (txt) => String(txt || "")
+            .replace(/```json/gi, "```")
+            .replace(/```/g, "")
+            .replace(/[\u2018\u2019]/g, "'")
+            .replace(/[\u201C\u201D]/g, '"')
+            .replace(/\u00A0/g, " ")
+            .replace(/\r\n?/g, "\n")
+            .replace(/\s*\$\\\$\s*"/g, '"')
+            .replace(/\s*\$\\s\$\s*"/g, '"')
+            .trim();
+
+        const tryParseJson = (txt) => {
+            try {
+                return JSON.parse(txt);
+            } catch {
+                try {
+                    const fixed = txt.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}");
+                    return JSON.parse(fixed);
+                } catch {
+                    return null;
+                }
+            }
+        };
+
+        const parseAiQuestions = (inputText) => {
+            const text = cleanJsonText(inputText);
+            const candidates = [];
+
+            candidates.push(text);
+
+            const arrStart = text.indexOf("[");
+            const arrEnd = text.lastIndexOf("]");
+            if (arrStart !== -1 && arrEnd !== -1 && arrEnd > arrStart) {
+                candidates.push(text.slice(arrStart, arrEnd + 1));
+            }
+
+            const codeBlockMatch = text.match(/\[[\s\S]*\]/m);
+            if (codeBlockMatch?.[0]) candidates.push(codeBlockMatch[0]);
+
+            for (const cand of candidates) {
+                const parsed = tryParseJson(cand);
+                if (Array.isArray(parsed) && parsed.length) return parsed;
+                if (parsed && Array.isArray(parsed.questions) && parsed.questions.length) return parsed.questions;
+            }
+
+            // Last resort: salvage individual JSON objects from mixed text.
+            const fragments = text.match(/\{[\s\S]*?\}/g) || [];
+            const recovered = [];
+            for (const frag of fragments) {
+                const parsedFrag = tryParseJson(frag);
+                if (parsedFrag && typeof parsedFrag === "object" && !Array.isArray(parsedFrag) && (parsedFrag.question || parsedFrag.options)) {
+                    recovered.push(parsedFrag);
+                }
+            }
+            return recovered.length ? recovered : null;
+        };
+
+        let parsed = parseAiQuestions(raw);
+        if (!parsed) {
+            console.error("Extract parse failed. Raw AI output sample:", raw.slice(0, 500));
+            return res.status(500).json({ error: "Could not parse AI response. Please try again once; if it still fails, use manual answer key or cleaner screenshots." });
+        }
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
         parsed = parsed.map((q) => {
             if (q.question) q.question = q.question.replace(/\s*\$\\\$\s*$/, "").trim();
