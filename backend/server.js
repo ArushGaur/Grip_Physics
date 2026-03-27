@@ -242,7 +242,7 @@ setInterval(() => {
     for (const [k, v] of rateLimitMap.entries()) { const f = v.filter((t) => t > c); if (!f.length) rateLimitMap.delete(k); else rateLimitMap.set(k, f); }
     for (const [k, v] of loginFailMap.entries()) { const f = v.filter((t) => t > c); if (!f.length) loginFailMap.delete(k); else loginFailMap.set(k, f); }
     // Clean expired sessions
-    db.execute({ sql: "DELETE FROM sessions WHERE expires < ?", args: [Date.now()] }).catch(() => {});
+    db.execute({ sql: "DELETE FROM sessions WHERE expires < ?", args: [Date.now()] }).catch(() => { });
 }, 10 * 60 * 1000);
 
 // ── QUESTION CACHE (same logic as before)
@@ -643,7 +643,37 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
         let parsed;
         try { parsed = JSON.parse(text); } catch { text = text.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}"); try { parsed = JSON.parse(text); } catch { return res.status(500).json({ error: "Could not parse AI response. Try clearer images." }); } }
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
-        parsed = parsed.map((q) => { if (!q.correctIndexes?.length) q.correctIndexes = [typeof q.correctIndex === "number" ? q.correctIndex : 0]; q.isMultiCorrect = q.correctIndexes.length > 1; if (q.question) q.question = q.question.replace(/\s*\$\\\$\s*$/, "").trim(); q.options = (q.options || []).map((o) => (o || "").replace(/\s*\$\\\$\s*$/, "").trim()); return q; });
+        parsed = parsed.map((q) => {
+            if (q.question) q.question = q.question.replace(/\s*\$\\\$\s*$/, "").trim();
+
+            const options = Array.isArray(q.options) ? q.options : [];
+            q.options = [...options, "", "", ""].slice(0, 4).map((o) => (o || "").replace(/\s*\$\\\$\s*$/, "").trim());
+
+            let ci = Array.isArray(q.correctIndexes) ? q.correctIndexes : [];
+            if (!ci.length && typeof q.correctIndex === "number") ci = [q.correctIndex];
+
+            const answerHint = String(q.correctAnswer || q.answer || q.correct || "").trim().toLowerCase();
+            if (!ci.length) {
+                const m = answerHint.match(/\b([abcd])\b/i);
+                if (m) ci = ["abcd".indexOf(m[1].toLowerCase())];
+            }
+
+            ci = [...new Set(ci.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n >= 0 && n < 4))];
+
+            const hasAllOfAboveOption = q.options.some((opt) => /all\s+of\s+the\s+above|all\s+of\s+these|all\s+are\s+correct/i.test(opt));
+            const explicitAllOptions = /all\s+of\s+the\s+above|all\s+options|all\s+are\s+correct|\ba\s*,\s*b\s*,\s*c\s*,\s*d\b|\b1\s*,\s*2\s*,\s*3\s*,\s*4\b/.test(answerHint);
+
+            // OCR often reads answer "A" as "all"; unless it's explicitly "all of the above", treat it as A.
+            if ((answerHint === "all" || ci.length === 4) && !hasAllOfAboveOption && !explicitAllOptions) {
+                ci = [0];
+            }
+
+            if (!ci.length) ci = [0];
+
+            q.correctIndexes = ci;
+            q.isMultiCorrect = ci.length > 1;
+            return q;
+        });
         res.json({ questions: parsed });
     } catch (e) { console.error("Extract error:", e); res.status(500).json({ error: "Server error: " + e.message }); }
 });
