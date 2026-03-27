@@ -177,7 +177,7 @@ app.use(cors({
     exposedHeaders: ["set-cookie"],
     maxAge: 86400,
 }));
-app.use(express.json({ limit: "60mb" }));
+app.use(express.json({ limit: "20mb" }));
 app.use(session({
     secret: SESSION_SECRET,
     resave: false,
@@ -677,12 +677,10 @@ app.post("/api/admin/migrate", requireAdmin, async (req, res) => {
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     const { questionImages, answerImages, manualAnswerKey } = req.body;
     if (!questionImages || !Array.isArray(questionImages) || !questionImages.length) return res.status(400).json({ error: "At least one question image required" });
-    if (questionImages.length > 10) return res.status(400).json({ error: "You can upload up to 10 question screenshots." });
-    if (Array.isArray(answerImages) && answerImages.length > 10) return res.status(400).json({ error: "You can upload up to 10 answer key screenshots." });
     if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
     function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
     let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
-    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY question visible across all question images in order. Do not stop at 10; return all questions.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly and keep stem text before (a).\n- Single-letter options like A/B/C/D are valid option text, not empty.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct answer key (e.g., A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.\n\nEquation formatting (IMPORTANT):\n- Preserve equations in KaTeX-friendly LaTeX using $...$ (inline) or $$...$$ (display).\n- Convert common symbols: pi->$\\pi$, omega->$\\omega$, epsilon->$\\varepsilon$, sin->$\\sin$, cos->$\\cos$.\n- Preserve superscripts/subscripts: T^4 as $T^4$, T_1 as $T_1$, s^-1 as $s^{-1}$.\n- Fractions should use \\frac where appropriate (e.g. $\\frac{1}{2}mv^2$).\n- Do not leave broken delimiters like a single trailing $.`;
+    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY question visible across all question images in order.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly and keep stem text before (a).\n- Single-letter options like A/B/C/D are valid option text, not empty.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct answer key (e.g., A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.\n\nEquation formatting (IMPORTANT):\n- Preserve equations in KaTeX-friendly LaTeX using $...$ (inline) or $$...$$ (display).\n- Convert common symbols: pi->$\\pi$, omega->$\\omega$, epsilon->$\\varepsilon$, sin->$\\sin$, cos->$\\cos$.\n- Preserve superscripts/subscripts: T^4 as $T^4$, T_1 as $T_1$, s^-1 as $s^{-1}$.\n- Fractions should use \\frac where appropriate (e.g. $\\frac{1}{2}mv^2$).\n- Do not leave broken delimiters like a single trailing $.`;
     try {
         const requestExtraction = async (extraInstruction = "") => {
             const contentParts = [];
@@ -695,7 +693,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
                 body: JSON.stringify({
                     model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                    max_tokens: 8192,
+                    max_tokens: 6000,
                     temperature: 0.1,
                     messages: [{ role: "user", content: contentParts }]
                 })
@@ -708,14 +706,10 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             }
 
             const data = await r.json();
-            return {
-                raw: String((data.choices?.[0]?.message?.content) || "").trim(),
-                finishReason: String(data.choices?.[0]?.finish_reason || "")
-            };
+            return String((data.choices?.[0]?.message?.content) || "").trim();
         };
 
-        const firstPass = await requestExtraction();
-        const raw = firstPass.raw;
+        const raw = await requestExtraction();
 
         const cleanJsonText = (txt) => String(txt || "")
             .replace(/```json/gi, "```")
@@ -780,47 +774,6 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
             return res.status(500).json({ error: "Could not parse AI response. Please try again once; if it still fails, use manual answer key or cleaner screenshots." });
         }
 
-        // Multi-pass continuation: helps recover remaining questions when model stops early (e.g. 10-11 out of 18).
-        const keyOf = (q) => {
-            const qq = String(q?.question || "").trim().toLowerCase();
-            const oo = JSON.stringify((q?.options || []).map(o => String(o || "").trim().toLowerCase()));
-            const cc = JSON.stringify((q?.correctIndexes || []).map(n => Number(n)));
-            return `${qq}||${oo}||${cc}`;
-        };
-        const seen = new Set(parsed.map(keyOf));
-
-        // Always attempt bounded continuation passes; this is generic and not tied to any specific question count.
-        for (let pass = 1; pass <= 3; pass++) {
-            try {
-                const lastStem = String(parsed[parsed.length - 1]?.question || "").replace(/\s+/g, " ").slice(0, 180);
-                const continuationInstruction = [
-                    `Pass ${pass}: You previously returned ${parsed.length} question(s).`,
-                    `Continue extracting ONLY remaining unseen questions that appear AFTER this last extracted stem in image order: "${lastStem}".`,
-                    `Do not repeat earlier questions.`,
-                    `Return JSON array only. If no more questions remain, return [].`
-                ].join(" ");
-
-                const nextPass = await requestExtraction(continuationInstruction);
-                const more = parseAiQuestions(nextPass.raw) || [];
-                if (!Array.isArray(more) || !more.length) break;
-
-                let added = 0;
-                for (const q of more) {
-                    const k = keyOf(q);
-                    if (!seen.has(k)) {
-                        seen.add(k);
-                        parsed.push(q);
-                        added++;
-                    }
-                }
-
-                if (added === 0) break;
-            } catch (contErr) {
-                console.warn(`Continuation extraction pass ${pass} skipped:`, contErr.message);
-                break;
-            }
-        }
-
         if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
 
         const normalizeMathText = (val) => {
@@ -878,12 +831,6 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 
 // ── Catch-all
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
-app.use((err, req, res, next) => {
-    if (err?.type === "entity.too.large") {
-        return res.status(413).json({ error: "Uploaded images are too large. Use fewer/smaller images (max 10)." });
-    }
-    next(err);
-});
 app.use((err, req, res, next) => { console.error("Unhandled:", err); res.status(500).json({ error: "Internal server error" }); });
 
 // ── START
