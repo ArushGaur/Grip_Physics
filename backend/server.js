@@ -816,70 +816,44 @@ EQUATION FORMATTING (mandatory — preserve ALL mathematical content):
 
 ${answerKeyContext}`;
 
-    const COUNT_SYSTEM = `You are a question counter. Your only job is to count how many distinct MCQ (multiple-choice) questions are visible in the image.
-Reply with a SINGLE INTEGER and absolutely nothing else. No words, no punctuation.`;
 
-    // ── PHASE 1: COUNT questions per image in parallel (establishes hard cap) ─
-    // Also detects whether the last/first question on each page is cut off (split across images).
+    // ── PHASE 1: COUNT — one fast call per image to get exact question counts ──
 
     const perImageParts = questionImages.map(img => [toImgPart(img)]);
     const answerImgParts = (answerImages || []).map(toImgPart);
 
-    const COUNT_SPLIT_SYSTEM = `You are analyzing an exam screenshot of exam questions.
-Reply with ONLY a JSON object, no other text:
-{"count": <integer>, "lastIsSplit": <true|false>, "firstIsSplit": <true|false>, "hasColumnSplit": <true|false>}
+    const COUNT_SYSTEM = `You are counting MCQ questions in an exam screenshot.
+Count every distinct question visible. In a two-column layout, a question whose stem is
+in the left column and options are at the top of the right column counts as ONE question.
+Reply with ONLY a single integer. No other text.`;
 
-Definitions:
-- count: total distinct MCQ questions visible (count a column-split question as ONE, not two)
-- lastIsSplit: true if the very last question is cut off at the bottom edge and continues on the next page
-- firstIsSplit: true if the very first content at the top is a continuation from the previous page
-- hasColumnSplit: true if a question's stem is at the bottom of the LEFT column and its options appear at the TOP of the RIGHT column within this same image (i.e. a question split across columns within this single screenshot)`;
-
-    const perImageMeta = await Promise.all(
+    const perImageCounts = await Promise.all(
         perImageParts.map(async (parts, i) => {
             try {
-                const raw = await callGroq(parts, COUNT_SPLIT_SYSTEM,
-                    "Count the MCQ questions and detect any split questions at the top or bottom edge.", 80);
-                const text = cleanJson(raw);
-                const s = text.indexOf("{"), e = text.lastIndexOf("}");
-                const parsed = s !== -1 && e > s ? tryParse(text.slice(s, e + 1)) : tryParse(text);
-                const count = parsed && Number.isInteger(parsed.count) && parsed.count > 0 && parsed.count <= 200
-                    ? parsed.count : null;
-                const lastIsSplit    = parsed?.lastIsSplit    === true;
-                const firstIsSplit   = parsed?.firstIsSplit   === true;
-                const hasColumnSplit = parsed?.hasColumnSplit === true;
-                console.log(`[extract] Image ${i + 1}: count=${count ?? "?"}, lastIsSplit=${lastIsSplit}, firstIsSplit=${firstIsSplit}, hasColumnSplit=${hasColumnSplit}`);
-                return { count, lastIsSplit, firstIsSplit, hasColumnSplit };
+                const raw = await callGroq(parts, COUNT_SYSTEM, "How many MCQ questions are in this image?", 10);
+                const n = parseInt(raw.trim(), 10);
+                const count = Number.isInteger(n) && n > 0 && n <= 300 ? n : null;
+                console.log(`[extract] Image ${i + 1} count: ${count ?? "unknown"}`);
+                return count;
             } catch (e) {
-                console.warn(`[extract] Count/split detection failed for image ${i + 1}:`, e.message);
-                return { count: null, lastIsSplit: false, firstIsSplit: false, hasColumnSplit: false };
+                console.warn(`[extract] Count failed for image ${i + 1}:`, e.message);
+                return null;
             }
         })
     );
 
-    const perImageCounts = perImageMeta.map(m => m.count);
-
-    // Count confirmed cross-image splits (image[i] tail + image[i+1] head = same question)
-    let splitPairs = 0;
-    for (let i = 0; i < perImageMeta.length - 1; i++) {
-        if (perImageMeta[i].lastIsSplit && perImageMeta[i + 1].firstIsSplit) {
-            splitPairs++;
-            console.log(`[extract] Confirmed split question between image ${i + 1} and ${i + 2}`);
-        }
-    }
-
-    const rawTotal = perImageCounts.every(c => c === null)
-        ? null
-        : perImageCounts.reduce((s, c) => s + (c || 0), 0);
-    // Each split pair was counted twice (once per image), so subtract to get true total
-    const totalExpected = rawTotal !== null ? rawTotal - splitPairs : null;
-
-    console.log(`[extract] Counts: [${perImageCounts}], splitPairs: ${splitPairs} → totalExpected: ${totalExpected ?? "unknown"}`);
-
-    // ── PHASE 2: EXTRACT questions from each image independently ─────────────
+    // ── PHASE 2: EXTRACT — per image, with cross-image boundary merge ─────────
+    //
+    // For each image we make one extraction call.
+    // After each image, we check if its LAST question and the NEXT image's FIRST question
+    // share the same number (split across pages). If so, we make one dedicated MERGE CALL
+    // that sends BOTH images together and asks specifically to complete that one question.
+    //
+    // For intra-image column splits the EXTRACTION_SYSTEM prompt already instructs the
+    // AI to combine left-col-bottom stem with right-col-top options into one question.
 
     const extracted = [];
-    const seenKeys = new Set();
+    const seenKeys  = new Set();
 
     function questionKey(q) {
         const stem = String(q?.question || "").trim().toLowerCase().slice(0, 120);
@@ -887,180 +861,155 @@ Definitions:
         return `${stem}||${opts}`;
     }
 
-    // Parse leading question number from stem text (e.g. "12. Two identical..." → 12)
     function getQuestionNumber(q) {
         const txt = String(q?.question || "").trim();
-        const m = txt.match(/^\s*(?:q\.?\s*)?(\d{1,3})\s*[\).:\u2013-]/i);
+        const m = txt.match(/^\s*(?:q\.?\s*)?(\d{1,3})\s*[\).:\u2013\-]/i);
         if (!m) return null;
         const n = parseInt(m[1], 10);
         return Number.isInteger(n) ? n : null;
     }
 
-    function mergeUnique(arr, cap) {
-        if (!Array.isArray(arr)) return 0;
-        let added = 0;
-        for (const q of arr) {
-            if (cap !== null && extracted.length >= cap) break;
-            const key = questionKey(q);
-            if (!seenKeys.has(key)) {
-                seenKeys.add(key);
-                extracted.push(q);
-                added++;
-            }
-        }
-        return added;
+    function pushUnique(q) {
+        const key = questionKey(q);
+        if (seenKeys.has(key)) return false;
+        seenKeys.add(key); extracted.push(q); return true;
     }
 
-    // Merge the tail half (q1, from image N) with the head half (q2, from image N+1)
-    // into one complete question.
-    function mergeSplitQuestion(q1, q2) {
-        const stem1 = String(q1.question || "").trim();
-        const stem2 = String(q2.question || "").trim();
-
-        // Strip leading "12." / "Q12." style prefix from q2 if it repeats the number
-        const q2body = stem2.replace(/^\s*(?:q\.?\s*)?\d{1,3}\s*[\).:\u2013-]\s*/i, "").trim();
-
-        // Combine: if q2 starts where q1 ends, just use q2 (it may have the full text)
-        // Otherwise append q2's body to q1
-        let combined;
-        if (stem2.toLowerCase().startsWith(stem1.toLowerCase().slice(-50).trim())) {
-            combined = stem2;
-        } else if (stem1.toLowerCase().includes(q2body.toLowerCase().slice(0, 40)) && q2body.length < 60) {
-            combined = stem1; // q1 already has everything, q2 just repeated the question number
-        } else {
-            combined = `${stem1} ${q2body}`.trim();
-        }
-
-        // Use whichever options array is more complete
-        const opts1 = Array.isArray(q1.options) ? q1.options : [];
-        const opts2 = Array.isArray(q2.options) ? q2.options : [];
-        const filled1 = opts1.filter(o => String(o || "").trim()).length;
-        const filled2 = opts2.filter(o => String(o || "").trim()).length;
-        const bestOpts = filled2 >= filled1 ? opts2 : opts1;
-
-        // Prefer q2's correctIndexes if q1 only has the default [0] placeholder
-        const ci1 = Array.isArray(q1.correctIndexes) ? q1.correctIndexes : [0];
-        const ci2 = Array.isArray(q2.correctIndexes) ? q2.correctIndexes : [0];
-        const bestCI = (ci2.length > 1 || (ci1.length === 1 && ci1[0] === 0 && ci2[0] !== 0)) ? ci2 : ci1;
-
-        return {
-            ...q1,
-            question: combined,
-            options: [...bestOpts, "", "", ""].slice(0, 4),
-            correctIndexes: bestCI,
-            isMultiCorrect: bestCI.length > 1,
-            hasImage: q1.hasImage || q2.hasImage,
-            imageRegion: q1.imageRegion || q2.imageRegion,
-            _wasSplit: true
-        };
+    // Replace the last entry (used when a merge produces a better version)
+    function replaceLastWith(q) {
+        if (!extracted.length) return;
+        seenKeys.delete(questionKey(extracted[extracted.length - 1]));
+        extracted.pop();
+        pushUnique(q);
     }
 
     for (let i = 0; i < questionImages.length; i++) {
-        const imgCap  = perImageCounts[i];
-        const imgMeta = perImageMeta[i];
+        const imgCap   = perImageCounts[i];
         const imgParts = [...perImageParts[i], ...answerImgParts];
 
-        // Detect if this image's first question is a continuation from the previous image
-        const isContinuation = i > 0
-            && perImageMeta[i - 1].lastIsSplit
-            && imgMeta.firstIsSplit;
+        const prompt = imgCap !== null
+            ? `This image contains exactly ${imgCap} MCQ question(s). Extract all of them.`
+            : `Extract ALL MCQ questions from this image.`;
 
-        // Build a context hint for the AI when a split is detected
-        let splitHint = "";
-        if (isContinuation && extracted.length > 0) {
-            const prevLast = extracted[extracted.length - 1];
-            const prevStem = String(prevLast.question || "").replace(/\s+/g, " ").slice(0, 200);
-            splitHint = `\n\nIMPORTANT: The content at the very top of this image is the CONTINUATION of a question that started on the previous page. Its text so far reads:\n"${prevStem}"\nExtract this continuation as part of that same question — do NOT treat it as a brand-new separate question. Append the remaining text and options you see here to complete it, and output it as a single question entry at position 1 in your array.`;
-        }
-
-        // If the count phase detected an intra-image column split, add an explicit hint
-        const columnSplitHint = imgMeta.hasColumnSplit
-            ? `
-
-COLUMN SPLIT DETECTED: One question in this image has its stem at the bottom of the LEFT column and its options at the TOP of the RIGHT column. Make sure you combine them into a single question entry — do not output them as two separate questions.`
-            : "";
-
-        const mainPrompt = imgCap !== null
-            ? `This image contains ${imgCap} question(s) (some may be partial at the edges). Extract all of them.${splitHint}${columnSplitHint}`
-            : `Extract ALL MCQ questions visible in this image.${splitHint}${columnSplitHint}`;
-
-        let added = 0;
-        let rawResult = null;
-
+        // Main extraction call for this image
         try {
-            const raw = await callGroq(imgParts, EXTRACTION_SYSTEM, mainPrompt);
-            rawResult = parseJsonArray(raw);
+            const raw    = await callGroq(imgParts, EXTRACTION_SYSTEM, prompt);
+            const result = parseJsonArray(raw);
+            if (result) {
+                let added = 0;
+                for (const q of result) { if (pushUnique(q)) added++; }
+                console.log(`[extract] Image ${i + 1}: got ${result.length}, added ${added}`);
 
-            if (rawResult && rawResult.length > 0) {
-                if (isContinuation && extracted.length > 0) {
-                    // Attempt to merge first question of this image with last question of previous image
-                    const prevLast = extracted[extracted.length - 1];
-                    const firstQ   = rawResult[0];
-                    const prevNum  = getQuestionNumber(prevLast);
-                    const firstNum = getQuestionNumber(firstQ);
-
-                    const sameNumber       = prevNum !== null && firstNum !== null && prevNum === firstNum;
-                    const noNumberOnFirst  = firstNum === null; // AI returned continuation without a leading number
-                    const shouldMerge      = sameNumber || noNumberOnFirst;
-
-                    if (shouldMerge) {
-                        console.log(`[extract] Merging split Q${prevNum ?? "?"} across image ${i} → ${i + 1}`);
-                        const merged = mergeSplitQuestion(prevLast, firstQ);
-                        // Replace the last extracted entry with the merged version
-                        extracted.splice(extracted.length - 1, 1);
-                        seenKeys.delete(questionKey(prevLast));
-                        seenKeys.add(questionKey(merged));
-                        extracted.push(merged);
-                        // Add rest of this image's questions normally
-                        const rest = mergeUnique(rawResult.slice(1), totalExpected);
-                        added = 1 + rest; // 1 for the merge, rest for the remaining
-                    } else {
-                        added = mergeUnique(rawResult, totalExpected);
-                    }
-                } else {
-                    added = mergeUnique(rawResult, totalExpected);
+                // Retry if short
+                if (imgCap !== null && added < imgCap) {
+                    const missing = imgCap - added;
+                    const recentStems = extracted.slice(-added || -3).map(q =>
+                        `- ${String(q.question || "").replace(/\s+/g, " ").slice(0, 80)}`).join("\n");
+                    const retryPrompt = [
+                        `You returned ${added} questions but this image has ${imgCap}. The ${missing} missing question(s) are still in the image — find and return ONLY them.`,
+                        recentStems ? `Already extracted (do NOT repeat):\n${recentStems}` : "",
+                        `Return a JSON array of only the missing questions.`
+                    ].filter(Boolean).join("\n\n");
+                    try {
+                        const rRaw    = await callGroq(imgParts, EXTRACTION_SYSTEM, retryPrompt);
+                        const rResult = parseJsonArray(rRaw);
+                        if (rResult) {
+                            let rAdded = 0;
+                            for (const q of rResult) { if (pushUnique(q)) rAdded++; }
+                            console.log(`[extract] Image ${i + 1} retry: +${rAdded}`);
+                        }
+                    } catch (e) { console.warn(`[extract] Image ${i + 1} retry failed:`, e.message); }
                 }
-                console.log(`[extract] Image ${i + 1}: got ${rawResult.length} from AI, added/merged ${added}`);
             } else {
-                console.warn(`[extract] Image ${i + 1}: could not parse AI response`);
+                console.warn(`[extract] Image ${i + 1}: could not parse response`);
             }
         } catch (e) {
-            console.warn(`[extract] Image ${i + 1} main extraction failed:`, e.message);
+            console.warn(`[extract] Image ${i + 1} extraction failed:`, e.message);
         }
 
-        // Retry: if we're short, ask specifically for the missing questions
-        // For continuation images, the merged question doesn't count as a "new" question for this image
-        const newQsFromThisImage = isContinuation ? added - 1 : added; // subtract the merged carry-over
-        const expectedNewFromThisImage = imgCap !== null
-            ? imgCap - (isContinuation ? 1 : 0)
-            : null;
+        // ── CROSS-IMAGE BOUNDARY MERGE ──────────────────────────────────────
+        // Check if the last question of image[i] continues into image[i+1].
+        // We do this by sending BOTH images to the AI and asking it to produce
+        // the single complete merged question — no heuristics, no guessing.
 
-        if (expectedNewFromThisImage !== null
-            && newQsFromThisImage < expectedNewFromThisImage
-            && extracted.length < (totalExpected ?? Infinity)) {
-            const missing = expectedNewFromThisImage - newQsFromThisImage;
-            const recentStems = extracted.slice(-Math.max(added, 3)).map(q =>
-                `- ${String(q.question || "").replace(/\s+/g, " ").slice(0, 80)}`
-            ).join("\n");
-            const retryPrompt = [
-                `You returned ${newQsFromThisImage} new questions but this screenshot has ${expectedNewFromThisImage}.`,
-                `The ${missing} missing question(s) were not extracted. Find and return ONLY them.`,
-                recentStems ? `Already extracted (do NOT repeat):\n${recentStems}` : "",
-                `Return a JSON array of only the missing questions.`
-            ].filter(Boolean).join("\n\n");
+        if (i < questionImages.length - 1 && extracted.length > 0) {
+            const lastQ   = extracted[extracted.length - 1];
+            const lastNum = getQuestionNumber(lastQ);
+            const lastStem = String(lastQ.question || "").replace(/\s+/g, " ").trim();
+
+            // Send both images together with a very specific merge prompt
+            const bothParts = [
+                toImgPart(questionImages[i]),
+                toImgPart(questionImages[i + 1]),
+                ...answerImgParts
+            ];
+
+            const mergeCheckPrompt = `Look at these two images carefully.
+
+The last question visible at the bottom of IMAGE 1 starts with:
+"${lastStem.slice(0, 250)}"
+
+Task: Does this question continue at the top of IMAGE 2 (i.e. is it split across the two images)?
+
+If YES — return a JSON object with:
+{"split": true, "merged": { <the complete merged question object with all fields filled in> }}
+
+If NO — return exactly: {"split": false}
+
+The merged question object must follow this schema:
+{"question":"<full text>","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false,"imageRegion":null}
+
+Return ONLY the JSON object. No explanation.`;
 
             try {
-                const retryRaw = await callGroq(imgParts, EXTRACTION_SYSTEM, retryPrompt);
-                const retryResult = parseJsonArray(retryRaw);
-                if (retryResult) {
-                    const retryAdded = mergeUnique(retryResult, totalExpected);
-                    console.log(`[extract] Image ${i + 1} retry: recovered ${retryAdded} more`);
+                const mergeRaw    = await callGroq(bothParts, "You are a precise MCQ merge assistant. Return only valid JSON.", mergeCheckPrompt, 1000);
+                const mergeClean  = cleanJson(mergeRaw);
+                const s = mergeClean.indexOf("{"), e2 = mergeClean.lastIndexOf("}");
+                const mergeResult = s !== -1 && e2 > s ? tryParse(mergeClean.slice(s, e2 + 1)) : null;
+
+                if (mergeResult?.split === true && mergeResult?.merged) {
+                    console.log(`[extract] Cross-image split confirmed at boundary ${i + 1}→${i + 2}, merging Q${lastNum ?? "?"}`);
+                    const merged = { ...mergeResult.merged, _wasSplit: true, imageSourceIndex: i };
+                    replaceLastWith(merged);
+                } else {
+                    console.log(`[extract] No split at boundary ${i + 1}→${i + 2}`);
                 }
             } catch (e) {
-                console.warn(`[extract] Image ${i + 1} retry failed:`, e.message);
+                console.warn(`[extract] Boundary merge check ${i + 1}→${i + 2} failed:`, e.message);
             }
         }
     }
+
+    // ── PHASE 2b: DEDUP by question number — keep most complete version ───────
+    const bestByNum = new Map();
+    for (const q of extracted) {
+        const n = getQuestionNumber(q);
+        if (n === null) continue;
+        const prev = bestByNum.get(n);
+        if (!prev) { bestByNum.set(n, q); continue; }
+        const filled = (x) => (x.options || []).filter(o => String(o || "").trim()).length;
+        if (filled(q) > filled(prev)) bestByNum.set(n, q);
+    }
+    const deduped = [];
+    const seenNums = new Set();
+    for (const q of extracted) {
+        const n = getQuestionNumber(q);
+        if (n !== null) {
+            if (seenNums.has(n)) continue;
+            seenNums.add(n);
+            deduped.push(bestByNum.get(n));
+        } else {
+            deduped.push(q);
+        }
+    }
+    extracted.length = 0;
+    extracted.push(...deduped);
+
+    // Compute totalExpected from per-image counts (null if all counts failed)
+    const totalExpected = perImageCounts.every(c => c === null) ? null
+        : perImageCounts.reduce((s, c) => s + (c || 0), 0) - (extracted.filter(q => q._wasSplit).length);
+
+    console.log(`[extract] After dedup: ${extracted.length} questions (expected ~${totalExpected ?? "unknown"})`);
 
     if (!extracted.length)
         return res.status(500).json({ error: "Could not extract any questions. Please try again with a cleaner screenshot." });
