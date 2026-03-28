@@ -4086,95 +4086,13 @@
         }
 
         /**
-         * TIER 3 — Pixel-density grid fallback (no OpenCV required).
-         * Splits the image into a grid and finds the largest low-density
-         * (mostly-white) rectangular block — that's where the figure is.
-         * @param {string} b64
-         * @returns {string|null}
-         */
-        async function detectDiagramFallback(b64) {
-            try {
-                const { canvas, ctx } = await loadImageToCanvas(b64);
-                const W = canvas.width, H = canvas.height;
-                const imageData = ctx.getImageData(0, 0, W, H).data;
-
-                const COLS = 8, ROWS = 40;
-                const cellW = Math.floor(W / COLS);
-                const cellH = Math.floor(H / ROWS);
-
-                // Compute dark-pixel ratio for each grid cell
-                const grid = [];
-                for (let row = 0; row < ROWS; row++) {
-                    grid[row] = [];
-                    for (let col = 0; col < COLS; col++) {
-                        let dark = 0, total = 0;
-                        const x0 = col * cellW, y0 = row * cellH;
-                        for (let y = y0; y < y0 + cellH && y < H; y++) {
-                            for (let x = x0; x < x0 + cellW && x < W; x++) {
-                                const idx = (y * W + x) * 4;
-                                const lum = 0.299 * imageData[idx] + 0.587 * imageData[idx + 1] + 0.114 * imageData[idx + 2];
-                                if (lum < 180) dark++;
-                                total++;
-                            }
-                        }
-                        grid[row][col] = dark / (total || 1);
-                    }
-                }
-
-                // Find the best low-density rectangular block
-                let bestBlock = null, bestScore = -1;
-                for (let r1 = 0; r1 < ROWS - 3; r1++) {
-                    for (let r2 = r1 + 3; r2 < ROWS; r2++) {
-                        for (let c1 = 1; c1 < COLS - 1; c1++) {
-                            for (let c2 = c1 + 1; c2 < COLS; c2++) {
-                                let avgDark = 0, cells = 0;
-                                for (let r = r1; r <= r2; r++)
-                                    for (let c = c1; c <= c2; c++) { avgDark += grid[r][c]; cells++; }
-                                avgDark /= cells;
-                                const size = (r2 - r1) * (c2 - c1);
-                                if (avgDark < 0.04 && avgDark > 0.001 && size > 8) {
-                                    const score = size * (0.1 - avgDark);
-                                    if (score > bestScore) { bestScore = score; bestBlock = { r1, r2, c1, c2 }; }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!bestBlock) return null;
-                const { r1, r2, c1, c2 } = bestBlock;
-                const x = c1 * cellW, y = r1 * cellH;
-                const w = (c2 - c1 + 1) * cellW, h = (r2 - r1 + 1) * cellH;
-                if (w < W * 0.1 || h < H * 0.05) return null;   // too small to be a figure
-
-                // Add padding
-                const padX = w * 0.10;
-                const padY = h * 0.10;
-                const finalX = Math.max(0, x - padX);
-                const finalY = Math.max(0, y - padY);
-                const finalW = Math.min(W - finalX, w + padX * 2);
-                const finalH = Math.min(H - finalY, h + padY * 2);
-
-                return cropCanvas(canvas, finalX, finalY, finalW, finalH);
-            } catch (e) {
-                console.warn("Tier-3 fallback error:", e);
-                return null;
-            }
-        }
-
-        /**
-         * Single-question diagram detection — tries all tiers in order.
+         * Single-question diagram detection — OpenCV only.
          * Called when AI did NOT return imageRegion coordinates.
          * @param {string} b64
          * @returns {string|null}
          */
         async function detectDiagram(b64) {
-            // Tier 2: OpenCV
-            let result = await detectDiagramWithOpenCV(b64);
-            if (result) return result;
-            // Tier 3: pixel-density fallback
-            result = await detectDiagramFallback(b64);
-            return result;   // may be null → Tier 4: manual upload UI
+            return await detectDiagramWithOpenCV(b64);
         }
 
         /* ══════════════════════════════════════════════════════════════════
@@ -4253,7 +4171,7 @@
                         }
                     }
 
-                    // TIER 2: OpenCV client-side detection instead of AI Server Endpoint
+                    // TIER 2: OpenCV client-side detection
                     const cvResult = await detectDiagramWithOpenCV(b64);
                     if (cvResult) {
                         q.hasImage = true;
@@ -4262,16 +4180,7 @@
                         continue;
                     }
 
-                    // TIER 3: pixel-density fallback
-                    const fallbackResult = await detectDiagramFallback(b64);
-                    if (fallbackResult) {
-                        q.hasImage = true;
-                        q.extractedImageB64 = fallbackResult;
-                        q._detectMethod = "fallback";
-                        continue;
-                    }
-
-                    // TIER 4: Manual upload
+                    // TIER 3: Manual upload
                     q.extractedImageB64 = null;
                     q._detectMethod = null;
 
@@ -4440,7 +4349,7 @@
                     const hasAICoords = parsed.some(q => q.hasImage && q.imageRegion);
                     const methodLabel = hasAICoords
                         ? "AI coordinates + OpenCV refinement"
-                        : cvReady ? "OpenCV detection" : "pixel-analysis fallback";
+                        : "OpenCV detection";
                     status.innerHTML = `<span class="spinner"></span>&nbsp; Cropping ${imgCount} diagram(s) using ${methodLabel}…`;
                     await extractImagesForQuestions(parsed, qImagesBase64);
                 }
@@ -4454,7 +4363,6 @@
                 // Build status summary
                 const aiCropped = parsed.filter(q => q.hasImage && q._detectMethod === "ai").length;
                 const cvCropped = parsed.filter(q => q.hasImage && q._detectMethod === "cv").length;
-                const fbCropped = parsed.filter(q => q.hasImage && q._detectMethod === "fallback").length;
                 const needManualCount = parsed.filter(q => q.hasImage && !q.extractedImageB64).length;
 
                 let imgSummary = "";
@@ -4462,7 +4370,6 @@
                     const parts = [];
                     if (aiCropped) parts.push(`🤖 ${aiCropped} AI-coords`);
                     if (cvCropped) parts.push(`🔬 ${cvCropped} OpenCV`);
-                    if (fbCropped) parts.push(`🔍 ${fbCropped} pixel-analysis`);
                     if (needManualCount) parts.push(`<strong>⚠️ ${needManualCount} need manual upload</strong>`);
                     imgSummary = ` · ${parts.join(" · ")}`;
                 }
@@ -4499,7 +4406,7 @@
                 // Detection method badge HTML
                 const methodBadge = q._detectMethod
                     ? `<span class="detect-badge ${q._detectMethod}">${q._detectMethod === "ai" ? "🤖 AI coords" :
-                        q._detectMethod === "cv" ? "🔬 OpenCV" : "🔍 Pixel-analysis"
+                        "🔬 OpenCV"
                     }</span>`
                     : "";
 
