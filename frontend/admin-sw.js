@@ -1,8 +1,11 @@
-const CACHE_NAME = "grip-admin-v1";
+const CACHE_NAME = "grip-admin-v2";
 
 // Files to cache for offline shell
 const SHELL_FILES = [
     "/owner.html",
+    "/admin-manifest.json",
+    "/icon-1.jpg",
+    "/icon-512.png",
     "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap",
     "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css",
     "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js",
