@@ -1014,7 +1014,7 @@ ${answerContext}`;
 			for (const q of arr) pushUnique(q, i);
 		}
 
-		// Cross-image merge pass: if adjacent images produce same question number at boundary, merge via AI.
+		// Cross-image merge pass: ask AI directly for boundary fragment merge.
 		for (let i = 1; i < questionImages.length; i++) {
 			const leftCandidates = extracted
 				.map((q, idx) => ({ q, idx }))
@@ -1028,10 +1028,6 @@ ${answerContext}`;
 			const left = leftCandidates[leftCandidates.length - 1];
 			const right = rightCandidates[0];
 
-			const leftNum = getNum(left.q);
-			const rightNum = getNum(right.q);
-			if (leftNum === null || rightNum === null || leftNum !== rightNum) continue;
-
 			const mergePrompt = `These are two consecutive screenshots. A question may be split across them.
 
 Fragment from image 1:
@@ -1043,7 +1039,10 @@ Fragment from image 2:
 Return only JSON:
 {"split":true,"merged":{"question":"...","options":["...","...","...","..."],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false,"imageRegion":null}}
 or
-{"split":false}`;
+{"split":false}
+
+Mark split=true when IMAGE 1 bottom text/options continue in IMAGE 2 top text/options,
+even if question numbers are missing or mismatched. Preserve full merged text.`;
 
 			const mergeRaw = await callGroq(
 				[toImgPart(questionImages[i - 1]), toImgPart(questionImages[i]), ...answerParts],
@@ -1061,6 +1060,9 @@ or
 				const mergedQ = normalizeQuestion({ ...merged.merged, imageSourceIndex: i - 1 });
 				extracted[left.idx] = mergedQ;
 				extracted.splice(right.idx, 1);
+				console.log(`[extract] merged split boundary image ${i} -> ${i + 1}`);
+			} else {
+				console.log(`[extract] no boundary merge for image ${i} -> ${i + 1}`);
 			}
 		}
 
