@@ -11,7 +11,8 @@
     <meta name="theme-color" content="#0b0d18" id="themeColorMeta">
     <title>Grip Physics — Admin</title>
     <link rel="manifest" href="/admin-manifest.json">
-    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="icon" type="image/jpeg" href="/icon-1.jpg">
+    <link rel="apple-touch-icon" href="/icon-1.jpg">
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
         rel="stylesheet">
@@ -4216,7 +4217,10 @@
         async function extractImagesForQuestions(questions, screenshotB64Array) {
             if (!screenshotB64Array || !screenshotB64Array.length) return;
 
-            const imgQuestions = questions.filter(q => q.hasImage);
+            const imgQuestions = questions.filter(q => {
+                const hint = /\b(figure|fig\.?|diagram|graph|circuit|shown\s+in\s+the\s+figure|shown\s+below|given\s+below|as\s+shown)\b/i.test(String(q.question || ""));
+                return !!q.hasImage || !!q.imageRegion || hint;
+            });
             if (!imgQuestions.length) return;
 
             const totalQs = questions.length;
@@ -4224,7 +4228,9 @@
 
             for (let qi = 0; qi < questions.length; qi++) {
                 const q = questions[qi];
-                if (!q.hasImage) continue;
+                const textHintsImage = /\b(figure|fig\.?|diagram|graph|circuit|shown\s+in\s+the\s+figure|shown\s+below|given\s+below|as\s+shown)\b/i.test(String(q.question || ""));
+                const shouldTryImage = !!q.hasImage || !!q.imageRegion || textHintsImage;
+                if (!shouldTryImage) continue;
 
                 const screenIdx = q.imageSourceIndex !== undefined
                     ? Math.min(q.imageSourceIndex, screenshotB64Array.length - 1)
@@ -4248,15 +4254,24 @@
                     }
 
                     // TIER 2: OpenCV client-side detection instead of AI Server Endpoint
-                    const cvResult = await detectDiagram(b64);
+                    const cvResult = await detectDiagramWithOpenCV(b64);
                     if (cvResult) {
+                        q.hasImage = true;
                         q.extractedImageB64 = cvResult;
-                        // The method can be cv or fallback
                         q._detectMethod = "cv";
                         continue;
                     }
 
-                    // TIER 3: Manual upload
+                    // TIER 3: pixel-density fallback
+                    const fallbackResult = await detectDiagramFallback(b64);
+                    if (fallbackResult) {
+                        q.hasImage = true;
+                        q.extractedImageB64 = fallbackResult;
+                        q._detectMethod = "fallback";
+                        continue;
+                    }
+
+                    // TIER 4: Manual upload
                     q.extractedImageB64 = null;
                     q._detectMethod = null;
 
