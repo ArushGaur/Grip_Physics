@@ -629,48 +629,21 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
     if (!process.env.GROQ_API_KEY)
         return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
 
+    // ── UTILITIES ───────────────────────────────────────────────────────────
+
     function getMime(b64) {
         if (b64.startsWith("/9j/")) return "image/jpeg";
         if (b64.startsWith("iVBORw")) return "image/png";
         return "image/jpeg";
     }
 
-    const answerKeyDesc = manualAnswerKey?.trim()
-        ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).`
-        : answerImages?.length
-            ? `The last ${answerImages.length} image(s) are the answer key.`
-            : "No answer key provided — do your best to identify correct answers from context.";
-
-    const prompt = `You are extracting physics MCQs from exam screenshots.\n\n${answerKeyDesc}\n\nReturn ONLY a raw JSON array (no markdown, no explanation).\nExtract EVERY SINGLE question visible in the image. Do NOT skip any question.\n\nPer item format:\n{"question":"...","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nRules:\n- Always provide exactly 4 options.\n- If options are embedded in stem as (a)(b)(c)(d), split them correctly.\n- correctIndexes uses 0=A,1=B,2=C,3=D.\n- Multi-correct (e.g. A,C) => correctIndexes:[0,2], isMultiCorrect:true.\n- hasImage:true if question has a diagram/figure/graph.\n\nEquation formatting:\n- Use $...$ for inline LaTeX, $$...$$ for display.\n- Convert: pi->$\\pi$, omega->$\\omega$, sin->$\\sin$, cos->$\\cos$.\n- Preserve superscripts/subscripts: T^4 as $T^4$, T_1 as $T_1$.\n- Use \\frac for fractions e.g. $\\frac{1}{2}mv^2$.`;
-
-    // Make one API call with given images
-    async function callGroq(imgParts, instruction) {
-        const contentParts = [
-            ...imgParts,
-            ...( answerImages || []).map(img => ({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } })),
-            { type: "text", text: instruction ? `${prompt}\n\n${instruction}` : prompt }
-        ];
-        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
-            body: JSON.stringify({
-                model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                max_tokens: 8000,
-                temperature: 0.1,
-                messages: [{ role: "user", content: contentParts }]
-            })
-        });
-        if (!r.ok) {
-            const e = await r.json().catch(() => ({}));
-            throw new Error((e.error && e.error.message) || "Groq error");
-        }
-        const data = await r.json();
-        return String(data.choices?.[0]?.message?.content || "").trim();
+    function toImgPart(b64) {
+        return { type: "image_url", image_url: { url: `data:${getMime(b64)};base64,${b64}` } };
     }
 
     function cleanJson(txt) {
         return String(txt || "")
-            .replace(/```json/gi, "").replace(/```/g, "")
+            .replace(/```json\s*/gi, "").replace(/```/g, "")
             .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
             .replace(/\u00A0/g, " ").replace(/\r\n?/g, "\n")
             .trim();
@@ -678,207 +651,308 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 
     function tryParse(txt) {
         try { return JSON.parse(txt); } catch {
-            try { return JSON.parse(txt.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}")); } catch { return null; }
+            try { return JSON.parse(txt.replace(/,(\s*[}\]])/g, "$1")); } catch { return null; }
         }
     }
 
-    function parseAiQuestions(raw) {
+    // Robustly extract a JSON array from raw AI text
+    function parseJsonArray(raw) {
         const text = cleanJson(raw);
-        const candidates = [text];
+        const direct = tryParse(text);
+        if (Array.isArray(direct) && direct.length) return direct;
+        if (direct && Array.isArray(direct.questions) && direct.questions.length) return direct.questions;
         const s = text.indexOf("["), e = text.lastIndexOf("]");
-        if (s !== -1 && e > s) candidates.push(text.slice(s, e + 1));
-        const m = text.match(/\[[\s\S]*\]/m);
-        if (m?.[0]) candidates.push(m[0]);
-
-        for (const c of candidates) {
-            const p = tryParse(c);
-            if (Array.isArray(p) && p.length) return p;
-            if (p && Array.isArray(p.questions) && p.questions.length) return p.questions;
+        if (s !== -1 && e > s) {
+            const sliced = tryParse(text.slice(s, e + 1));
+            if (Array.isArray(sliced) && sliced.length) return sliced;
         }
-        // Salvage individual objects
-        const frags = text.match(/\{[\s\S]*?\}/g) || [];
-        const recovered = frags.map(f => tryParse(f)).filter(p => p && !Array.isArray(p) && (p.question || p.options));
+        // Salvage individual {...} objects as last resort
+        const frags = text.match(/\{[^{}]*\}/g) || [];
+        const recovered = frags.map(f => tryParse(f)).filter(p => p && typeof p === "object" && !Array.isArray(p) && (p.question || p.options));
         return recovered.length ? recovered : null;
     }
 
-    function extractQuestionNumber(q) {
-        const txt = String(q?.question || "").trim();
-        const m = txt.match(/^\s*(?:q\.?\s*)?(\d{1,3})\s*[\).:-]/i);
-        if (!m) return null;
-        const n = parseInt(m[1], 10);
-        return Number.isInteger(n) ? n : null;
+    // Normalize LaTeX delimiters: \(...\) → $...$  and  \[...\] → $$...$$
+    // Also fix unclosed $ (odd count → append closing $)
+    function normalizeMath(val) {
+        let s = String(val || "").trim();
+        if (!s) return s;
+        s = s.replace(/\\\(([^]*?)\\\)/g, (_, m) => `$${m}$`);
+        s = s.replace(/\\\[([^]*?)\\\]/g, (_, m) => `$$${m}$$`);
+        const dollarCount = (s.match(/(?<!\\)\$/g) || []).length;
+        if (dollarCount % 2 === 1) s += "$";
+        return s;
     }
 
-    try {
-        // ── STEP 1: Extract each image separately to avoid token truncation
-        const allParts = questionImages.map(img => [{ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } }]);
-        let parsed = [];
-        const seen = new Set();
+    // Normalize a single extracted question: options, correctIndexes, math fields
+    function normalizeQuestion(q) {
+        if (q.question) q.question = normalizeMath(q.question);
 
-        function mergeUnique(arr) {
-            if (!Array.isArray(arr)) return 0;
-            let added = 0;
-            for (const q of arr) {
-                const key = `${String(q?.question||"").trim().toLowerCase()}||${JSON.stringify((q?.options||[]).map(o=>String(o||"").trim().toLowerCase()))}`;
-                if (!seen.has(key)) { seen.add(key); parsed.push(q); added++; }
-            }
-            return added;
+        const opts = Array.isArray(q.options) ? q.options : [];
+        q.options = [...opts, "", "", ""].slice(0, 4).map(o => normalizeMath(String(o || "")));
+
+        // Collect correctIndexes from whatever field name the AI used
+        let ci = Array.isArray(q.correctIndexes) ? [...q.correctIndexes] : [];
+        if (!ci.length && typeof q.correctIndex === "number") ci = [q.correctIndex];
+
+        if (!ci.length) {
+            // Parse letter-based hints like "A", "A,C", "A and C"
+            const hint = String(q.correctAnswer || q.answer || q.correct || "").trim();
+            const letters = hint.match(/\b([A-Da-d])\b/g) || [];
+            ci = [...new Set(letters.map(l => "abcd".indexOf(l.toLowerCase())))].filter(n => n >= 0);
         }
 
-        if (questionImages.length === 1) {
-            // Single image: one call with the full prompt
-            const raw = await callGroq(allParts[0], "");
-            const result = parseAiQuestions(raw);
-            if (result) mergeUnique(result);
-        } else {
-            // Multiple images: one call per image so each gets the full token budget
-            for (let i = 0; i < allParts.length; i++) {
-                try {
-                    const instruction = `This is question image ${i + 1} of ${questionImages.length}. Extract ALL questions from THIS image only.`;
-                    const raw = await callGroq(allParts[i], instruction);
-                    const result = parseAiQuestions(raw);
-                    if (result) mergeUnique(result);
-                } catch (imgErr) {
-                    console.warn(`Image ${i + 1} extraction failed:`, imgErr.message);
-                }
-            }
-        }
+        ci = [...new Set(ci.map(n => parseInt(n, 10)).filter(n => Number.isInteger(n) && n >= 0 && n < 4))];
 
-        if (!parsed.length) return res.status(500).json({ error: "Could not extract any questions. Please try again with cleaner screenshots." });
+        // Guard: if all 4 selected but no "all of the above" option exists, reset to A
+        const hasAllOfAbove = q.options.some(o => /all\s+of\s+(the\s+)?above|all\s+of\s+these|all\s+are\s+correct/i.test(o));
+        if (ci.length === 4 && !hasAllOfAbove) ci = [0];
+        if (!ci.length) ci = [0];
 
-        // ── STEP 2: Continuation passes — recover any missed questions
-        // Build combined image parts for continuation (all question images together)
-        const allImgParts = questionImages.map(img => ({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } }));
+        q.correctIndexes = ci;
+        q.isMultiCorrect = ci.length > 1;
+        // Remove redundant fields
+        delete q.correctIndex; delete q.correctAnswer; delete q.answer; delete q.correct;
+        return q;
+    }
 
-        let consecutiveEmpty = 0;
-        for (let pass = 1; pass <= 4; pass++) {
-            try {
-                const seenNums = parsed.map(q => extractQuestionNumber(q)).filter(n => Number.isInteger(n)).sort((a, b) => a - b);
-                const lastStem = String(parsed[parsed.length - 1]?.question || "").replace(/\s+/g, " ").slice(0, 180);
-                const recentStems = parsed.slice(-8).map(q => `- ${String(q?.question || "").replace(/\s+/g, " ").slice(0, 100)}`).join("\n");
+    // Validate and clamp fractional imageRegion coords to [0,1]
+    function validateImageRegion(r) {
+        if (!r || typeof r.x !== "number" || typeof r.y !== "number"
+            || typeof r.w !== "number" || typeof r.h !== "number") return null;
+        if (r.w < 0.01 || r.h < 0.01) return null;
+        const x = Math.max(0, Math.min(0.99, r.x));
+        const y = Math.max(0, Math.min(0.99, r.y));
+        const w = Math.min(1 - x, r.w);
+        const h = Math.min(1 - y, r.h);
+        if (w < 0.01 || h < 0.01) return null;
+        return { x, y, w, h };
+    }
 
-                const instruction = [
-                    `Continuation pass ${pass}: extract ONLY questions not yet extracted from these images.`,
-                    seenNums.length ? `Already extracted question numbers: ${seenNums.join(", ")}.` : "",
-                    lastStem ? `Last extracted stem: "${lastStem}".` : "",
-                    recentStems ? `Recent extracted stems (do not repeat):\n${recentStems}` : "",
-                    `Total extracted so far: ${parsed.length}.`,
-                    `Return JSON array only. If nothing remains, return [].`
-                ].filter(Boolean).join("\n\n");
+    // ── GROQ API WRAPPER ────────────────────────────────────────────────────
 
-                const raw = await callGroq(allImgParts, instruction);
-                const result = parseAiQuestions(raw);
-                if (!Array.isArray(result) || !result.length) {
-                    if (++consecutiveEmpty >= 2) break;
-                    continue;
-                }
-                const added = mergeUnique(result);
-                if (added === 0) { if (++consecutiveEmpty >= 2) break; }
-                else consecutiveEmpty = 0;
-            } catch (err) {
-                console.warn(`Continuation pass ${pass} failed:`, err.message);
-                break;
-            }
-        }
-
-        // ── STEP 3: For numbered questions, fill any gaps by range
-        const numberedCount = parsed.filter(q => Number.isInteger(extractQuestionNumber(q))).length;
-        if (parsed.length > 0 && (numberedCount / parsed.length) >= 0.5) {
-            const maxNum = parsed.reduce((max, q) => { const n = extractQuestionNumber(q); return Number.isInteger(n) && n > max ? n : max; }, 0);
-            const upperBound = Math.max(60, maxNum + 15);
-            let emptyRanges = 0;
-
-            for (let start = 1; start <= upperBound; start += 10) {
-                if (emptyRanges >= 2) break;
-                const end = start + 9;
-                const seenInRange = [];
-                for (let n = start; n <= end; n++) {
-                    if (parsed.some(q => extractQuestionNumber(q) === n)) seenInRange.push(n);
-                }
-                if (seenInRange.length === 10) { emptyRanges++; continue; }
-                const alreadySeen = seenInRange.length ? `Already have Q${seenInRange.join(", Q")} — skip these.` : "";
-
-                try {
-                    const instruction = [
-                        `Extract ONLY questions numbered ${start} to ${end} from the images.`,
-                        alreadySeen,
-                        `Return JSON array only; return [] if none found in this range.`
-                    ].filter(Boolean).join("\n");
-                    const raw = await callGroq(allImgParts, instruction);
-                    const result = parseAiQuestions(raw);
-                    if (!result) { emptyRanges++; continue; }
-
-                    let added = 0;
-                    for (const q of result) {
-                        const qn = extractQuestionNumber(q);
-                        if (!Number.isInteger(qn) || qn < start || qn > end) continue;
-                        const key = `${String(q?.question||"").trim().toLowerCase()}||${JSON.stringify((q?.options||[]).map(o=>String(o||"").trim().toLowerCase()))}`;
-                        if (!seen.has(key)) { seen.add(key); parsed.push(q); added++; }
-                    }
-                    if (added === 0) emptyRanges++; else emptyRanges = 0;
-                } catch (err) {
-                    console.warn(`Range ${start}-${end} pass failed:`, err.message);
-                    emptyRanges++;
-                }
-            }
-
-            // Deduplicate: keep only first entry per question number
-            const seenNums = new Set();
-            parsed = parsed.filter(q => {
-                const n = extractQuestionNumber(q);
-                if (!Number.isInteger(n)) return true;
-                if (seenNums.has(n)) return false;
-                seenNums.add(n);
-                return true;
-            });
-        }
-
-        if (!parsed.length) return res.status(500).json({ error: "No questions found." });
-
-        // ── STEP 4: Normalize math and answer fields
-        function normalizeMath(val) {
-            let s = String(val || "").trim();
-            if (!s) return s;
-            s = s.replace(/\\\(([\s\S]*?)\\\)/g, (_, m) => `$${m}$`);
-            s = s.replace(/\\\[([\s\S]*?)\\\]/g, (_, m) => `$$${m}$$`);
-            s = s.replace(/\s*\$\\\$\s*$/, "").trim();
-            const dollars = (s.match(/(^|[^\\])\$/g) || []).length;
-            if (dollars % 2 === 1) s += "$";
-            return s;
-        }
-
-        parsed = parsed.map((q) => {
-            if (q.question) q.question = normalizeMath(q.question);
-            const options = Array.isArray(q.options) ? q.options : [];
-            q.options = [...options, "", "", ""].slice(0, 4).map(o => normalizeMath(o));
-
-            let ci = Array.isArray(q.correctIndexes) ? q.correctIndexes : [];
-            if (!ci.length && typeof q.correctIndex === "number") ci = [q.correctIndex];
-
-            const answerHint = String(q.correctAnswer || q.answer || q.correct || "").trim().toLowerCase();
-            if (!ci.length) {
-                const m = answerHint.match(/\b([abcd])\b/i);
-                if (m) ci = ["abcd".indexOf(m[1].toLowerCase())];
-            }
-
-            ci = [...new Set(ci.map(n => parseInt(n, 10)).filter(n => Number.isInteger(n) && n >= 0 && n < 4))];
-
-            const hasAllOfAbove = q.options.some(o => /all\s+of\s+the\s+above|all\s+of\s+these|all\s+are\s+correct/i.test(o));
-            const explicitAll = /all\s+of\s+the\s+above|all\s+options|\ba\s*,\s*b\s*,\s*c\s*,\s*d\b/.test(answerHint);
-            if ((answerHint === "all" || ci.length === 4) && !hasAllOfAbove && !explicitAll) ci = [0];
-            if (!ci.length) ci = [0];
-
-            q.correctIndexes = ci;
-            q.isMultiCorrect = ci.length > 1;
-            return q;
+    async function callGroq(parts, systemPrompt, userText, maxTokens = 8000) {
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
+            body: JSON.stringify({
+                model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                max_tokens: maxTokens,
+                temperature: 0.1,
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: [...parts, { type: "text", text: userText }] }
+                ]
+            })
         });
-
-        res.json({ questions: parsed });
-    } catch (e) {
-        console.error("Extract error:", e);
-        res.status(500).json({ error: "Server error: " + e.message });
+        if (!r.ok) {
+            const e = await r.json().catch(() => ({}));
+            throw new Error(e.error?.message || `Groq HTTP ${r.status}`);
+        }
+        const data = await r.json();
+        return String(data.choices?.[0]?.message?.content || "").trim();
     }
+
+    // ── SYSTEM PROMPTS ──────────────────────────────────────────────────────
+
+    const answerKeyContext = manualAnswerKey?.trim()
+        ? `ANSWER KEY PROVIDED:\n${manualAnswerKey.trim()}\nParse each entry as "question number → answer letter(s)" and fill correctIndexes accordingly.`
+        : (answerImages || []).length
+            ? `Answer key image(s) are provided alongside the question image. Use them to fill correctIndexes.`
+            : `No answer key provided. Set correctIndexes to [0] as a placeholder.`;
+
+    const EXTRACTION_SYSTEM = `You are a precise physics MCQ extractor.
+Extract multiple-choice questions from the exam screenshot into a JSON array.
+Return ONLY a raw JSON array — no markdown, no explanation, no extra text whatsoever.
+
+Each element must follow this exact schema:
+{
+  "question": "<full question text with all math in LaTeX>",
+  "options": ["<option A>", "<option B>", "<option C>", "<option D>"],
+  "correctIndexes": [<0-based index: 0=A 1=B 2=C 3=D>],
+  "isMultiCorrect": false,
+  "hasImage": false,
+  "imageRegion": null
+}
+
+EXTRACTION RULES:
+1. Extract EVERY visible question — do not skip any.
+2. Always provide exactly 4 options. If fewer are visible, fill remaining with "".
+3. If options are embedded inline in the stem like (a)...(b)...(c)...(d)..., split them into the options array and remove them from the question text.
+4. correctIndexes: 0-based array. Multi-correct e.g. A and C → [0,2], isMultiCorrect: true.
+5. hasImage: set to true ONLY if the question references or contains a drawn figure, diagram, graph, or circuit in the screenshot.
+6. imageRegion: when hasImage is true, provide the fractional bounding box {x, y, w, h} (all values 0.0–1.0) of the diagram region within this screenshot image. x,y is top-left corner, w,h is width/height as fractions of total image size. Set to null if you cannot locate it precisely.
+
+EQUATION FORMATTING (mandatory — preserve ALL mathematical content):
+- Inline math: $expression$  e.g. $v = u + at$, $\frac{1}{2}mv^2$
+- Display/block math: $$expression$$
+- Greek letters: π→$\pi$, ω→$\omega$, θ→$\theta$, α→$\alpha$, β→$\beta$, γ→$\gamma$, μ→$\mu$, λ→$\lambda$, Δ→$\Delta$, Σ→$\Sigma$, ε→$\varepsilon$, ρ→$\rho$, φ→$\phi$
+- Infinity: ∞→$\infty$
+- Powers: T⁴→$T^4$, v²→$v^2$, x^n stays as $x^n$
+- Subscripts: v₀→$v_0$, a_x stays as $a_x$, H₂O→$H_2O$
+- Fractions: always use $\frac{numerator}{denominator}$, never a/b for math fractions
+- Square roots: $\sqrt{x}$, $\sqrt[3]{x}$
+- Trig: $\sin\theta$, $\cos\theta$, $\tan\theta$
+- Vectors: $\vec{F}$, $\hat{n}$
+- Units in text: keep as plain text unless they contain math (e.g. m/s² → m/s² is fine in text, $ms^{-2}$ in equations)
+- Do NOT omit or approximate any symbol or formula.
+
+${answerKeyContext}`;
+
+    const COUNT_SYSTEM = `You are a question counter. Your only job is to count how many distinct MCQ (multiple-choice) questions are visible in the image.
+Reply with a SINGLE INTEGER and absolutely nothing else. No words, no punctuation.`;
+
+    // ── PHASE 1: COUNT questions per image in parallel (establishes hard cap) ─
+
+    const perImageParts = questionImages.map(img => [toImgPart(img)]);
+    const answerImgParts = (answerImages || []).map(toImgPart);
+
+    const perImageCounts = await Promise.all(
+        perImageParts.map(async (parts, i) => {
+            try {
+                const raw = await callGroq(parts, COUNT_SYSTEM,
+                    "How many MCQ questions are in this image? Reply with a single integer only.", 10);
+                const n = parseInt(raw.trim(), 10);
+                const count = Number.isInteger(n) && n > 0 && n <= 200 ? n : null;
+                console.log(`[extract] Image ${i + 1} count: ${count ?? "unknown"}`);
+                return count;
+            } catch (e) {
+                console.warn(`[extract] Count failed for image ${i + 1}:`, e.message);
+                return null;
+            }
+        })
+    );
+
+    const totalExpected = perImageCounts.every(c => c === null)
+        ? null
+        : perImageCounts.reduce((s, c) => s + (c || 0), 0);
+
+    console.log(`[extract] Per-image counts: [${perImageCounts}] → totalExpected: ${totalExpected ?? "unknown"}`);
+
+    // ── PHASE 2: EXTRACT questions from each image independently ─────────────
+
+    const extracted = [];
+    const seenKeys = new Set();
+
+    function questionKey(q) {
+        const stem = String(q?.question || "").trim().toLowerCase().slice(0, 120);
+        const opts = (q?.options || []).map(o => String(o || "").trim().toLowerCase().slice(0, 40)).join("|");
+        return `${stem}||${opts}`;
+    }
+
+    function mergeUnique(arr, cap) {
+        if (!Array.isArray(arr)) return 0;
+        let added = 0;
+        for (const q of arr) {
+            if (cap !== null && extracted.length >= cap) break;
+            const key = questionKey(q);
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                extracted.push(q);
+                added++;
+            }
+        }
+        return added;
+    }
+
+    for (let i = 0; i < questionImages.length; i++) {
+        const imgCap    = perImageCounts[i];   // exact count for this image (or null)
+        const imgParts  = [...perImageParts[i], ...answerImgParts];
+
+        // Main extraction call
+        const mainPrompt = imgCap !== null
+            ? `This image contains exactly ${imgCap} MCQ questions. Extract all ${imgCap} of them — do not stop early and do not add extras.`
+            : `Extract ALL MCQ questions visible in this image.`;
+
+        let added = 0;
+        try {
+            const raw = await callGroq(imgParts, EXTRACTION_SYSTEM, mainPrompt);
+            const result = parseJsonArray(raw);
+            if (result) {
+                added = mergeUnique(result, totalExpected);
+                console.log(`[extract] Image ${i + 1}: got ${result.length} from AI, added ${added} unique`);
+            } else {
+                console.warn(`[extract] Image ${i + 1}: could not parse AI response`);
+            }
+        } catch (e) {
+            console.warn(`[extract] Image ${i + 1} main extraction failed:`, e.message);
+        }
+
+        // Retry pass: if we know the count and came up short, ask for only the missing ones
+        if (imgCap !== null && added < imgCap && extracted.length < (totalExpected ?? Infinity)) {
+            const missing = imgCap - added;
+            const recentStems = extracted.slice(-added || -imgCap).map(q =>
+                `- ${String(q.question || "").replace(/\s+/g, " ").slice(0, 80)}`
+            ).join("\n");
+            const retryPrompt = [
+                `You returned ${added} questions but this screenshot contains ${imgCap}.`,
+                `The ${missing} missing question(s) were not extracted. Find and return ONLY them.`,
+                recentStems ? `Questions already extracted (do NOT repeat these):\n${recentStems}` : "",
+                `Return a JSON array of only the missing questions.`
+            ].filter(Boolean).join("\n\n");
+
+            try {
+                const retryRaw = await callGroq(imgParts, EXTRACTION_SYSTEM, retryPrompt);
+                const retryResult = parseJsonArray(retryRaw);
+                if (retryResult) {
+                    const retryAdded = mergeUnique(retryResult, totalExpected);
+                    console.log(`[extract] Image ${i + 1} retry: recovered ${retryAdded} more`);
+                }
+            } catch (e) {
+                console.warn(`[extract] Image ${i + 1} retry failed:`, e.message);
+            }
+        }
+    }
+
+    if (!extracted.length)
+        return res.status(500).json({ error: "Could not extract any questions. Please try again with a cleaner screenshot." });
+
+    // ── PHASE 3: HARD CAP — never return more than what was counted ──────────
+
+    let questions = extracted;
+    if (totalExpected !== null && questions.length > totalExpected) {
+        console.warn(`[extract] Trimming ${questions.length} → ${totalExpected} (hard cap)`);
+        questions = questions.slice(0, totalExpected);
+    }
+
+    // ── PHASE 4: NORMALIZE — equations, options length, correctIndexes ───────
+
+    questions = questions.map(normalizeQuestion);
+
+    // ── PHASE 5: DIAGRAM REGIONS — validate AI-provided coords for OpenCV ────
+    // The frontend uses imageRegion for Tier-1 (precise AI crop).
+    // Invalid coords → null → frontend falls back to OpenCV Tier-2 / pixel Tier-3.
+
+    let offset = 0;
+    questions = questions.map((q, qi) => {
+        if (!q.hasImage) { q.imageRegion = null; return q; }
+
+        q.imageRegion = validateImageRegion(q.imageRegion);
+
+        // Assign which source screenshot index this question's diagram is on.
+        // We track a running offset across images using the per-image counts.
+        if (questionImages.length > 1) {
+            let srcIdx = 0, cum = 0;
+            for (let i = 0; i < perImageCounts.length; i++) {
+                cum += perImageCounts[i] || Math.ceil(questions.length / questionImages.length);
+                if (qi < cum) { srcIdx = i; break; }
+                srcIdx = i;
+            }
+            q.imageSourceIndex = srcIdx;
+        } else {
+            q.imageSourceIndex = 0;
+        }
+
+        return q;
+    });
+
+    const withImg    = questions.filter(q => q.hasImage).length;
+    const withRegion = questions.filter(q => q.imageRegion).length;
+    console.log(`[extract] Returning ${questions.length} questions. hasImage: ${withImg}, AI imageRegion: ${withRegion}`);
+
+    res.json({ questions });
 });
+
 
 // ── CATCH-ALL
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
