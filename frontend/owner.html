@@ -4135,20 +4135,11 @@
         async function extractImagesForQuestions(questions, screenshotB64Array) {
             if (!screenshotB64Array || !screenshotB64Array.length) return;
 
-            const imgQuestions = questions.filter(q => {
-                const hint = /\b(figure|fig\.?|diagram|graph|circuit|shown\s+in\s+the\s+figure|shown\s+below|given\s+below|as\s+shown)\b/i.test(String(q.question || ""));
-                return !!q.hasImage || !!q.imageRegion || hint;
-            });
-            if (!imgQuestions.length) return;
-
             const totalQs = questions.length;
             const qsPerScreen = Math.max(1, Math.ceil(totalQs / screenshotB64Array.length));
 
             for (let qi = 0; qi < questions.length; qi++) {
                 const q = questions[qi];
-                const textHintsImage = /\b(figure|fig\.?|diagram|graph|circuit|shown\s+in\s+the\s+figure|shown\s+below|given\s+below|as\s+shown)\b/i.test(String(q.question || ""));
-                const shouldTryImage = !!q.hasImage || !!q.imageRegion || textHintsImage;
-                if (!shouldTryImage) continue;
 
                 const screenIdx = q.imageSourceIndex !== undefined
                     ? Math.min(q.imageSourceIndex, screenshotB64Array.length - 1)
@@ -4343,16 +4334,14 @@
 
                 pushUndo(snapshotState());
 
-                // ── Run image extraction pipeline (Tier 1 → 2 → 3) ──
-                const imgCount = parsed.filter(q => q.hasImage).length;
-                if (imgCount > 0) {
-                    const hasAICoords = parsed.some(q => q.hasImage && q.imageRegion);
-                    const methodLabel = hasAICoords
-                        ? "AI coordinates + OpenCV refinement"
-                        : "OpenCV detection";
-                    status.innerHTML = `<span class="spinner"></span>&nbsp; Cropping ${imgCount} diagram(s) using ${methodLabel}…`;
-                    await extractImagesForQuestions(parsed, qImagesBase64);
-                }
+                // ── Run image extraction pipeline (AI coords + OpenCV) for all questions ──
+                const aiFlaggedCount = parsed.filter(q => q.hasImage).length;
+                const hasAICoords = parsed.some(q => q.hasImage && q.imageRegion);
+                const methodLabel = hasAICoords
+                    ? "AI coordinates + OpenCV refinement"
+                    : "OpenCV detection";
+                status.innerHTML = `<span class="spinner"></span>&nbsp; Scanning ${parsed.length} question(s) for diagrams using ${methodLabel}…`;
+                await extractImagesForQuestions(parsed, qImagesBase64);
 
                 extractedQuestions = parsed.map((q, i) => ({
                     ...q,
@@ -4361,6 +4350,7 @@
                 }));
 
                 // Build status summary
+                const imgCount = parsed.filter(q => q.hasImage).length;
                 const aiCropped = parsed.filter(q => q.hasImage && q._detectMethod === "ai").length;
                 const cvCropped = parsed.filter(q => q.hasImage && q._detectMethod === "cv").length;
                 const needManualCount = parsed.filter(q => q.hasImage && !q.extractedImageB64).length;
@@ -4368,6 +4358,7 @@
                 let imgSummary = "";
                 if (imgCount > 0) {
                     const parts = [];
+                    if (aiFlaggedCount && aiFlaggedCount !== imgCount) parts.push(`🧠 AI flagged ${aiFlaggedCount}, detected ${imgCount}`);
                     if (aiCropped) parts.push(`🤖 ${aiCropped} AI-coords`);
                     if (cvCropped) parts.push(`🔬 ${cvCropped} OpenCV`);
                     if (needManualCount) parts.push(`<strong>⚠️ ${needManualCount} need manual upload</strong>`);
