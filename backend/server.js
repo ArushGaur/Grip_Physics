@@ -1089,11 +1089,57 @@ even if question numbers are missing or mismatched. Preserve full merged text.`;
 			final.push(bestByNum.get(n) || q);
 		}
 
-		if (!final.length) {
+		// Fuzzy dedupe pass for near-identical repeats (common OCR/extraction issue).
+		function stemSig(q) {
+			return String(q?.question || "")
+				.toLowerCase()
+				.replace(/^\s*(?:q\.?\s*)?\d{1,3}\s*[\).:\u2013\-]?\s*/i, "")
+				.replace(/\s+/g, " ")
+				.replace(/[^a-z0-9$\\\-+*/=() ]/g, "")
+				.trim();
+		}
+
+		function optionSet(q) {
+			return new Set((Array.isArray(q?.options) ? q.options : [])
+				.map((o) => String(o || "").toLowerCase().replace(/\s+/g, " ").trim())
+				.filter(Boolean));
+		}
+
+		function richness(q) {
+			const stemLen = stemSig(q).length;
+			const filledOpts = (Array.isArray(q?.options) ? q.options : []).filter((o) => String(o || "").trim()).length;
+			return stemLen + filledOpts * 40;
+		}
+
+		function areNearDup(a, b) {
+			const sa = stemSig(a);
+			const sb = stemSig(b);
+			if (!sa || !sb) return false;
+			const stemMatch = sa === sb || sa.includes(sb) || sb.includes(sa);
+			if (!stemMatch) return false;
+			const oa = optionSet(a);
+			const ob = optionSet(b);
+			if (!oa.size || !ob.size) return true;
+			let overlap = 0;
+			oa.forEach((x) => { if (ob.has(x)) overlap++; });
+			return overlap >= 2;
+		}
+
+		const deduped = [];
+		for (const q of final) {
+			const idx = deduped.findIndex((x) => areNearDup(x, q));
+			if (idx === -1) {
+				deduped.push(q);
+				continue;
+			}
+			if (richness(q) > richness(deduped[idx])) deduped[idx] = q;
+		}
+
+		if (!deduped.length) {
 			return res.status(500).json({ error: "Could not extract any questions. Please upload a cleaner screenshot." });
 		}
 
-		const questions = final.map((q) => {
+		const questions = deduped.map((q) => {
 			const next = normalizeQuestion(q);
 			if (next.hasImage && !Number.isInteger(next.imageSourceIndex)) next.imageSourceIndex = 0;
 			if (Number.isInteger(next.imageSourceIndex)) {
