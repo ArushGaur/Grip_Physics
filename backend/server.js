@@ -869,21 +869,32 @@ Reply with ONLY a single integer. No other text.`;
         return Number.isInteger(n) ? n : null;
     }
 
-    function pushUnique(q) {
-        const key = questionKey(q);
+    function pushUnique(q, sourceImageIndex = null) {
+        const next = { ...q };
+        if (Number.isInteger(sourceImageIndex) && next.imageSourceIndex === undefined) {
+            next.imageSourceIndex = sourceImageIndex;
+        }
+        const key = questionKey(next);
         if (seenKeys.has(key)) return false;
-        seenKeys.add(key); extracted.push(q); return true;
+        seenKeys.add(key); extracted.push(next); return true;
     }
 
     // Replace the last entry (used when a merge produces a better version)
-    function replaceLastWith(q) {
+    function replaceLastWith(q, sourceImageIndex = null) {
         if (!extracted.length) return;
         seenKeys.delete(questionKey(extracted[extracted.length - 1]));
         extracted.pop();
-        pushUnique(q);
+        pushUnique(q, sourceImageIndex);
+    }
+
+    function removeAt(idx) {
+        if (idx < 0 || idx >= extracted.length) return;
+        seenKeys.delete(questionKey(extracted[idx]));
+        extracted.splice(idx, 1);
     }
 
     for (let i = 0; i < questionImages.length; i++) {
+        const beforeLen = extracted.length;
         const imgCap   = perImageCounts[i];
         const imgParts = [...perImageParts[i], ...answerImgParts];
 
@@ -897,7 +908,7 @@ Reply with ONLY a single integer. No other text.`;
             const result = parseJsonArray(raw);
             if (result) {
                 let added = 0;
-                for (const q of result) { if (pushUnique(q)) added++; }
+                for (const q of result) { if (pushUnique(q, i)) added++; }
                 console.log(`[extract] Image ${i + 1}: got ${result.length}, added ${added}`);
 
                 // Retry if short
@@ -915,7 +926,7 @@ Reply with ONLY a single integer. No other text.`;
                         const rResult = parseJsonArray(rRaw);
                         if (rResult) {
                             let rAdded = 0;
-                            for (const q of rResult) { if (pushUnique(q)) rAdded++; }
+                            for (const q of rResult) { if (pushUnique(q, i)) rAdded++; }
                             console.log(`[extract] Image ${i + 1} retry: +${rAdded}`);
                         }
                     } catch (e) { console.warn(`[extract] Image ${i + 1} retry failed:`, e.message); }
@@ -928,54 +939,60 @@ Reply with ONLY a single integer. No other text.`;
         }
 
         // ── CROSS-IMAGE BOUNDARY MERGE ──────────────────────────────────────
-        // Check if the last question of image[i] continues into image[i+1].
-        // We do this by sending BOTH images to the AI and asking it to produce
-        // the single complete merged question — no heuristics, no guessing.
+        // Run after current image extraction so we can compare
+        // previous-image last extracted question and current-image first extracted question.
 
-        if (i < questionImages.length - 1 && extracted.length > 0) {
-            const lastQ   = extracted[extracted.length - 1];
-            const lastNum = getQuestionNumber(lastQ);
-            const lastStem = String(lastQ.question || "").replace(/\s+/g, " ").trim();
+        if (i > 0 && beforeLen > 0 && extracted.length > beforeLen) {
+            const prevLastIdx = beforeLen - 1;
+            const currFirstIdx = beforeLen;
+            const prevLast = extracted[prevLastIdx];
+            const currFirst = extracted[currFirstIdx];
+            const prevStem = String(prevLast?.question || "").replace(/\s+/g, " ").trim();
+            const currStem = String(currFirst?.question || "").replace(/\s+/g, " ").trim();
 
-            // Send both images together with a very specific merge prompt
             const bothParts = [
+                toImgPart(questionImages[i - 1]),
                 toImgPart(questionImages[i]),
-                toImgPart(questionImages[i + 1]),
                 ...answerImgParts
             ];
 
-            const mergeCheckPrompt = `Look at these two images carefully.
+            const mergeCheckPrompt = `These are consecutive screenshots.
 
-The last question visible at the bottom of IMAGE 1 starts with:
-"${lastStem.slice(0, 250)}"
+Candidate question from IMAGE 1 (bottom area):
+"${prevStem.slice(0, 260)}"
 
-Task: Does this question continue at the top of IMAGE 2 (i.e. is it split across the two images)?
+Candidate first extracted question from IMAGE 2 (top area):
+"${currStem.slice(0, 260)}"
 
-If YES — return a JSON object with:
-{"split": true, "merged": { <the complete merged question object with all fields filled in> }}
+Task: Decide whether these are two fragments of ONE split question.
 
-If NO — return exactly: {"split": false}
+If YES, return exactly:
+{"split": true, "merged": {"question":"<full text>","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false,"imageRegion":null}}
 
-The merged question object must follow this schema:
-{"question":"<full text>","options":["A","B","C","D"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false,"imageRegion":null}
+If NO, return exactly:
+{"split": false}
 
-Return ONLY the JSON object. No explanation.`;
+Rules:
+- Mark split=true when IMAGE 1 bottom stem continues into IMAGE 2 top options/text.
+- Preserve complete math/text from both fragments in merged.question/options.
+- Return only JSON.`;
 
             try {
-                const mergeRaw    = await callGroq(bothParts, "You are a precise MCQ merge assistant. Return only valid JSON.", mergeCheckPrompt, 1000);
-                const mergeClean  = cleanJson(mergeRaw);
+                const mergeRaw = await callGroq(bothParts, "You are a precise MCQ boundary-merge assistant. Return only valid JSON.", mergeCheckPrompt, 1200);
+                const mergeClean = cleanJson(mergeRaw);
                 const s = mergeClean.indexOf("{"), e2 = mergeClean.lastIndexOf("}");
                 const mergeResult = s !== -1 && e2 > s ? tryParse(mergeClean.slice(s, e2 + 1)) : null;
 
                 if (mergeResult?.split === true && mergeResult?.merged) {
-                    console.log(`[extract] Cross-image split confirmed at boundary ${i + 1}→${i + 2}, merging Q${lastNum ?? "?"}`);
-                    const merged = { ...mergeResult.merged, _wasSplit: true, imageSourceIndex: i };
-                    replaceLastWith(merged);
+                    const merged = { ...mergeResult.merged, _wasSplit: true, imageSourceIndex: i - 1 };
+                    console.log(`[extract] Boundary ${i}→${i + 1}: split confirmed, merging two fragments`);
+                    replaceLastWith(merged, i - 1);
+                    removeAt(currFirstIdx);
                 } else {
-                    console.log(`[extract] No split at boundary ${i + 1}→${i + 2}`);
+                    console.log(`[extract] Boundary ${i}→${i + 1}: no split`);
                 }
             } catch (e) {
-                console.warn(`[extract] Boundary merge check ${i + 1}→${i + 2} failed:`, e.message);
+                console.warn(`[extract] Boundary merge check ${i}→${i + 1} failed:`, e.message);
             }
         }
     }
@@ -1036,18 +1053,21 @@ Return ONLY the JSON object. No explanation.`;
 
         q.imageRegion = validateImageRegion(q.imageRegion);
 
-        // Assign which source screenshot index this question's diagram is on.
-        // We track a running offset across images using the per-image counts.
-        if (questionImages.length > 1) {
-            let srcIdx = 0, cum = 0;
-            for (let i = 0; i < perImageCounts.length; i++) {
-                cum += perImageCounts[i] || Math.ceil(questions.length / questionImages.length);
-                if (qi < cum) { srcIdx = i; break; }
-                srcIdx = i;
+        // Preserve extraction-time assignment when available; otherwise fall back to count-based mapping.
+        if (!Number.isInteger(q.imageSourceIndex)) {
+            if (questionImages.length > 1) {
+                let srcIdx = 0, cum = 0;
+                for (let i = 0; i < perImageCounts.length; i++) {
+                    cum += perImageCounts[i] || Math.ceil(questions.length / questionImages.length);
+                    if (qi < cum) { srcIdx = i; break; }
+                    srcIdx = i;
+                }
+                q.imageSourceIndex = srcIdx;
+            } else {
+                q.imageSourceIndex = 0;
             }
-            q.imageSourceIndex = srcIdx;
         } else {
-            q.imageSourceIndex = 0;
+            q.imageSourceIndex = Math.max(0, Math.min(questionImages.length - 1, q.imageSourceIndex));
         }
 
         return q;
