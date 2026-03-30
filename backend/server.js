@@ -104,6 +104,16 @@ function normalizeMath(s) {
 	return out;
 }
 
+function looksLikeEquation(s) {
+	const t = String(s || "").trim();
+	if (!t) return false;
+	if (/\$[^$]+\$/.test(t)) return true;
+	if (/\\(frac|sqrt|sum|int|pi|theta|alpha|beta|gamma|sin|cos|tan|log|ln)\b/i.test(t)) return true;
+	if (/(^|\s)[a-zA-Z][a-zA-Z0-9]*\s*(=|>=|<=|>|<|\+|\-|\*|\/|\^|≈|∝)\s*[-+]?\d|\b\d+\s*(m\/s|m\/s\^2|kg|N|J|W|Hz|ohm|V|A)\b/i.test(t)) return true;
+	if (/\b(sin|cos|tan|log|ln)\s*\(/i.test(t)) return true;
+	return false;
+}
+
 function parseCorrectIndexesFromQuestion(q) {
 	let ci = Array.isArray(q.correctIndexes) ? [...q.correctIndexes] : [];
 	if (!ci.length && typeof q.correctIndex === "number") ci = [q.correctIndex];
@@ -132,7 +142,7 @@ function validateImageRegion(r) {
 function normalizeQuestion(q) {
 	const normQuestion = normalizeMath(String(q?.question || ""));
 	const normOptions = [...(Array.isArray(q?.options) ? q.options : []), "", "", ""].slice(0, 4).map((x) => normalizeMath(String(x || "")));
-	const hasEquation = /\$[^$]+\$/.test(normQuestion) || normOptions.some((o) => /\$[^$]+\$/.test(o));
+	const hasEquation = looksLikeEquation(normQuestion) || normOptions.some((o) => looksLikeEquation(o));
 
 	const out = {
 		question: normQuestion,
@@ -946,10 +956,11 @@ Return ONLY a JSON array of objects:
 }
 
 CRITICAL RULES:
+0) Do not skip any numbered question. If a screenshot contains Q1..Q10, output all visible questions exactly once.
 1) Read two-column pages: left column top-to-bottom first, then right column top-to-bottom.
 2) If one question is split at the bottom of image N and top of image N+1, keep text faithful; backend will merge.
 3) Always return exactly 4 options (fill missing with "").
-4) Preserve equations using $...$ and $$...$$.
+4) Preserve equations using $...$ and $$...$$. Keep mathematical symbols, superscripts, subscripts, fractions, roots, and units intact.
 5) hasImage=true only when question references a figure/graph/circuit.
 6) imageRegion uses fractions {x,y,w,h} in [0,1] for that figure, else null.
 
@@ -966,6 +977,7 @@ PARTIAL / SPLIT QUESTION RULES:
 NUMBERING:
 13) Every question starts with a number like "1.", "2.", etc. Use this to avoid merging separate questions.
 14) Text starting with a lower-case letter like "(a)", "(b)" immediately after a question stem = answer option, NOT a new question.
+15) If you are unsure, keep the question with partial text/options rather than dropping it.
 
 ${answerContext}`;
 
@@ -998,9 +1010,23 @@ ${answerContext}`;
 
 		for (let i = 0; i < questionImages.length; i++) {
 			const parts = [toImgPart(questionImages[i]), ...answerParts];
-			const raw = await callGroq(parts, EXTRACTION_SYSTEM, "Extract all questions from this screenshot.", 8000);
+			const raw = await callGroq(parts, EXTRACTION_SYSTEM, "Extract all questions from this screenshot. Return ONLY JSON array.", 8000);
 			const arr = parseJsonArray(raw) || [];
 			for (const q of arr) pushUnique(q, i);
+
+			// Recovery pass for missed numbered/equation-heavy questions.
+			const firstPassJson = JSON.stringify(arr).slice(0, 14000);
+			const recoveryPrompt = `You already extracted some questions from this same screenshot.
+Find ONLY the missed questions that are visible in the screenshot and NOT present in the prior list.
+Pay special attention to equation-heavy questions and two-column continuations.
+
+PRIOR EXTRACTION:
+${firstPassJson}
+
+Return ONLY JSON array of ADDITIONAL questions. If nothing is missing, return [] exactly.`;
+			const recoveryRaw = await callGroq(parts, EXTRACTION_SYSTEM, recoveryPrompt, 3500, 0.0);
+			const recoveryArr = parseJsonArray(recoveryRaw) || [];
+			for (const q of recoveryArr) pushUnique(q, i);
 		}
 
 		// Cross-image merge pass: ask AI directly for boundary fragment merge.
