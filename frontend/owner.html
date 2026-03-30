@@ -20,6 +20,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" id="opencvScript"></script>
 
 
     <style>
@@ -3801,14 +3802,24 @@
            The server AI analyses every screenshot and returns per-question:
              • question text (with $…$ LaTeX for equations)
              • options (with $…$ LaTeX for equations)
-             • hasImage / imageB64  — diagram cropped by the AI
-             • hasEquation          — true when LaTeX is present
-           No client-side OpenCV or canvas processing is performed.
+             • questionImage / imageRegion — diagram cropped or located by the AI
+             • hasEquation               — true when LaTeX is present
+           Client-side OpenCV.js is used for image contrast enhancement + sharpening
+           when cropping diagrams from imageRegion bounding boxes.
         ══════════════════════════════════════════════════════════════════ */
 
         /**
+         * Returns true when OpenCV.js is loaded and ready.
+         */
+        function isOpenCVReady() {
+            return typeof cv !== "undefined" && cv && typeof cv.imread === "function";
+        }
+
+        /**
          * Crop a base64 image using fractional coordinates supplied by the AI.
-         * Uses a temporary <canvas> — pure browser, no OpenCV.
+         * Uses OpenCV.js when available for contrast enhancement + smart padding,
+         * otherwise falls back to a plain <canvas> crop.
+         *
          * @param {string} srcB64          — full screenshot base64
          * @param {{x,y,w,h}} region       — fractional coords (0.0–1.0)
          * @returns {Promise<string|null>} — cropped base64 JPEG or null
@@ -3817,30 +3828,93 @@
             return new Promise((resolve) => {
                 const img = new Image();
                 const mime = srcB64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+                img.crossOrigin = "anonymous";
                 img.onload = () => {
                     try {
                         const W = img.naturalWidth, H = img.naturalHeight;
-                        const x = Math.max(0, Math.round(region.x * W));
-                        const y = Math.max(0, Math.round(region.y * H));
-                        const w = Math.min(W - x, Math.round(region.w * W));
-                        const h = Math.min(H - y, Math.round(region.h * H));
+
+                        // Add 3% padding around the AI-detected region
+                        const PAD = 0.03;
+                        const rx = Math.max(0, region.x - PAD);
+                        const ry = Math.max(0, region.y - PAD);
+                        const rw = Math.min(1 - rx, region.w + PAD * 2);
+                        const rh = Math.min(1 - ry, region.h + PAD * 2);
+
+                        const x = Math.max(0, Math.round(rx * W));
+                        const y = Math.max(0, Math.round(ry * H));
+                        const w = Math.min(W - x, Math.round(rw * W));
+                        const h = Math.min(H - y, Math.round(rh * H));
+
                         if (w < 10 || h < 10) { resolve(null); return; }
-                        const canvas = document.createElement("canvas");
-                        canvas.width = w; canvas.height = h;
-                        canvas.getContext("2d").drawImage(img, x, y, w, h, 0, 0, w, h);
-                        const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+                        // Draw full image to a canvas first
+                        const srcCanvas = document.createElement("canvas");
+                        srcCanvas.width = W; srcCanvas.height = H;
+                        srcCanvas.getContext("2d").drawImage(img, 0, 0, W, H);
+
+                        // Crop canvas
+                        const cropCanvas = document.createElement("canvas");
+                        cropCanvas.width = w; cropCanvas.height = h;
+                        cropCanvas.getContext("2d").drawImage(srcCanvas, x, y, w, h, 0, 0, w, h);
+
+                        // --- OpenCV enhancement path ---
+                        if (isOpenCVReady()) {
+                            try {
+                                const src = cv.imread(cropCanvas);
+                                const enhanced = new cv.Mat();
+
+                                // Convert to grayscale for analysis
+                                const gray = new cv.Mat();
+                                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                                // Check average brightness — if very dark or very low contrast, enhance
+                                const mean = cv.mean(gray);
+                                const brightness = mean[0]; // 0–255
+
+                                if (brightness < 60 || brightness > 200) {
+                                    // Apply CLAHE (contrast limited adaptive histogram equalization)
+                                    const clahe = new cv.CLAHE(2.0, new cv.Size(8, 8));
+                                    const equalised = new cv.Mat();
+                                    clahe.apply(gray, equalised);
+                                    cv.cvtColor(equalised, enhanced, cv.COLOR_GRAY2RGBA);
+                                    equalised.delete(); clahe.delete();
+                                } else {
+                                    // Normal contrast — just keep the colour crop with mild sharpening
+                                    const kernel = cv.matFromArray(3, 3, cv.CV_32F, [
+                                        0, -0.5, 0,
+                                        -0.5, 3, -0.5,
+                                        0, -0.5, 0
+                                    ]);
+                                    cv.filter2D(src, enhanced, cv.CV_8U, kernel, new cv.Point(-1, -1), 0, cv.BORDER_DEFAULT);
+                                    kernel.delete();
+                                }
+
+                                // Write result back to canvas
+                                cv.imshow(cropCanvas, enhanced);
+
+                                src.delete(); enhanced.delete(); gray.delete();
+                            } catch (cvErr) {
+                                console.warn("OpenCV enhancement failed, using plain crop:", cvErr);
+                                // cropCanvas already has the plain crop — just continue
+                            }
+                        }
+
+                        const dataUrl = cropCanvas.toDataURL("image/jpeg", 0.93);
                         resolve(dataUrl.split(",")[1] || null);
-                    } catch (e) { console.warn("cropRegionFromAI error:", e); resolve(null); }
+                    } catch (e) {
+                        console.warn("cropRegionFromAI error:", e);
+                        resolve(null);
+                    }
                 };
                 img.onerror = () => resolve(null);
-                img.src = `data:${mime};base64,${srcB64}`;
+                img.src = srcB64.startsWith("data:") ? srcB64 : `data:${mime};base64,${srcB64}`;
             });
         }
 
         /**
          * For every question the AI flagged as having an image:
-         *   1. If the AI returned imageB64 directly → use it as-is
-         *   2. If the AI returned imageRegion coords → crop client-side
+         *   1. If the server returned questionImage directly → use it
+         *   2. If the AI returned imageRegion coords → crop client-side (with OpenCV enhancement)
          *   3. Otherwise → leave extractedImageB64 = null (manual upload prompt)
          * Equations are already embedded as $…$ in question/option text by the server.
          */
@@ -3857,9 +3931,10 @@
                 // Images: try AI-provided base64 first, then AI coords, then give up.
                 if (!q.hasImage) { q.extractedImageB64 = null; continue; }
 
-                // Case 1: AI already returned a cropped image blob
-                if (q.imageB64 && q.imageB64.length > 10) {
-                    q.extractedImageB64 = q.imageB64;
+                // Case 1: AI already returned a cropped image blob (server returns it as questionImage)
+                const directImage = q.questionImage || q.imageB64;
+                if (directImage && directImage.length > 10) {
+                    q.extractedImageB64 = directImage.startsWith("data:") ? directImage.split(",")[1] : directImage;
                     continue;
                 }
 
@@ -3931,9 +4006,11 @@
         }
 
         function checkExtractReady() {
-            const hasManual = document.getElementById("ak-tab-manual").classList.contains("active")
-                && document.getElementById("manualAnswerKey").value.trim();
-            document.getElementById("extractBtn").disabled = !(qImagesBase64.length > 0 && (aImagesBase64.length > 0 || hasManual));
+            const isManualTab = document.getElementById("ak-tab-manual").classList.contains("active");
+            const manualText = document.getElementById("manualAnswerKey").value.trim();
+            const hasManualKey = isManualTab && manualText.length > 0;
+            const hasAnsScreenshot = !isManualTab && aImagesBase64.length > 0;
+            document.getElementById("extractBtn").disabled = !(qImagesBase64.length > 0 && (hasManualKey || hasAnsScreenshot));
         }
 
         function switchAKTab(tab) {
@@ -4035,8 +4112,9 @@
 
                 pushUndo(snapshotState());
 
-                // Process AI-detected images and equations (no OpenCV — AI-only)
-                status.innerHTML = `<span class="spinner"></span>&nbsp; Processing ${parsed.length} question(s) — extracting images and equations…`;
+                // Process AI-detected images with OpenCV enhancement where available
+                const cvReady = isOpenCVReady();
+                status.innerHTML = `<span class="spinner"></span>&nbsp; Processing ${parsed.length} question(s) — extracting images${cvReady ? " (OpenCV ✓)" : ""} and equations…`;
                 await processAIResults(parsed, qImagesBase64);
 
                 extractedQuestions = parsed.map(q => ({
@@ -4093,12 +4171,15 @@
                 if (q.hasImage) {
                     if (q.extractedImageB64) {
                         // AI successfully returned/cropped an image
+                        const imgSrc = q.extractedImageB64.startsWith("data:")
+                            ? q.extractedImageB64
+                            : `data:image/jpeg;base64,${q.extractedImageB64}`;
                         diagramHTML = `
                         <div id="eq_imgwrap_${qi}" style="margin-bottom:12px">
                             <div id="eq_autoimg_${qi}">
                                 <div class="eq-image-preview" style="position:relative">
                                     <img id="eq_autoimg_el_${qi}"
-                                         src="data:image/jpeg;base64,${q.extractedImageB64}"
+                                         src="${imgSrc}"
                                          alt="AI-detected diagram"
                                          style="max-width:100%;border-radius:6px;border:1px solid var(--border)">
                                     <div class="eq-image-label">
