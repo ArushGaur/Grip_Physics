@@ -249,36 +249,67 @@ async function uploadQuestionImages(questions) {
 	);
 }
 
-async function callGroq(parts, systemPrompt, userPrompt, maxTokens = 8000, temperature = 0.1) {
+function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractRetrySeconds(msg) {
+	const m = String(msg || "").match(/try again in\s*([0-9.]+)s/i);
+	if (!m) return null;
+	const n = parseFloat(m[1]);
+	return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+async function callGroq(parts, systemPrompt, userPrompt, maxTokens = 2600, temperature = 0.1) {
 	if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set on server");
+	const maxAttempts = 4;
 
-	const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${GROQ_API_KEY}`,
-		},
-		body: JSON.stringify({
-			model: "meta-llama/llama-4-scout-17b-16e-instruct",
-			max_tokens: maxTokens,
-			temperature,
-			messages: [
-				{ role: "system", content: systemPrompt },
-				{
-					role: "user",
-					content: [...(Array.isArray(parts) ? parts : []), { type: "text", text: userPrompt }],
-				},
-			],
-		}),
-	});
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${GROQ_API_KEY}`,
+			},
+			body: JSON.stringify({
+				model: "meta-llama/llama-4-scout-17b-16e-instruct",
+				max_tokens: maxTokens,
+				temperature,
+				messages: [
+					{ role: "system", content: systemPrompt },
+					{
+						role: "user",
+						content: [...(Array.isArray(parts) ? parts : []), { type: "text", text: userPrompt }],
+					},
+				],
+			}),
+		});
 
-	if (!r.ok) {
+		if (r.ok) {
+			const data = await r.json();
+			return String(data?.choices?.[0]?.message?.content || "").trim();
+		}
+
 		const err = await r.json().catch(() => ({}));
-		throw new Error(err?.error?.message || `Groq HTTP ${r.status}`);
+		const msg = err?.error?.message || `Groq HTTP ${r.status}`;
+		const retryAfterHeader = Number(r.headers.get("retry-after"));
+		const retryAfterMsg = extractRetrySeconds(msg);
+		const isRateLimit = r.status === 429 || /rate limit|TPM|try again/i.test(msg);
+
+		if (isRateLimit && attempt < maxAttempts) {
+			const waitSec = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+				? retryAfterHeader
+				: (retryAfterMsg || Math.min(2 * attempt, 8));
+			const waitMs = Math.ceil(waitSec * 1000 + 250);
+			console.warn(`[groq] rate-limited, retrying in ${waitMs}ms (attempt ${attempt}/${maxAttempts})`);
+			await sleep(waitMs);
+			continue;
+		}
+
+		throw new Error(msg);
 	}
 
-	const data = await r.json();
-	return String(data?.choices?.[0]?.message?.content || "").trim();
+	throw new Error("Groq request failed after retries");
 }
 
 async function initDB() {
@@ -981,7 +1012,11 @@ NUMBERING:
 
 ${answerContext}`;
 
-		const answerParts = Array.isArray(answerImages) ? answerImages.map(toImgPart) : [];
+		const answerPartsAll = Array.isArray(answerImages) ? answerImages.map(toImgPart) : [];
+		const answerParts = answerPartsAll.slice(0, 2);
+		if (answerPartsAll.length > answerParts.length) {
+			console.log(`[extract] answer key images limited to ${answerParts.length}/${answerPartsAll.length} to control TPM`);
+		}
 
 		const extracted = [];
 		const seen = new Set();
@@ -1010,12 +1045,12 @@ ${answerContext}`;
 
 		for (let i = 0; i < questionImages.length; i++) {
 			const parts = [toImgPart(questionImages[i]), ...answerParts];
-			const raw = await callGroq(parts, EXTRACTION_SYSTEM, "Extract all questions from this screenshot. Return ONLY JSON array.", 8000);
+			const raw = await callGroq(parts, EXTRACTION_SYSTEM, "Extract all questions from this screenshot. Return ONLY JSON array.", 2200);
 			const arr = parseJsonArray(raw) || [];
 			for (const q of arr) pushUnique(q, i);
 
 			// Recovery pass for missed numbered/equation-heavy questions.
-			const firstPassJson = JSON.stringify(arr).slice(0, 14000);
+			const firstPassJson = JSON.stringify(arr).slice(0, 5000);
 			const recoveryPrompt = `You already extracted some questions from this same screenshot.
 Find ONLY the missed questions that are visible in the screenshot and NOT present in the prior list.
 Pay special attention to equation-heavy questions and two-column continuations.
@@ -1024,7 +1059,7 @@ PRIOR EXTRACTION:
 ${firstPassJson}
 
 Return ONLY JSON array of ADDITIONAL questions. If nothing is missing, return [] exactly.`;
-			const recoveryRaw = await callGroq(parts, EXTRACTION_SYSTEM, recoveryPrompt, 3500, 0.0);
+			const recoveryRaw = await callGroq(parts, EXTRACTION_SYSTEM, recoveryPrompt, 1200, 0.0);
 			const recoveryArr = parseJsonArray(recoveryRaw) || [];
 			for (const q of recoveryArr) pushUnique(q, i);
 		}
@@ -1071,7 +1106,7 @@ When merging: combine the question text faithfully and fill in all 4 options fro
 				[toImgPart(questionImages[i - 1]), toImgPart(questionImages[i]), ...answerParts],
 				"You are a strict JSON boundary merge assistant.",
 				mergePrompt,
-				1200,
+				700,
 				0.0
 			);
 			const mergeTxt = cleanJson(mergeRaw);
