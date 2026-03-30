@@ -101,6 +101,10 @@ function normalizeMath(s) {
 	out = out.replace(/\\\[([^]*?)\\\]/g, (_, m) => `$$${m}$$`);
 	const dollarCount = (out.match(/(?<!\\)\$/g) || []).length;
 	if (dollarCount % 2 === 1) out += "$";
+	// If text looks like an equation but isn't wrapped in $ delimiters, wrap it
+	if (looksLikeEquation(out) && !out.includes("$")) {
+		out = `$${out}$`;
+	}
 	return out;
 }
 
@@ -975,7 +979,7 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 				? "Answer key images are provided. Use them to infer correctIndexes."
 				: "If no answer key is visible, set correctIndexes to [0] as placeholder.";
 
-		const EXTRACTION_SYSTEM = `You extract physics MCQ questions from screenshots.
+		const EXTRACTION_SYSTEM = `You extract physics MCQ questions from screenshots. THIS IS CRITICAL: EXTRACT EVERY SINGLE QUESTION VISIBLE.
 Return ONLY a JSON array of objects:
 {
   "question": "...",
@@ -986,11 +990,13 @@ Return ONLY a JSON array of objects:
   "imageRegion": null
 }
 
-CRITICAL RULES:
-0) Do not skip any numbered question. If a screenshot contains Q1..Q10, output all visible questions exactly once.
-1) Read two-column pages: left column top-to-bottom first, then right column top-to-bottom.
+ABSOLUTE RULE - DO NOT SKIP ANY QUESTIONS:
+0) MANDATORY: Extract EVERY numbered question (1., 2., 3., etc.) visible in the screenshot. Do NOT omit any question for any reason.
+   If you see question numbers 1 through 15, output exactly 15 questions. If you see numbers 1,2,3,5,6 (no 4), output 5 questions.
+   Count the questions before extracting - verify your count matches visible question numbers.
+1) Read two-column pages: left column top-to-bottom first, then right column top-to-bottom. Extract ALL numbered questions in order.
 2) If one question is split at the bottom of image N and top of image N+1, keep text faithful; backend will merge.
-3) Always return exactly 4 options (fill missing with "").
+3) Always return exactly 4 options per question (fill missing with "").
 4) Preserve equations using $...$ and $$...$$. Keep mathematical symbols, superscripts, subscripts, fractions, roots, and units intact.
 5) hasImage=true only when question references a figure/graph/circuit.
 6) imageRegion uses fractions {x,y,w,h} in [0,1] for that figure, else null.
@@ -1009,6 +1015,13 @@ NUMBERING:
 13) Every question starts with a number like "1.", "2.", etc. Use this to avoid merging separate questions.
 14) Text starting with a lower-case letter like "(a)", "(b)" immediately after a question stem = answer option, NOT a new question.
 15) If you are unsure, keep the question with partial text/options rather than dropping it.
+
+EDGE CASES TO WATCH FOR:
+16) Questions that look like diagrams, tables, or figure references - if they have a number and options, extract them.
+17) Very long questions (spanning 3+ lines) - capture the ENTIRE question text, do not truncate.
+18) Dense text or small font - read carefully, extract even if hard to read.
+19) Hidden or faint questions - extract if visible at all.
+20) Questions at page boundaries - extract even if partially cut off.
 
 ${answerContext}`;
 
@@ -1049,19 +1062,74 @@ ${answerContext}`;
 			const arr = parseJsonArray(raw) || [];
 			for (const q of arr) pushUnique(q, i);
 
-			// Recovery pass for missed numbered/equation-heavy questions.
-			const firstPassJson = JSON.stringify(arr).slice(0, 5000);
-			const recoveryPrompt = `You already extracted some questions from this same screenshot.
-Find ONLY the missed questions that are visible in the screenshot and NOT present in the prior list.
-Pay special attention to equation-heavy questions and two-column continuations.
+			// Recovery pass 1: Count visible question numbers and find any gaps
+			const countPrompt = `Analyze this screenshot carefully. 
+1) Count how many numbered question headers appear (1., 2., 3., etc.)
+2) What are the question numbers visible?
+3) Are there any questions that might have been missed by prior extraction?
 
-PRIOR EXTRACTION:
-${firstPassJson}
+CRITICAL: Look for:
+- Questions at edges of the page
+- Questions with unusual formatting
+- Multi-part questions with sub-sections
+- Questions with equations or complex math notation
+- Questions that might be hard to read
+
+Return JSON: {"visibleCount": N, "visibleNumbers": [1,2,3,...], "potentiallyMissed": "description of any questions that might need re-extraction"}`;
+			const countRaw = await callGroq(parts, "You are a question counter and detection specialist.", countPrompt, 800, 0.0);
+			const countInfo = tryParse(cleanJson(countRaw)) || {};
+			const visibleCount = countInfo.visibleCount || 0;
+			const extractedCount = arr.length;
+			console.log(`[extract] Image ${i}: visible=${visibleCount}, extracted=${extractedCount}, potentially_missed="${countInfo.potentiallyMissed}"`);
+
+			// Recovery pass 2: If extraction count < visible count, be aggressive
+			if (extractedCount < visibleCount * 0.8) {
+				const aggressiveRecoveryPrompt = `CRITICAL FAILURE: Only ${extractedCount} questions extracted but ${visibleCount} are visible.
+RE-EXTRACT AGGRESSIVELY - we missed ${Math.max(1, visibleCount - extractedCount)} or more questions.
+
+Look for:
+- All numbered questions (1., 2., 3., ... Q1, Q2, etc.)
+- Multi-column layouts: extract LEFT column first top-to-bottom, then RIGHT column
+- Questions that wrap across lines
+- Questions with equations, graphs, or diagrams
+- Questions at the very edges/boundaries
+
+PREVIOUSLY EXTRACTED (DO NOT RE-EXTRACT THESE):
+${JSON.stringify(arr).slice(0, 6000)}
+
+FIND AND RETURN NEW QUESTIONS NOT IN THE ABOVE LIST.
+Return ONLY JSON array. Include even partial questions if visible.`;
+				const aggressiveRaw = await callGroq(parts, EXTRACTION_SYSTEM, aggressiveRecoveryPrompt, 1800, 0.1);
+				const aggressiveArr = parseJsonArray(aggressiveRaw) || [];
+				console.log(`[extract] Aggressive recovery pass: found ${aggressiveArr.length} additional questions`);
+				for (const q of aggressiveArr) {
+					if (pushUnique(q, i)) {
+						console.log(`[extract] Added from recovery: "${String(q.question || "").slice(0, 60)}..."`);
+					}
+				}
+			} else {
+				// Recovery pass 3: Standard recovery for edge cases even when count looks OK
+				const standardRecoveryPrompt = `You already extracted ${extractedCount} questions from this screenshot.
+FIND ONLY the missed questions that are visible but NOT in the prior extraction list.
+Pay special attention to:
+- Equation-heavy questions
+- Questions at column boundaries  
+- Questions with very short or very long text
+- Questions with unusual formatting
+- Questions at page edges
+
+PRIOR EXTRACTION (DO NOT RE-EXTRACT):
+${JSON.stringify(arr).slice(0, 5000)}
 
 Return ONLY JSON array of ADDITIONAL questions. If nothing is missing, return [] exactly.`;
-			const recoveryRaw = await callGroq(parts, EXTRACTION_SYSTEM, recoveryPrompt, 1200, 0.0);
-			const recoveryArr = parseJsonArray(recoveryRaw) || [];
-			for (const q of recoveryArr) pushUnique(q, i);
+				const standardRaw = await callGroq(parts, EXTRACTION_SYSTEM, standardRecoveryPrompt, 1500, 0.0);
+				const standardArr = parseJsonArray(standardRaw) || [];
+				for (const q of standardArr) {
+					if (pushUnique(q, i)) {
+						console.log(`[extract] Added from standard recovery: "${String(q.question || "").slice(0, 60)}..."`);
+					}
+				}
+			}
 		}
 
 		// Cross-image merge pass: ask AI directly for boundary fragment merge.
@@ -1170,27 +1238,51 @@ When merging: combine the question text faithfully and fill in all 4 options fro
 		}
 
 		function areNearDup(a, b) {
+			// If both have clear question numbers and they're different, they're NOT duplicates
+			const numA = getNum(a);
+			const numB = getNum(b);
+			if (numA !== null && numB !== null && numA !== numB) return false;
+
 			const sa = stemSig(a);
 			const sb = stemSig(b);
 			if (!sa || !sb) return false;
-			const stemMatch = sa === sb || sa.includes(sb) || sb.includes(sa);
+			
+			// For duplicates, require EXACT stem match, not substring
+			// Substring matching causes false positives on similar but different questions
+			const stemMatch = sa === sb;
 			if (!stemMatch) return false;
+			
 			const oa = optionSet(a);
 			const ob = optionSet(b);
-			if (!oa.size || !ob.size) return true;
+			if (!oa.size || !ob.size) {
+				// If one has no options, very likely a duplicate
+				return true;
+			}
+			
+			// Require at least 3 options matching (more strict than before)
 			let overlap = 0;
 			oa.forEach((x) => { if (ob.has(x)) overlap++; });
-			return overlap >= 2;
+			return overlap >= 3;
 		}
 
 		const deduped = [];
+		const dedupLog = [];
 		for (const q of final) {
 			const idx = deduped.findIndex((x) => areNearDup(x, q));
 			if (idx === -1) {
 				deduped.push(q);
 				continue;
 			}
-			if (richness(q) > richness(deduped[idx])) deduped[idx] = q;
+			// We found a likely duplicate
+			if (richness(q) > richness(deduped[idx])) {
+				dedupLog.push(`Kept richer version of Q${getNum(q)}: "${String(q.question || "").slice(0, 50)}..."`);
+				deduped[idx] = q;
+			} else {
+				dedupLog.push(`Removed duplicate of Q${getNum(q)}: "${String(q.question || "").slice(0, 50)}..."`);
+			}
+		}
+		if (dedupLog.length) {
+			console.log(`[extract] deduplication: ${dedupLog.join(" | ")}`);
 		}
 
 		if (!deduped.length) {
