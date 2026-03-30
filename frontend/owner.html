@@ -865,6 +865,159 @@
             text-align: center;
         }
 
+        .manual-crop-modal {
+            width: min(1080px, 96vw);
+            max-height: 92vh;
+            padding: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .manual-crop-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .manual-crop-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .manual-crop-sub {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+        }
+
+        .manual-crop-grid {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 12px;
+            min-height: 0;
+            flex: 1;
+        }
+
+        .manual-crop-rail {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-height: 0;
+        }
+
+        .manual-crop-thumb {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .manual-crop-thumb.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(86, 169, 255, 0.2);
+        }
+
+        .manual-crop-thumb img {
+            width: 100%;
+            height: 88px;
+            object-fit: cover;
+            border-radius: 6px;
+            display: block;
+        }
+
+        .manual-crop-thumb-label {
+            margin-top: 5px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            text-align: center;
+        }
+
+        .manual-crop-work {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .manual-crop-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .manual-crop-canvas-wrap {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: rgba(0, 0, 0, 0.18);
+            overflow: auto;
+            flex: 1;
+            min-height: 280px;
+        }
+
+        .manual-crop-canvas-inner {
+            position: relative;
+            width: max-content;
+            min-width: 100%;
+            min-height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+
+        .manual-crop-image {
+            display: block;
+            border-radius: 7px;
+            user-select: none;
+            -webkit-user-drag: none;
+            max-width: none;
+            height: auto;
+            cursor: crosshair;
+        }
+
+        .manual-crop-selection {
+            position: absolute;
+            border: 2px dashed var(--accent-2);
+            background: rgba(86, 169, 255, 0.18);
+            pointer-events: none;
+            display: none;
+            z-index: 3;
+        }
+
+        @media (max-width: 900px) {
+            .manual-crop-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .manual-crop-rail {
+                max-height: 170px;
+                overflow-y: hidden;
+                overflow-x: auto;
+                flex-direction: row;
+                padding-bottom: 10px;
+            }
+
+            .manual-crop-thumb {
+                min-width: 118px;
+            }
+        }
+
         /* Detection method badge */
         .detect-badge {
             display: inline-flex;
@@ -3252,6 +3405,40 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="manualCropModal">
+        <div class="modal-box manual-crop-modal">
+            <div class="manual-crop-top">
+                <div>
+                    <div class="manual-crop-title">Manual Crop Diagram</div>
+                    <div class="manual-crop-sub">Select an uploaded screenshot, zoom if needed, draw crop, then apply.</div>
+                </div>
+                <button class="btn btn-ghost" style="padding:7px 14px" onclick="closeManualCropModal()">Close</button>
+            </div>
+
+            <div class="manual-crop-grid">
+                <div class="manual-crop-rail" id="manualCropRail"></div>
+                <div class="manual-crop-work">
+                    <div class="manual-crop-toolbar">
+                        <label style="font-size:0.78rem;color:var(--text-dim)">Zoom</label>
+                        <input id="manualCropZoom" type="range" min="0.5" max="3" step="0.05" value="1" oninput="setManualCropZoom(this.value)">
+                        <span id="manualCropZoomLabel" style="font-size:0.78rem;color:var(--accent);min-width:44px">100%</span>
+                        <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.8rem" onclick="resetManualCropSelection()">Reset Selection</button>
+                    </div>
+                    <div class="manual-crop-canvas-wrap" id="manualCropCanvasWrap">
+                        <div class="manual-crop-canvas-inner" id="manualCropCanvasInner">
+                            <img id="manualCropImage" class="manual-crop-image" alt="Crop source">
+                            <div id="manualCropSelection" class="manual-crop-selection"></div>
+                        </div>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+                        <button class="btn btn-ghost" style="padding:7px 14px" onclick="closeManualCropModal()">Cancel</button>
+                        <button class="btn btn-primary" style="padding:7px 14px" onclick="applyManualCropFromModal()">Apply Crop to This Question</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         /* ══════════════════════════════════════════════════════════════════
@@ -3278,6 +3465,14 @@
         let _originalEditSnapshot = null;
         let mqCurrentSqIdx = -1;          // index in _mqQuestionList of current question
         let _mqQuestionList = [];         // [{gi, sqIdx}] — flat ordered list for prev/next nav
+        let manualCropState = {
+            qIndex: -1,
+            sourceIndex: 0,
+            zoom: 1,
+            start: null,
+            rect: null,
+            dragging: false
+        };
 
         function askConfirmModalPromise({ title, text, confirmText }) {
             return new Promise(resolve => {
@@ -4126,12 +4321,11 @@
                 const imgCount = parsed.filter(q => q.hasImage).length;
                 const imgDetected = parsed.filter(q => q.hasImage && q.extractedImageB64).length;
                 const imgManual = imgCount - imgDetected;
-                const eqCount = parsed.filter(q => q.hasEquation).length;
                 const multiCount = parsed.filter(q => q.isMultiCorrect).length;
 
                 let summary = `✅ Found ${parsed.length} question(s) — all assigned to Lecture ${startLec}.`;
                 if (multiCount) summary += ` ${multiCount} multi-correct.`;
-                if (eqCount) summary += ` 🧮 ${eqCount} with equations.`;
+
                 if (imgCount) summary += ` 🖼 ${imgCount} with diagram(s)`;
                 if (imgDetected && imgCount) summary += ` (${imgDetected} auto-cropped by AI`;
                 if (imgManual && imgCount) summary += imgDetected ? `, <strong>${imgManual} need manual upload</strong>)` : ` (<strong>${imgManual} need manual upload</strong>)`;
@@ -4181,10 +4375,13 @@
                                     <img id="eq_autoimg_el_${qi}"
                                          src="${imgSrc}"
                                          alt="AI-detected diagram"
-                                         style="max-width:100%;border-radius:6px;border:1px solid var(--border)">
+                                         style="max-width:100%;border-radius:6px;border:1px solid var(--border);cursor:zoom-in"
+                                         title="Click to manually crop from uploaded screenshots"
+                                         onclick="openManualCropModal(${qi}, ${Number.isInteger(q.imageSourceIndex) ? q.imageSourceIndex : -1})">
                                     <div class="eq-image-label">
                                         <span style="font-size:0.7rem;padding:2px 8px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:20px;color:var(--accent)">🤖 AI detected</span>
-                                        &nbsp;<button onclick="rejectAutoImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;text-decoration:underline;font-family:inherit">✕ Wrong? Upload manually</button>
+                                        &nbsp;<button onclick="openManualCropModal(${qi}, ${Number.isInteger(q.imageSourceIndex) ? q.imageSourceIndex : -1})" style="background:none;border:none;color:var(--accent-2);cursor:pointer;font-size:0.72rem;padding:0;text-decoration:underline;font-family:inherit">✂ Manual crop</button>
+                                        &nbsp;<button onclick="rejectAutoImage(${qi})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.72rem;padding:0;text-decoration:underline;font-family:inherit">✕ Remove</button>
                                     </div>
                                 </div>
                             </div>
@@ -4364,6 +4561,224 @@
                     manualDiv.innerHTML = buildManualUploadZone(qi);
                 }
             }
+        }
+
+        function b64ToDataUrl(b64) {
+            if (!b64) return "";
+            if (String(b64).startsWith("data:")) return b64;
+            const mime = String(b64).startsWith("/9j/") ? "image/jpeg" : "image/png";
+            return `data:${mime};base64,${b64}`;
+        }
+
+        function getDefaultManualCropSourceIndex(qi, preferredIndex) {
+            if (!qImagesBase64.length) return 0;
+            if (Number.isInteger(preferredIndex) && preferredIndex >= 0) {
+                return Math.max(0, Math.min(preferredIndex, qImagesBase64.length - 1));
+            }
+            const q = extractedQuestions[qi];
+            if (Number.isInteger(q?.imageSourceIndex)) {
+                return Math.max(0, Math.min(q.imageSourceIndex, qImagesBase64.length - 1));
+            }
+            return Math.max(0, Math.min(qi, qImagesBase64.length - 1));
+        }
+
+        function openManualCropModal(qi, preferredIndex = -1) {
+            if (!qImagesBase64.length) {
+                showErrorModal("Upload at least one question screenshot before using manual crop.", "No screenshots");
+                return;
+            }
+            if (!Number.isInteger(qi) || !extractedQuestions[qi]) return;
+
+            manualCropState.qIndex = qi;
+            manualCropState.sourceIndex = getDefaultManualCropSourceIndex(qi, preferredIndex);
+            manualCropState.zoom = 1;
+            manualCropState.start = null;
+            manualCropState.rect = null;
+            manualCropState.dragging = false;
+
+            const zoom = document.getElementById("manualCropZoom");
+            if (zoom) zoom.value = "1";
+            const zoomLabel = document.getElementById("manualCropZoomLabel");
+            if (zoomLabel) zoomLabel.textContent = "100%";
+
+            renderManualCropRail();
+            setManualCropSource(manualCropState.sourceIndex);
+            initManualCropInteractions();
+            openModal("manualCropModal");
+        }
+
+        function closeManualCropModal() {
+            manualCropState.dragging = false;
+            closeModal("manualCropModal");
+        }
+
+        function renderManualCropRail() {
+            const rail = document.getElementById("manualCropRail");
+            if (!rail) return;
+            rail.innerHTML = "";
+            qImagesBase64.forEach((b64, idx) => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = `manual-crop-thumb${idx === manualCropState.sourceIndex ? " active" : ""}`;
+                btn.innerHTML = `<img src="${b64ToDataUrl(b64)}" alt="Screenshot ${idx + 1}"><div class="manual-crop-thumb-label">Screenshot ${idx + 1}</div>`;
+                btn.onclick = () => setManualCropSource(idx);
+                rail.appendChild(btn);
+            });
+        }
+
+        function setManualCropSource(idx) {
+            if (!qImagesBase64.length) return;
+            manualCropState.sourceIndex = Math.max(0, Math.min(idx, qImagesBase64.length - 1));
+            renderManualCropRail();
+
+            const img = document.getElementById("manualCropImage");
+            if (!img) return;
+            img.draggable = false;
+            img.onload = () => {
+                updateManualCropImageSize();
+                resetManualCropSelection();
+            };
+            img.src = b64ToDataUrl(qImagesBase64[manualCropState.sourceIndex]);
+        }
+
+        function setManualCropZoom(value) {
+            const z = parseFloat(value);
+            manualCropState.zoom = Number.isFinite(z) ? Math.max(0.5, Math.min(3, z)) : 1;
+            const zoomLabel = document.getElementById("manualCropZoomLabel");
+            if (zoomLabel) zoomLabel.textContent = `${Math.round(manualCropState.zoom * 100)}%`;
+            updateManualCropImageSize();
+            resetManualCropSelection();
+        }
+
+        function updateManualCropImageSize() {
+            const img = document.getElementById("manualCropImage");
+            if (!img || !img.naturalWidth || !img.naturalHeight) return;
+            img.style.width = `${Math.round(img.naturalWidth * manualCropState.zoom)}px`;
+            img.style.height = `${Math.round(img.naturalHeight * manualCropState.zoom)}px`;
+        }
+
+        function resetManualCropSelection() {
+            manualCropState.start = null;
+            manualCropState.rect = null;
+            manualCropState.dragging = false;
+            const sel = document.getElementById("manualCropSelection");
+            if (sel) sel.style.display = "none";
+        }
+
+        function getCropPointerPosition(evt) {
+            const img = document.getElementById("manualCropImage");
+            if (!img) return null;
+            const r = img.getBoundingClientRect();
+            if (!r.width || !r.height) return null;
+            const x = Math.max(0, Math.min(r.width, evt.clientX - r.left));
+            const y = Math.max(0, Math.min(r.height, evt.clientY - r.top));
+            return { x, y };
+        }
+
+        function drawManualCropSelection() {
+            const sel = document.getElementById("manualCropSelection");
+            const img = document.getElementById("manualCropImage");
+            const rect = manualCropState.rect;
+            if (!sel || !img || !rect || rect.w < 1 || rect.h < 1) {
+                if (sel) sel.style.display = "none";
+                return;
+            }
+            sel.style.display = "block";
+            sel.style.left = `${Math.round(img.offsetLeft + rect.x)}px`;
+            sel.style.top = `${Math.round(img.offsetTop + rect.y)}px`;
+            sel.style.width = `${Math.round(rect.w)}px`;
+            sel.style.height = `${Math.round(rect.h)}px`;
+        }
+
+        function initManualCropInteractions() {
+            const img = document.getElementById("manualCropImage");
+            if (!img || img.dataset.cropInit === "1") return;
+            img.dataset.cropInit = "1";
+
+            img.addEventListener("mousedown", (evt) => {
+                if (!img.src) return;
+                evt.preventDefault();
+                const p = getCropPointerPosition(evt);
+                if (!p) return;
+                manualCropState.dragging = true;
+                manualCropState.start = p;
+                manualCropState.rect = { x: p.x, y: p.y, w: 0, h: 0 };
+                drawManualCropSelection();
+            });
+
+            window.addEventListener("mousemove", (evt) => {
+                if (!manualCropState.dragging || !manualCropState.start) return;
+                const p = getCropPointerPosition(evt);
+                if (!p) return;
+                const x = Math.min(manualCropState.start.x, p.x);
+                const y = Math.min(manualCropState.start.y, p.y);
+                const w = Math.abs(p.x - manualCropState.start.x);
+                const h = Math.abs(p.y - manualCropState.start.y);
+                manualCropState.rect = { x, y, w, h };
+                drawManualCropSelection();
+            });
+
+            window.addEventListener("mouseup", () => {
+                if (!manualCropState.dragging) return;
+                manualCropState.dragging = false;
+                drawManualCropSelection();
+            });
+        }
+
+        async function applyManualCropFromModal() {
+            const qi = manualCropState.qIndex;
+            if (!Number.isInteger(qi) || !extractedQuestions[qi]) return;
+            const rect = manualCropState.rect;
+            const imgEl = document.getElementById("manualCropImage");
+            if (!imgEl || !imgEl.src || !rect || rect.w < 8 || rect.h < 8) {
+                showErrorModal("Draw a crop area on the image before applying.", "Selection required");
+                return;
+            }
+
+            const srcB64 = qImagesBase64[manualCropState.sourceIndex];
+            if (!srcB64) return;
+
+            const srcImg = new Image();
+            srcImg.src = b64ToDataUrl(srcB64);
+
+            await new Promise((resolve) => {
+                srcImg.onload = () => {
+                    const displayW = imgEl.clientWidth;
+                    const displayH = imgEl.clientHeight;
+                    if (!displayW || !displayH) {
+                        resolve();
+                        return;
+                    }
+
+                    const sx = Math.max(0, Math.round((rect.x / displayW) * srcImg.naturalWidth));
+                    const sy = Math.max(0, Math.round((rect.y / displayH) * srcImg.naturalHeight));
+                    const sw = Math.max(1, Math.round((rect.w / displayW) * srcImg.naturalWidth));
+                    const sh = Math.max(1, Math.round((rect.h / displayH) * srcImg.naturalHeight));
+
+                    const cw = Math.min(sw, srcImg.naturalWidth - sx);
+                    const ch = Math.min(sh, srcImg.naturalHeight - sy);
+                    if (cw < 2 || ch < 2) {
+                        resolve();
+                        return;
+                    }
+
+                    const c = document.createElement("canvas");
+                    c.width = cw;
+                    c.height = ch;
+                    const ctx = c.getContext("2d");
+                    ctx.drawImage(srcImg, sx, sy, cw, ch, 0, 0, cw, ch);
+                    const out = c.toDataURL("image/jpeg", 0.93).split(",")[1];
+                    setEqManualImage(qi, out);
+                    if (extractedQuestions[qi]) {
+                        extractedQuestions[qi].hasImage = true;
+                        extractedQuestions[qi].imageSourceIndex = manualCropState.sourceIndex;
+                    }
+                    resolve();
+                };
+                srcImg.onerror = () => resolve();
+            });
+
+            closeManualCropModal();
         }
 
         // Paste into a focused eq_dropzone
