@@ -946,12 +946,26 @@ Return ONLY a JSON array of objects:
 }
 
 CRITICAL RULES:
-1) Read two-column pages left column top-to-bottom, then right column top-to-bottom.
+1) Read two-column pages: left column top-to-bottom first, then right column top-to-bottom.
 2) If one question is split at the bottom of image N and top of image N+1, keep text faithful; backend will merge.
-3) Always return 4 options (fill missing with "").
+3) Always return exactly 4 options (fill missing with "").
 4) Preserve equations using $...$ and $$...$$.
 5) hasImage=true only when question references a figure/graph/circuit.
 6) imageRegion uses fractions {x,y,w,h} in [0,1] for that figure, else null.
+
+MULTI-LINE OPTION RULES (very important):
+7) Options labeled (a)(b)(c)(d) may wrap across multiple lines. Collect ALL lines belonging to each option label into a single option string. Do NOT split one option into two entries.
+8) When a question has only 2 visible option labels on one side and 2 on the other side of the column (e.g. (a)(b) left, (c)(d) right), treat them all as the 4 options of the SAME question.
+9) If a question body continues across two columns (e.g. question text in left column, options (c)(d) in right column), join them as one question. Do NOT treat (c) or (d) as a new question.
+
+PARTIAL / SPLIT QUESTION RULES:
+10) A question whose options list ends with only (a) and (b) visible means (c) and (d) are cut off. Mark options[2] and options[3] as "" — do NOT invent text.
+11) Question 8 pattern: "When two waves ... interfere" has 4 sub-options (a)(b)(c)(d). All 4 must be captured even if (c)(d) appear at the top of the next column.
+12) Question 13 pattern: questions mentioning "beats per second" with a number like "6 beats per second" are complete questions — capture the full body including all embedded numbers before listing options.
+
+NUMBERING:
+13) Every question starts with a number like "1.", "2.", etc. Use this to avoid merging separate questions.
+14) Text starting with a lower-case letter like "(a)", "(b)" immediately after a question stem = answer option, NOT a new question.
 
 ${answerContext}`;
 
@@ -1005,19 +1019,27 @@ ${answerContext}`;
 
 			const mergePrompt = `These are two consecutive screenshots. A question may be split across them.
 
-Fragment from image 1:
-"${String(left.q.question || "").slice(0, 300)}"
+Fragment from image 1 (last question):
+Question: "${String(left.q.question || "").slice(0, 300)}"
+Options: ${JSON.stringify((left.q.options || []).slice(0, 4))}
 
-Fragment from image 2:
-"${String(right.q.question || "").slice(0, 300)}"
+Fragment from image 2 (first question):
+Question: "${String(right.q.question || "").slice(0, 300)}"
+Options: ${JSON.stringify((right.q.options || []).slice(0, 4))}
 
 Return only JSON:
 {"split":true,"merged":{"question":"...","options":["...","...","...","..."],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false,"imageRegion":null}}
 or
 {"split":false}
 
-Mark split=true when IMAGE 1 bottom text/options continue in IMAGE 2 top text/options,
-even if question numbers are missing or mismatched. Preserve full merged text.`;
+Mark split=true when:
+- IMAGE 1 bottom question has fewer than 4 real options (empty string "" counts as missing) AND image 2 top text contains the missing (c)/(d) options for that same question.
+- OR IMAGE 1 bottom text/options clearly continue in IMAGE 2 top text/options.
+- The fragment from image 2 starts with an option label like "(c)" or "(d)" or lower-case continuation text — NOT a new numbered question.
+
+Mark split=false when image 2 starts with a new numbered question (e.g. "9.", "10.").
+
+When merging: combine the question text faithfully and fill in all 4 options from both fragments. Preserve full merged text.`;
 
 			const mergeRaw = await callGroq(
 				[toImgPart(questionImages[i - 1]), toImgPart(questionImages[i]), ...answerParts],
