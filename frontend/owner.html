@@ -4690,12 +4690,23 @@
             sel.style.height = `${Math.round(rect.h)}px`;
         }
 
+        let manualCropEventHandlers = {};
         function initManualCropInteractions() {
             const img = document.getElementById("manualCropImage");
-            if (!img || img.dataset.cropInit === "1") return;
-            img.dataset.cropInit = "1";
+            if (!img) return;
+            // Remove old handlers if they exist to prevent duplication
+            if (manualCropEventHandlers.mousedown) {
+                img.removeEventListener("mousedown", manualCropEventHandlers.mousedown);
+            }
+            if (manualCropEventHandlers.mousemove) {
+                window.removeEventListener("mousemove", manualCropEventHandlers.mousemove);
+            }
+            if (manualCropEventHandlers.mouseup) {
+                window.removeEventListener("mouseup", manualCropEventHandlers.mouseup);
+            }
 
-            img.addEventListener("mousedown", (evt) => {
+            // Define and store handlers
+            manualCropEventHandlers.mousedown = (evt) => {
                 if (!img.src) return;
                 evt.preventDefault();
                 const p = getCropPointerPosition(evt);
@@ -4704,9 +4715,9 @@
                 manualCropState.start = p;
                 manualCropState.rect = { x: p.x, y: p.y, w: 0, h: 0 };
                 drawManualCropSelection();
-            });
+            };
 
-            window.addEventListener("mousemove", (evt) => {
+            manualCropEventHandlers.mousemove = (evt) => {
                 if (!manualCropState.dragging || !manualCropState.start) return;
                 const p = getCropPointerPosition(evt);
                 if (!p) return;
@@ -4716,13 +4727,18 @@
                 const h = Math.abs(p.y - manualCropState.start.y);
                 manualCropState.rect = { x, y, w, h };
                 drawManualCropSelection();
-            });
+            };
 
-            window.addEventListener("mouseup", () => {
+            manualCropEventHandlers.mouseup = () => {
                 if (!manualCropState.dragging) return;
                 manualCropState.dragging = false;
                 drawManualCropSelection();
-            });
+            };
+
+            // Add handlers
+            img.addEventListener("mousedown", manualCropEventHandlers.mousedown);
+            window.addEventListener("mousemove", manualCropEventHandlers.mousemove);
+            window.addEventListener("mouseup", manualCropEventHandlers.mouseup);
         }
 
         async function applyManualCropFromModal() {
