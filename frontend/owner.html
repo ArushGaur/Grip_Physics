@@ -784,6 +784,57 @@
             color: var(--error);
         }
 
+        .smart-import-panel {
+            position: relative;
+            border: 1px solid rgba(86, 169, 255, 0.26);
+            background:
+                radial-gradient(ellipse at 12% 0%, rgba(86, 169, 255, 0.12), transparent 55%),
+                linear-gradient(160deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+        }
+
+        .smart-import-hero {
+            display: grid;
+            grid-template-columns: 1.2fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(86, 169, 255, 0.2);
+            border-radius: var(--radius-sm);
+            background: rgba(86, 169, 255, 0.08);
+        }
+
+        .smart-import-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .smart-import-sub {
+            margin-top: 2px;
+            font-size: 0.76rem;
+            color: var(--text-dim);
+        }
+
+        .smart-import-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            justify-content: flex-end;
+        }
+
+        .smart-chip {
+            padding: 5px 8px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            border: 1px solid rgba(86, 169, 255, 0.32);
+            color: var(--accent);
+            background: rgba(86, 169, 255, 0.12);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
         /* EXTRACTED Q ITEMS */
         .extracted-q-item {
             background: var(--bg-input);
@@ -1001,6 +1052,14 @@
         }
 
         @media (max-width: 900px) {
+            .smart-import-hero {
+                grid-template-columns: 1fr;
+            }
+
+            .smart-import-chips {
+                justify-content: flex-start;
+            }
+
             .manual-crop-grid {
                 grid-template-columns: 1fr;
             }
@@ -1378,6 +1437,15 @@
             text-align: center;
             box-shadow: var(--shadow-modal);
             border: 1px solid var(--border);
+        }
+
+        .modal-box.manual-crop-modal {
+            width: min(1240px, 96vw);
+            max-width: min(1240px, 96vw);
+            max-height: 92vh;
+            padding: 18px;
+            text-align: left;
+            overflow: hidden;
         }
 
         .modal-box h3 {
@@ -2955,7 +3023,18 @@
                 <h1>Add Question</h1>
                 <p>Manually add questions for a lecture</p>
             </div>
-            <div class="panel">
+            <div class="panel smart-import-panel">
+                <div class="smart-import-hero">
+                    <div>
+                        <div class="smart-import-title">High-Accuracy Import</div>
+                        <div class="smart-import-sub">Automatic ordering, option separation, answer-key mapping, and manual crop fallback.</div>
+                    </div>
+                    <div class="smart-import-chips">
+                        <span class="smart-chip">Ordered Output</span>
+                        <span class="smart-chip">Option Repair</span>
+                        <span class="smart-chip">Fast Review</span>
+                    </div>
+                </div>
                 <div class="form-row">
                     <div class="field"><label>Chapter Name</label><input id="aq-chapter"
                             placeholder="e.g. Laws of Motion" list="existingChapters"><datalist
@@ -4610,10 +4689,10 @@
             const zoomLabel = document.getElementById("manualCropZoomLabel");
             if (zoomLabel) zoomLabel.textContent = "100%";
 
+            openModal("manualCropModal");
             renderManualCropRail();
             setManualCropSource(manualCropState.sourceIndex);
             initManualCropInteractions();
-            openModal("manualCropModal");
         }
 
         function closeManualCropModal() {
@@ -4646,6 +4725,11 @@
             img.onload = () => {
                 updateManualCropImageSize();
                 resetManualCropSelection();
+                const wrap = document.getElementById("manualCropCanvasWrap");
+                if (wrap) {
+                    wrap.scrollLeft = 0;
+                    wrap.scrollTop = 0;
+                }
             };
             img.src = b64ToDataUrl(qImagesBase64[manualCropState.sourceIndex]);
         }
