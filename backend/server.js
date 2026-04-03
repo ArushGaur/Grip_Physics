@@ -981,10 +981,61 @@ app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 		const maxQuestionsPerImage = clamp(parseInt(options?.maxQuestionsPerImage, 10) || 40, 5, 80);
 
 		function getQuestionNumber(q) {
+			if (Number.isInteger(q?.__questionNumber)) return q.__questionNumber;
 			const m = String(q?.question || "").match(/^\s*(?:q\.?\s*)?(\d{1,3})\s*[\).:\u2013\-]/i);
 			if (!m) return null;
 			const n = parseInt(m[1], 10);
 			return Number.isInteger(n) ? n : null;
+		}
+
+		function splitLeakedOptionsFromQuestion(rawQuestion, existingOptions) {
+			const text = String(rawQuestion || "").replace(/\s+/g, " ").trim();
+			if (!text) return { question: "", options: existingOptions };
+
+			const re = /(?:\(([a-dA-D])\)|\b([a-dA-D])[\).])\s*/g;
+			const matches = [...text.matchAll(re)];
+			if (matches.length < 2) return { question: text, options: existingOptions };
+
+			const firstToken = String(matches[0][1] || matches[0][2] || "").toLowerCase();
+			const firstLetter = "abcd".indexOf(firstToken);
+			if (firstLetter !== 0) return { question: text, options: existingOptions };
+
+			const options = Array.isArray(existingOptions) ? [...existingOptions] : ["", "", "", ""];
+			while (options.length < 4) options.push("");
+
+			for (let i = 0; i < matches.length; i++) {
+				const cur = matches[i];
+				const letterToken = String(cur[1] || cur[2] || "").toLowerCase();
+				const letter = "abcd".indexOf(letterToken);
+				if (letter < 0 || letter > 3) continue;
+				const start = cur.index + cur[0].length;
+				const end = i < matches.length - 1 ? matches[i + 1].index : text.length;
+				const chunk = text.slice(start, end).trim().replace(/^[,;:\-\.\s]+|[,;:\-\.\s]+$/g, "");
+				if (!chunk) continue;
+				if (!String(options[letter] || "").trim() || chunk.length > String(options[letter] || "").trim().length) {
+					options[letter] = chunk;
+				}
+			}
+
+			const question = text.slice(0, matches[0].index).trim();
+			return { question, options };
+		}
+
+		function sanitizeExtractedQuestion(raw) {
+			const questionNumber = getQuestionNumber(raw);
+			const inputOptions = Array.isArray(raw?.options) ? raw.options.slice(0, 4) : [];
+			while (inputOptions.length < 4) inputOptions.push("");
+
+			let qText = String(raw?.question || "").trim();
+			qText = qText.replace(/^\s*(?:q\.?\s*)?\d{1,3}\s*[\).:\u2013\-]\s*/i, "").trim();
+
+			const split = splitLeakedOptionsFromQuestion(qText, inputOptions);
+			return {
+				...raw,
+				question: split.question || qText,
+				options: split.options,
+				__questionNumber: questionNumber,
+			};
 		}
 
 		function stemSig(q) {
@@ -1061,6 +1112,7 @@ Rules:
 
 		const extracted = [];
 		let recoveredCount = 0;
+		let seq = 0;
 
 		for (let i = 0; i < questionImages.length; i++) {
 			const imagePart = toImgPart(questionImages[i]);
@@ -1089,7 +1141,7 @@ Rules:
 			}
 
 			arr.slice(0, maxQuestionsPerImage).forEach((q) => {
-				extracted.push({ ...q, imageSourceIndex: i });
+				extracted.push({ ...q, imageSourceIndex: i, __seq: seq++ });
 			});
 		}
 
@@ -1098,35 +1150,31 @@ Rules:
 		}
 
 		const bestByKey = new Map();
-		for (const q of extracted) {
+		for (const row of extracted) {
+			const q = sanitizeExtractedQuestion(row);
 			const num = getQuestionNumber(q);
 			const key = num !== null ? `num:${num}` : `sig:${stemSig(q)}::${(q.options || []).join("|").slice(0, 160).toLowerCase()}`;
 			const prev = bestByKey.get(key);
 			if (!prev || qualityScore(q) > qualityScore(prev)) bestByKey.set(key, q);
 		}
 
-		let deduplicatedCount = extracted.length - bestByKey.size;
-		const normalized = [...bestByKey.values()].map((q) => normalizeQuestion(q));
+		const deduplicatedCount = extracted.length - bestByKey.size;
+		const orderedRaw = [...bestByKey.values()].sort((a, b) => (a.__seq || 0) - (b.__seq || 0));
 
-		normalized.sort((a, b) => {
-			const na = getQuestionNumber(a);
-			const nb = getQuestionNumber(b);
-			if (na !== null && nb !== null) return na - nb;
-			if (na !== null) return -1;
-			if (nb !== null) return 1;
-			return String(a.question || "").localeCompare(String(b.question || ""));
-		});
+		for (const q of orderedRaw) {
+			const n = getQuestionNumber(q);
+			if (n !== null && answerMap.has(n)) {
+				q.correctIndexes = answerMap.get(n);
+				q.isMultiCorrect = q.correctIndexes.length > 1;
+			}
+		}
+
+		const normalized = orderedRaw.map((q) => normalizeQuestion(q));
 
 		let lowConfidenceCount = 0;
 		for (const q of normalized) {
 			if (q.hasImage && Number.isInteger(q.imageSourceIndex)) {
 				q.imageSourceIndex = clamp(q.imageSourceIndex, 0, questionImages.length - 1);
-			}
-
-			const n = getQuestionNumber(q);
-			if (n !== null && answerMap.has(n)) {
-				q.correctIndexes = answerMap.get(n);
-				q.isMultiCorrect = q.correctIndexes.length > 1;
 			}
 
 			if (strictValidation) {
