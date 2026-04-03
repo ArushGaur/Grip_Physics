@@ -1,1229 +1,356 @@
 const express = require("express");
-const cors = require("cors");
+const mongoose = require("mongoose");
 const session = require("express-session");
+const MongoStore = require("connect-mongo");
+const cors = require("cors");
 const crypto = require("crypto");
-const { createClient } = require("@libsql/client");
-const cloudinary = require("cloudinary").v2;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.set("trust proxy", 1);
 
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || "dev-admin-passcode-please-change";
-const SESSION_SECRET = process.env.SESSION_SECRET || "dev-session-secret-minimum-32-chars";
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
-
-if (ADMIN_PASSCODE === "dev-admin-passcode-please-change") {
-	console.warn("[WARN] ADMIN_PASSCODE env var missing. Using development fallback.");
+// ── SECURITY: No hardcoded fallback password
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
+if (!ADMIN_PASSCODE || ADMIN_PASSCODE.length < 12) {
+    console.error("FATAL: ADMIN_PASSCODE env var is missing or too short (min 12 chars). Set it in Render environment variables.");
+    process.exit(1);
 }
-if (SESSION_SECRET === "dev-session-secret-minimum-32-chars") {
-	console.warn("[WARN] SESSION_SECRET env var missing. Using development fallback.");
-}
-
-const db = createClient({
-	url: process.env.TURSO_DATABASE_URL,
-	authToken: process.env.TURSO_AUTH_TOKEN,
-});
-
-cloudinary.config({
-	cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-	api_key: process.env.CLOUDINARY_API_KEY,
-	api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-let questionCache = {};
-
-function clamp(n, min, max) {
-	return Math.max(min, Math.min(max, n));
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+    console.error("FATAL: SESSION_SECRET env var is missing or too short (min 32 chars). Set it in Render environment variables.");
+    process.exit(1);
 }
 
-function getMime(b64) {
-	if (String(b64 || "").startsWith("/9j/")) return "image/jpeg";
-	if (String(b64 || "").startsWith("iVBORw")) return "image/png";
-	if (String(b64 || "").startsWith("R0lGOD")) return "image/gif";
-	return "image/jpeg";
-}
-
-function toImgPart(b64) {
-	return {
-		type: "image_url",
-		image_url: { url: `data:${getMime(b64)};base64,${b64}` },
-	};
-}
-
-function cleanJson(txt) {
-	return String(txt || "")
-		.replace(/```json\s*/gi, "")
-		.replace(/```/g, "")
-		.replace(/[\u2018\u2019]/g, "'")
-		.replace(/[\u201C\u201D]/g, '"')
-		.replace(/\u00A0/g, " ")
-		.replace(/\r\n?/g, "\n")
-		.trim();
-}
-
-function tryParse(txt) {
-	try {
-		return JSON.parse(txt);
-	} catch {
-		try {
-			return JSON.parse(String(txt).replace(/,(\s*[}\]])/g, "$1"));
-		} catch {
-			return null;
-		}
-	}
-}
-
-function parseJsonArray(raw) {
-	const text = cleanJson(raw);
-	const direct = tryParse(text);
-	if (Array.isArray(direct)) return direct;
-	if (direct && Array.isArray(direct.questions)) return direct.questions;
-
-	const s = text.indexOf("[");
-	const e = text.lastIndexOf("]");
-	if (s !== -1 && e > s) {
-		const sliced = tryParse(text.slice(s, e + 1));
-		if (Array.isArray(sliced)) return sliced;
-	}
-
-	const objs = text.match(/\{[\s\S]*?\}/g) || [];
-	const recovered = objs
-		.map((x) => tryParse(x))
-		.filter((x) => x && typeof x === "object" && !Array.isArray(x));
-	return recovered.length ? recovered : null;
-}
-
-function normalizeMath(s) {
-	let out = String(s || "").trim();
-	if (!out) return out;
-	out = out.replace(/\\\(([^]*?)\\\)/g, (_, m) => `$${m}$`);
-	out = out.replace(/\\\[([^]*?)\\\]/g, (_, m) => `$$${m}$$`);
-	const dollarCount = (out.match(/(?<!\\)\$/g) || []).length;
-	if (dollarCount % 2 === 1) out += "$";
-	// If text looks like an equation but isn't wrapped in $ delimiters, wrap it
-	if (looksLikeEquation(out) && !out.includes("$")) {
-		out = `$${out}$`;
-	}
-	return out;
-}
-
-function looksLikeEquation(s) {
-	const t = String(s || "").trim();
-	if (!t) return false;
-	if (/\$[^$]+\$/.test(t)) return true;
-	if (/\\(frac|sqrt|sum|int|pi|theta|alpha|beta|gamma|sin|cos|tan|log|ln)\b/i.test(t)) return true;
-	if (/(^|\s)[a-zA-Z][a-zA-Z0-9]*\s*(=|>=|<=|>|<|\+|\-|\*|\/|\^|≈|∝)\s*[-+]?\d|\b\d+\s*(m\/s|m\/s\^2|kg|N|J|W|Hz|ohm|V|A)\b/i.test(t)) return true;
-	if (/\b(sin|cos|tan|log|ln)\s*\(/i.test(t)) return true;
-	return false;
-}
-
-function parseCorrectIndexesFromQuestion(q) {
-	let ci = Array.isArray(q.correctIndexes) ? [...q.correctIndexes] : [];
-	if (!ci.length && typeof q.correctIndex === "number") ci = [q.correctIndex];
-	if (!ci.length) {
-		const hint = String(q.correctAnswer || q.answer || q.correct || "").trim();
-		const letters = hint.match(/\b([A-Da-d])\b/g) || [];
-		ci = [...new Set(letters.map((l) => "abcd".indexOf(l.toLowerCase())))].filter((n) => n >= 0);
-	}
-	ci = [...new Set(ci.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n >= 0 && n < 4))];
-	if (!ci.length) ci = [0];
-	return ci;
-}
-
-function validateImageRegion(r) {
-	if (!r || typeof r.x !== "number" || typeof r.y !== "number" || typeof r.w !== "number" || typeof r.h !== "number") {
-		return null;
-	}
-	if (r.w < 0.01 || r.h < 0.01) return null;
-	const x = clamp(r.x, 0, 0.99);
-	const y = clamp(r.y, 0, 0.99);
-	const w = clamp(r.w, 0.01, 1 - x);
-	const h = clamp(r.h, 0.01, 1 - y);
-	return { x, y, w, h };
-}
-
-function normalizeQuestion(q) {
-	const normQuestion = normalizeMath(String(q?.question || ""));
-	const normOptions = [...(Array.isArray(q?.options) ? q.options : []), "", "", ""].slice(0, 4).map((x) => normalizeMath(String(x || "")));
-	const hasEquation = looksLikeEquation(normQuestion) || normOptions.some((o) => looksLikeEquation(o));
-
-	const out = {
-		question: normQuestion,
-		options: normOptions,
-		questionImage: q?.questionImage || null,
-		optionImages: Array.isArray(q?.optionImages) ? q.optionImages : [],
-		hasImage: !!q?.hasImage,
-		hasEquation,
-		imageRegion: validateImageRegion(q?.imageRegion),
-	};
-
-	const ci = parseCorrectIndexesFromQuestion(q || {});
-	out.correctIndexes = ci;
-	out.isMultiCorrect = ci.length > 1;
-
-	if (Number.isInteger(q?.imageSourceIndex)) {
-		out.imageSourceIndex = q.imageSourceIndex;
-	}
-
-	return out;
-}
-
-function normalizeQuestionRow(row) {
-	if (!row) return null;
-	let parsed = [];
-	try {
-		parsed = JSON.parse(row.questions_json || "[]");
-	} catch {
-		parsed = [];
-	}
-
-	return {
-		_id: row.id,
-		chapter: row.chapter || null,
-		lecture: row.lecture,
-		topic: row.topic || "",
-		updatedAt: row.updated_at || 0,
-		questions: Array.isArray(parsed) ? parsed.map(normalizeQuestion) : [],
-	};
-}
-
-function normalizeStudentRow(row) {
-	let answers = [];
-	try {
-		answers = JSON.parse(row.answers_json || "[]");
-	} catch {
-		answers = [];
-	}
-	return {
-		_id: row.id,
-		mobile: row.mobile,
-		lecture: row.lecture,
-		name: row.name,
-		place: row.place,
-		className: row.class_name,
-		chapter: row.chapter || null,
-		answers,
-		correctCount: row.correct_count || 0,
-		totalQuestions: row.total_questions || 0,
-		time: row.time || 0,
-	};
-}
-
-function isCorrect(qItem, ans) {
-	if (!qItem) return false;
-	const cor = Array.isArray(qItem.correctIndexes) && qItem.correctIndexes.length ? qItem.correctIndexes : [0];
-	if (qItem.isMultiCorrect || cor.length > 1) {
-		const selected = Array.isArray(ans) ? [...ans].sort((a, b) => a - b) : [ans];
-		const expected = [...cor].sort((a, b) => a - b);
-		return JSON.stringify(selected) === JSON.stringify(expected);
-	}
-	return ans === cor[0];
-}
-
-async function uploadImageToCloudinary(base64String) {
-	if (!base64String) return null;
-	if (String(base64String).startsWith("http://") || String(base64String).startsWith("https://")) return base64String;
-	if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-		return base64String;
-	}
-
-	try {
-		const dataUri = String(base64String).startsWith("data:")
-			? base64String
-			: `data:${getMime(base64String)};base64,${base64String}`;
-		const uploaded = await cloudinary.uploader.upload(dataUri, { folder: "grip_physics" });
-		return uploaded.secure_url;
-	} catch (e) {
-		console.warn("Cloudinary upload failed, storing base64 instead:", e.message);
-		return base64String;
-	}
-}
-
-async function uploadQuestionImages(questions) {
-	return Promise.all(
-		questions.map(async (q) => {
-			const next = { ...q };
-			if (next.questionImage) next.questionImage = await uploadImageToCloudinary(next.questionImage);
-			if (Array.isArray(next.optionImages)) {
-				next.optionImages = await Promise.all(next.optionImages.map((img) => uploadImageToCloudinary(img)));
-			}
-			return next;
-		})
-	);
-}
-
-function sleep(ms) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function extractRetrySeconds(msg) {
-	const m = String(msg || "").match(/try again in\s*([0-9.]+)s/i);
-	if (!m) return null;
-	const n = parseFloat(m[1]);
-	return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-async function callGroq(parts, systemPrompt, userPrompt, maxTokens = 2600, temperature = 0.1) {
-	if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not set on server");
-	const maxAttempts = 4;
-
-	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-		const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${GROQ_API_KEY}`,
-			},
-			body: JSON.stringify({
-				model: "meta-llama/llama-4-scout-17b-16e-instruct",
-				max_tokens: maxTokens,
-				temperature,
-				messages: [
-					{ role: "system", content: systemPrompt },
-					{
-						role: "user",
-						content: [...(Array.isArray(parts) ? parts : []), { type: "text", text: userPrompt }],
-					},
-				],
-			}),
-		});
-
-		if (r.ok) {
-			const data = await r.json();
-			return String(data?.choices?.[0]?.message?.content || "").trim();
-		}
-
-		const err = await r.json().catch(() => ({}));
-		const msg = err?.error?.message || `Groq HTTP ${r.status}`;
-		const retryAfterHeader = Number(r.headers.get("retry-after"));
-		const retryAfterMsg = extractRetrySeconds(msg);
-		const isRateLimit = r.status === 429 || /rate limit|TPM|try again/i.test(msg);
-
-		if (isRateLimit && attempt < maxAttempts) {
-			const waitSec = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
-				? retryAfterHeader
-				: (retryAfterMsg || Math.min(2 * attempt, 8));
-			const waitMs = Math.ceil(waitSec * 1000 + 250);
-			console.warn(`[groq] rate-limited, retrying in ${waitMs}ms (attempt ${attempt}/${maxAttempts})`);
-			await sleep(waitMs);
-			continue;
-		}
-
-		throw new Error(msg);
-	}
-
-	throw new Error("Groq request failed after retries");
-}
-
-async function initDB() {
-	await db.executeMultiple(`
-		CREATE TABLE IF NOT EXISTS questions (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			chapter TEXT,
-			lecture TEXT NOT NULL,
-			topic TEXT DEFAULT '',
-			questions_json TEXT NOT NULL DEFAULT '[]',
-			updated_at INTEGER DEFAULT 0
-		);
-		CREATE INDEX IF NOT EXISTS idx_questions_chapter_lecture ON questions(chapter, lecture);
-		CREATE INDEX IF NOT EXISTS idx_questions_lecture ON questions(lecture);
-
-		CREATE TABLE IF NOT EXISTS students (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			mobile TEXT NOT NULL,
-			lecture TEXT NOT NULL,
-			name TEXT,
-			place TEXT,
-			class_name TEXT,
-			chapter TEXT,
-			answers_json TEXT DEFAULT '[]',
-			correct_count INTEGER DEFAULT 0,
-			total_questions INTEGER DEFAULT 0,
-			time INTEGER DEFAULT 0,
-			UNIQUE(mobile, lecture)
-		);
-		CREATE INDEX IF NOT EXISTS idx_students_mobile_lecture ON students(mobile, lecture);
-
-		CREATE TABLE IF NOT EXISTS attempts (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			mobile TEXT NOT NULL,
-			chapter TEXT,
-			lecture TEXT NOT NULL,
-			time INTEGER DEFAULT 0
-		);
-		CREATE INDEX IF NOT EXISTS idx_attempts_mobile_lecture ON attempts(mobile, lecture);
-
-		CREATE TABLE IF NOT EXISTS sessions (
-			sid TEXT PRIMARY KEY,
-			data TEXT NOT NULL,
-			expires INTEGER NOT NULL
-		);
-	`);
-	console.log("Turso DB initialized");
-}
-
-class TursoSessionStore extends session.Store {
-	async get(sid, cb) {
-		try {
-			const result = await db.execute({ sql: "SELECT data, expires FROM sessions WHERE sid = ?", args: [sid] });
-			if (!result.rows.length) return cb(null, null);
-			const row = result.rows[0];
-			if (Date.now() > row.expires) {
-				await db.execute({ sql: "DELETE FROM sessions WHERE sid = ?", args: [sid] });
-				return cb(null, null);
-			}
-			cb(null, JSON.parse(row.data));
-		} catch (e) {
-			cb(e);
-		}
-	}
-
-	async set(sid, sess, cb) {
-		try {
-			const expires = sess.cookie?.expires ? new Date(sess.cookie.expires).getTime() : Date.now() + 8 * 60 * 60 * 1000;
-			await db.execute({
-				sql: `INSERT INTO sessions (sid, data, expires) VALUES (?, ?, ?)
-					  ON CONFLICT(sid) DO UPDATE SET data = excluded.data, expires = excluded.expires`,
-				args: [sid, JSON.stringify(sess), expires],
-			});
-			cb(null);
-		} catch (e) {
-			cb(e);
-		}
-	}
-
-	async destroy(sid, cb) {
-		try {
-			await db.execute({ sql: "DELETE FROM sessions WHERE sid = ?", args: [sid] });
-			cb(null);
-		} catch (e) {
-			cb(e);
-		}
-	}
-}
-
-const allowedOrigins = [
-	"https://grip-physics.onrender.com",
-	"https://grip-physics.vercel.app",
-	"http://localhost:3000",
-	"http://localhost:8080",
-	"http://127.0.0.1:3000",
-	"http://127.0.0.1:8080",
-];
-
-app.use(cors({
-	origin: (origin, cb) => {
-		if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-		return cb(null, false);
-	},
-	credentials: true,
-	methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-	allowedHeaders: ["Content-Type", "Authorization"],
-	exposedHeaders: ["set-cookie"],
-	maxAge: 86400,
+app.use(cors({ 
+    origin: ["https://grip-physics.onrender.com", "https://grip-physics.vercel.app", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:8080"],
+    credentials: true, 
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["set-cookie"],
+    maxAge: 86400
+}));
+app.use(express.json({ limit: "20mb" }));
+app.use(session({ 
+    secret: SESSION_SECRET, 
+    resave: false, 
+    saveUninitialized: false, 
+    proxy: true, 
+    name: 'grip.sid',
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physics",
+        dbName: "grip_physics",
+        ttl: 8 * 60 * 60,
+        autoRemove: 'native'
+    }),
+    cookie: { 
+        secure: true, 
+        sameSite: "none", 
+        httpOnly: true, 
+        maxAge: 8 * 60 * 60 * 1000
+    } 
 }));
 
-app.use(express.json({ limit: "25mb" }));
-
-app.use(session({
-	secret: SESSION_SECRET,
-	resave: false,
-	saveUninitialized: false,
-	proxy: true,
-	name: "grip.sid",
-	store: new TursoSessionStore(),
-	cookie: {
-		secure: process.env.NODE_ENV === "production",
-		sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-		httpOnly: true,
-		maxAge: 8 * 60 * 60 * 1000,
-	},
-}));
-
+// ── SECURITY: Security headers on every response
 app.use((req, res, next) => {
-	console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-	res.setHeader("X-Content-Type-Options", "nosniff");
-	res.setHeader("X-Frame-Options", "DENY");
-	res.setHeader("X-XSS-Protection", "1; mode=block");
-	res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-	next();
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    next();
 });
 
+// ── SECURITY: Rate limiter
 const rateLimitMap = new Map();
 const loginFailMap = new Map();
 
 function rateLimit(windowMs, max) {
-	return (req, res, next) => {
-		const key = `${req.ip}:${req.path}`;
-		const now = Date.now();
-		const arr = (rateLimitMap.get(key) || []).filter((t) => t > now - windowMs);
-		arr.push(now);
-		rateLimitMap.set(key, arr);
-		if (arr.length > max) {
-			return res.status(429).json({ error: "Too many requests. Try again later." });
-		}
-		next();
-	};
+    return (req, res, next) => {
+        const key = req.ip + req.path, now = Date.now();
+        if (!rateLimitMap.has(key)) rateLimitMap.set(key, []);
+        const reqs = rateLimitMap.get(key).filter(t => t > now - windowMs);
+        reqs.push(now); rateLimitMap.set(key, reqs);
+        if (reqs.length > max) return res.status(429).json({ error: "Too many requests. Try again later." });
+        next();
+    };
 }
 
+// ── SECURITY: Login lockout — 5 attempts per 15 min, then 1 hour block
 function loginRateLimit(req, res, next) {
-	const ip = req.ip;
-	const now = Date.now();
-	const WINDOW = 15 * 60 * 1000;
-	const LOCKOUT = 60 * 60 * 1000;
-	const MAX = 5;
+    const ip = req.ip, now = Date.now();
+    const WINDOW = 15 * 60 * 1000, LOCKOUT = 60 * 60 * 1000, MAX = 5;
+    if (!loginFailMap.has(ip)) loginFailMap.set(ip, []);
+    const attempts = loginFailMap.get(ip).filter(t => t > now - LOCKOUT);
+    loginFailMap.set(ip, attempts);
+    if (attempts.filter(t => t > now - WINDOW).length >= MAX) {
+        const wait = Math.ceil((attempts[0] + LOCKOUT - now) / 60000);
+        return res.status(429).json({ error: `Too many failed attempts. Try again in ${wait} minute(s).` });
+    }
+    next();
+}
+function recordLoginFailure(ip) { if (!loginFailMap.has(ip)) loginFailMap.set(ip, []); loginFailMap.get(ip).push(Date.now()); }
 
-	const entries = (loginFailMap.get(ip) || []).filter((t) => t > now - LOCKOUT);
-	loginFailMap.set(ip, entries);
+setInterval(() => {
+    const c = Date.now() - 60 * 60 * 1000;
+    for (const [k, v] of rateLimitMap.entries()) { const f = v.filter(t => t > c); if (!f.length) rateLimitMap.delete(k); else rateLimitMap.set(k, f); }
+    for (const [k, v] of loginFailMap.entries()) { const f = v.filter(t => t > c); if (!f.length) loginFailMap.delete(k); else loginFailMap.set(k, f); }
+}, 10 * 60 * 1000);
 
-	const recent = entries.filter((t) => t > now - WINDOW);
-	if (recent.length >= MAX) {
-		const oldest = recent[0] || now;
-		const waitMin = Math.ceil((oldest + LOCKOUT - now) / 60000);
-		return res.status(429).json({ error: `Too many failed attempts. Try again in ${Math.max(waitMin, 1)} minute(s).` });
-	}
-	next();
+mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/grip_physics", { dbName: "grip_physics" })
+    .then(() => console.log("MongoDB connected")).catch(err => console.error("MongoDB error:", err));
+
+const QuestionSchema = new mongoose.Schema({
+    chapter: { type: String, index: true }, lecture: { type: String, index: true }, topic: { type: String, index: true, default: "" },
+    questions: [{ question: String, options: [String], correctIndex: Number, correctIndexes: [Number], isMultiCorrect: Boolean, questionImage: String, optionImages: [String] }],
+    question: String, options: [String], correctIndex: Number, updatedAt: { type: Number, default: Date.now }
+}, { strict: false });
+
+const StudentSchema = new mongoose.Schema({
+    name: String, mobile: { type: String, index: true }, place: String, className: String,
+    chapter: String, lecture: { type: String, index: true },
+    answers: [mongoose.Schema.Types.Mixed], correctCount: Number, totalQuestions: Number,
+    answer: Number, correct: Boolean, time: Number
+}, { strict: false });
+StudentSchema.index({ mobile: 1, lecture: 1 });
+
+const AttemptSchema = new mongoose.Schema({ mobile: { type: String, index: true }, chapter: String, lecture: { type: String, index: true }, time: Number }, { strict: false });
+AttemptSchema.index({ mobile: 1, lecture: 1 });
+
+const Question = mongoose.model("Question", QuestionSchema);
+const Student = mongoose.model("Student", StudentSchema);
+const Attempt = mongoose.model("Attempt", AttemptSchema);
+
+function normalizeQuestion(doc) {
+    if (!doc) return null;
+    const d = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
+    if (d.questions && d.questions.length > 0) {
+        d.questions = d.questions.map(q => {
+            if (!q.correctIndexes || !q.correctIndexes.length) q.correctIndexes = [typeof q.correctIndex === "number" ? q.correctIndex : 0];
+            q.isMultiCorrect = q.correctIndexes.length > 1;
+            return q;
+        });
+        return d;
+    }
+    if (d.question && typeof d.question === "string" && d.question.trim()) {
+        d.questions = [{ question: d.question, options: Array.isArray(d.options) && d.options.length ? d.options : [], correctIndex: typeof d.correctIndex === "number" ? d.correctIndex : 0, correctIndexes: [typeof d.correctIndex === "number" ? d.correctIndex : 0], isMultiCorrect: false }];
+        return d;
+    }
+    d.questions = []; d._corrupted = true; return d;
 }
 
-function recordLoginFailure(ip) {
-	const arr = loginFailMap.get(ip) || [];
-	arr.push(Date.now());
-	loginFailMap.set(ip, arr);
+function normalizeStudent(doc) {
+    const s = typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
+    if (typeof s.correctCount === "number") return s;
+    if (typeof s.answer === "number") { s.answers = [s.answer]; s.correctCount = s.correct === true ? 1 : 0; s.totalQuestions = 1; }
+    return s;
 }
 
-function safeCompare(a, b) {
-	try {
-		const ba = Buffer.from(String(a));
-		const bb = Buffer.from(String(b));
-		if (ba.length !== bb.length) {
-			crypto.timingSafeEqual(ba, ba);
-			return false;
-		}
-		return crypto.timingSafeEqual(ba, bb);
-	} catch {
-		return false;
-	}
+function isCorrect(qItem, ans) {
+    if (!qItem) return false;
+    const correctIdxs = qItem.correctIndexes && qItem.correctIndexes.length ? qItem.correctIndexes : [qItem.correctIndex || 0];
+    if (qItem.isMultiCorrect || correctIdxs.length > 1) {
+        const sel = Array.isArray(ans) ? [...ans].sort((a, b) => a - b) : [ans];
+        const cor = [...correctIdxs].sort((a, b) => a - b);
+        return JSON.stringify(sel) === JSON.stringify(cor);
+    }
+    return ans === correctIdxs[0];
 }
 
-function requireAdmin(req, res, next) {
-	if (!req.session?.admin) return res.status(403).json({ error: "Unauthorized" });
-	next();
-}
-
+let questionCache = {};
 async function loadQuestions() {
-	const result = await db.execute("SELECT * FROM questions");
-	questionCache = {};
-	for (const row of result.rows) {
-		const n = normalizeQuestionRow(row);
-		if (n && Array.isArray(n.questions)) {
-			questionCache[`${n.chapter || ""}::${n.lecture}`] = n;
-		}
-	}
-	console.log(`Loaded ${Object.keys(questionCache).length} question sets into cache`);
+    const all = await Question.find().lean();
+    questionCache = {};
+    all.forEach(q => { const n = normalizeQuestion(q); if (!n._corrupted) questionCache[`${q.chapter || ""}::${q.lecture}`] = n; });
+    console.log(`Cached ${all.length} questions`);
+}
+mongoose.connection.once("open", loadQuestions);
+
+async function findQuestion(chapter, lecture) {
+    const key = `${chapter || ""}::${lecture}`;
+    const cached = questionCache[key];
+    if (cached && !cached._corrupted && cached.questions && cached.questions.length > 0) return cached;
+    let doc = chapter ? await Question.findOne({ chapter, lecture }).lean() : await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] }).lean();
+    if (!doc) return null;
+    const n = normalizeQuestion(doc);
+    if (!n._corrupted) { questionCache[key] = n; return n; }
+    return null;
 }
 
 async function refreshCache(chapter, lecture) {
-	let result;
-	if (chapter) {
-		result = await db.execute({ sql: "SELECT * FROM questions WHERE chapter = ? AND lecture = ? LIMIT 1", args: [chapter, lecture] });
-	} else {
-		result = await db.execute({ sql: "SELECT * FROM questions WHERE (chapter IS NULL OR chapter = '') AND lecture = ? LIMIT 1", args: [lecture] });
-	}
-
-	if (!result.rows.length) {
-		delete questionCache[`${chapter || ""}::${lecture}`];
-		return;
-	}
-
-	const n = normalizeQuestionRow(result.rows[0]);
-	questionCache[`${chapter || ""}::${lecture}`] = n;
+    const updated = await Question.findOne(chapter ? { chapter, lecture } : { lecture }).lean();
+    if (updated) { const n = normalizeQuestion(updated); if (!n._corrupted) questionCache[`${chapter || ""}::${lecture}`] = n; }
+    else { delete questionCache[`${chapter || ""}::${lecture}`]; }
 }
 
-async function findQuestion(chapter, lecture) {
-	const key = `${chapter || ""}::${lecture}`;
-	if (questionCache[key]) return questionCache[key];
-
-	let result;
-	if (chapter) {
-		result = await db.execute({ sql: "SELECT * FROM questions WHERE chapter = ? AND lecture = ? LIMIT 1", args: [chapter, lecture] });
-	} else {
-		result = await db.execute({ sql: "SELECT * FROM questions WHERE (chapter IS NULL OR chapter = '') AND lecture = ? LIMIT 1", args: [lecture] });
-	}
-
-	if (!result.rows.length) return null;
-	const n = normalizeQuestionRow(result.rows[0]);
-	questionCache[key] = n;
-	return n;
+function requireAdmin(req, res, next) { 
+    console.log("requireAdmin check - sessionID:", req.sessionID, "session:", req.session, "admin:", req.session?.admin);
+    if (!req.session) {
+        console.log("No session found!");
+        return res.status(403).json({ error: "No session" });
+    }
+    if (!req.session?.admin) return res.status(403).json({ error: "Unauthorized" }); 
+    next(); 
 }
 
-setInterval(() => {
-	const cutoff = Date.now() - 60 * 60 * 1000;
-	for (const [k, v] of rateLimitMap.entries()) {
-		const kept = v.filter((t) => t > cutoff);
-		if (!kept.length) rateLimitMap.delete(k);
-		else rateLimitMap.set(k, kept);
-	}
-	for (const [k, v] of loginFailMap.entries()) {
-		const kept = v.filter((t) => t > cutoff);
-		if (!kept.length) loginFailMap.delete(k);
-		else loginFailMap.set(k, kept);
-	}
-	db.execute({ sql: "DELETE FROM sessions WHERE expires < ?", args: [Date.now()] }).catch(() => {});
-}, 10 * 60 * 1000);
+// ── SECURITY: Constant-time password comparison (prevents timing attacks)
+function safeCompare(a, b) {
+    try {
+        const ba = Buffer.from(String(a)), bb = Buffer.from(String(b));
+        if (ba.length !== bb.length) { crypto.timingSafeEqual(ba, ba); return false; }
+        return crypto.timingSafeEqual(ba, bb);
+    } catch { return false; }
+}
 
+// ── LOGIN
 app.post("/api/admin/login", loginRateLimit, (req, res) => {
-	if (!safeCompare(req.body?.passcode || "", ADMIN_PASSCODE)) {
-		recordLoginFailure(req.ip);
-		return res.status(401).json({ error: "Invalid passcode" });
-	}
-
-	loginFailMap.delete(req.ip);
-	req.session.regenerate((err) => {
-		if (err) return res.status(500).json({ error: "Session error" });
-		req.session.admin = true;
-		req.session.loginTime = Date.now();
-		req.session.save((saveErr) => {
-			if (saveErr) return res.status(500).json({ error: "Session save error" });
-			res.json({ success: true });
-		});
-	});
+    console.log("Login attempt from origin:", req.headers.origin);
+    if (!safeCompare(req.body.passcode || "", ADMIN_PASSCODE)) {
+        recordLoginFailure(req.ip);
+        return res.status(401).json({ error: "Invalid passcode" });
+    }
+    loginFailMap.delete(req.ip);
+    req.session.regenerate((err) => {
+        if (err) return res.status(500).json({ error: "Session error" });
+        req.session.admin = true;
+        req.session.loginTime = Date.now();
+        req.session.save((saveErr) => {
+            if (saveErr) return res.status(500).json({ error: "Session save error" });
+            console.log("Login successful, session ID:", req.sessionID);
+            res.json({ success: true });
+        });
+    });
 });
+app.post("/api/admin/logout", (req, res) => req.session.destroy(() => res.json({ message: "Logged out" })));
 
-app.post("/api/admin/logout", (req, res) => {
-	req.session.destroy(() => res.json({ success: true }));
-});
-
-app.get("/api/chapters", async (req, res) => {
-	try {
-		const result = await db.execute("SELECT DISTINCT chapter FROM questions WHERE chapter IS NOT NULL AND chapter != ''");
-		const chapters = result.rows.map((r) => r.chapter).filter(Boolean).sort();
-		res.json(chapters);
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-app.get("/api/lectures/:chapter", async (req, res) => {
-	try {
-		const chapter = req.params.chapter;
-		const result = await db.execute({ sql: "SELECT lecture FROM questions WHERE chapter = ?", args: [chapter] });
-		const lectures = result.rows.map((r) => r.lecture).filter(Boolean).sort((a, b) => Number(a) - Number(b));
-		res.json(lectures);
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-app.get("/api/question/:chapter/:lecture", async (req, res) => {
-	try {
-		const q = await findQuestion(req.params.chapter, req.params.lecture);
-		if (!q) return res.status(404).json({ error: "Lecture not found" });
-		res.json(q);
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-app.post("/api/check-attempt", async (req, res) => {
-	try {
-		const { mobile, chapter, lecture } = req.body || {};
-		if (!mobile || !lecture) return res.status(400).json({ error: "Missing" });
-
-		const q = await findQuestion(chapter, lecture);
-		if (!q) return res.json({ allowed: false, time: 0 });
-
-		const result = await db.execute({
-			sql: "SELECT time FROM attempts WHERE mobile = ? AND lecture = ? ORDER BY time DESC LIMIT 1",
-			args: [mobile, lecture],
-		});
-
-		if (!result.rows.length) return res.json({ allowed: true, time: 0 });
-
-		const lastTime = result.rows[0].time || 0;
-		if (lastTime >= (q.updatedAt || 0)) return res.json({ allowed: false, time: lastTime });
-		return res.json({ allowed: true, time: lastTime });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-app.post("/api/student-register", async (req, res) => {
-	try {
-		const { name, mobile, place, className, chapter, lecture } = req.body || {};
-		if (!name || !mobile || !lecture) return res.status(400).json({ error: "Missing" });
-
-		await db.execute({
-			sql: `INSERT INTO students (mobile, lecture, name, place, class_name, chapter, time)
-				  VALUES (?, ?, ?, ?, ?, ?, ?)
-				  ON CONFLICT(mobile, lecture) DO UPDATE SET
-					name=excluded.name, place=excluded.place, class_name=excluded.class_name,
-					chapter=excluded.chapter, time=excluded.time`,
-			args: [mobile, lecture, name, place || "", className || "", chapter || null, Date.now()],
-		});
-
-		res.json({ success: true });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
+// ── PUBLIC ROUTES
+app.get("/api/chapters", async (req, res) => { try { const c = await Question.distinct("chapter"); res.json(c.filter(Boolean).sort()); } catch { res.status(500).json({ error: "Failed" }); } });
+app.get("/api/lectures/:chapter", async (req, res) => { try { const d = await Question.find({ chapter: req.params.chapter }, { lecture: 1 }).lean(); res.json(d.map(x => x.lecture).filter(Boolean).sort((a, b) => Number(a) - Number(b))); } catch { res.status(500).json({ error: "Failed" }); } });
+app.get("/api/question/:chapter/:lecture", async (req, res) => { try { const q = await findQuestion(req.params.chapter, req.params.lecture); if (!q) return res.status(404).json({ error: "Lecture not found" }); res.json(q); } catch (e) { res.status(500).json({ error: "Failed" }); } });
+app.post("/api/check-attempt", async (req, res) => { const { mobile, chapter, lecture } = req.body; if (!mobile || !lecture) return res.status(400).json({ error: "Missing" }); const q = await findQuestion(chapter, lecture); if (!q) return res.json({ allowed: false, time: 0 }); const a = await Attempt.findOne({ mobile, lecture }).sort({ time: -1 }).lean(); if (!a) return res.json({ allowed: true, time: 0 }); res.json(a.time >= (q.updatedAt || 0) ? { allowed: false, time: a.time } : { allowed: true, time: a.time }); });
 app.post("/api/submit-attempt", rateLimit(60 * 1000, 5), async (req, res) => {
-	try {
-		const { mobile, chapter, lecture, selectedAnswers, askedQuestionIndexes, name, place, className } = req.body || {};
-		if (!mobile || !lecture) return res.status(400).json({ error: "Missing" });
-
-		const q = await findQuestion(chapter, lecture);
-		if (!q) return res.status(404).json({ error: "Not found" });
-
-		const lastResult = await db.execute({
-			sql: "SELECT time FROM attempts WHERE mobile = ? AND lecture = ? ORDER BY time DESC LIMIT 1",
-			args: [mobile, lecture],
-		});
-		if (lastResult.rows.length && (lastResult.rows[0].time || 0) >= (q.updatedAt || 0)) {
-			return res.json({ allowed: false });
-		}
-
-		const validSourceIndexes = Array.isArray(askedQuestionIndexes)
-			? askedQuestionIndexes
-				.map((idx) => Number(idx))
-				.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < q.questions.length)
-			: [];
-
-		const questionsForScoring = validSourceIndexes.length
-			? validSourceIndexes.map((idx) => q.questions[idx]).filter(Boolean)
-			: q.questions;
-
-		const answers = Array.isArray(selectedAnswers) ? selectedAnswers : [];
-		let correctCount = 0;
-		answers.forEach((ans, i) => {
-			if (isCorrect(questionsForScoring[i], ans)) correctCount++;
-		});
-
-		const now = Date.now();
-		await db.execute({
-			sql: "INSERT INTO attempts (mobile, chapter, lecture, time) VALUES (?, ?, ?, ?)",
-			args: [mobile, chapter || null, lecture, now],
-		});
-
-		await db.execute({
-			sql: `INSERT INTO students (mobile, lecture, name, place, class_name, chapter, answers_json, correct_count, total_questions, time)
-				  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				  ON CONFLICT(mobile, lecture) DO UPDATE SET
-					name=excluded.name, place=excluded.place, class_name=excluded.class_name,
-					chapter=excluded.chapter, answers_json=excluded.answers_json,
-					correct_count=excluded.correct_count, total_questions=excluded.total_questions, time=excluded.time`,
-			args: [
-				mobile,
-				lecture,
-				name || "",
-				place || "",
-				className || "",
-				chapter || null,
-				JSON.stringify(answers),
-				correctCount,
-				questionsForScoring.length,
-				now,
-			],
-		});
-
-		res.json({ success: true, correctCount, totalQuestions: questionsForScoring.length });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
+    const { mobile, chapter, lecture, selectedAnswers, name, place, className } = req.body;
+    if (!mobile || !lecture) return res.status(400).json({ error: "Missing" });
+    const q = await findQuestion(chapter, lecture); if (!q) return res.status(404).json({ error: "Not found" });
+    const last = await Attempt.findOne({ mobile, lecture }).sort({ time: -1 }).lean();
+    if (last && last.time >= (q.updatedAt || 0)) return res.json({ allowed: false });
+    const answers = Array.isArray(selectedAnswers) ? selectedAnswers : [];
+    let correctCount = 0;
+    answers.forEach((ans, i) => { if (isCorrect(q.questions[i], ans)) correctCount++; });
+    const now = Date.now();
+    await Attempt.create({ mobile, chapter: chapter || null, lecture, time: now });
+    await Student.findOneAndUpdate({ mobile, lecture }, { $set: { name, mobile, place, className, chapter: chapter || null, lecture, answers, correctCount, totalQuestions: q.questions.length, time: now } }, { upsert: true, new: true });
+    res.json({ success: true, correctCount, totalQuestions: q.questions.length });
 });
+app.post("/api/student-register", async (req, res) => { const { name, mobile, place, className, chapter, lecture } = req.body; if (!name || !mobile || !lecture) return res.status(400).json({ error: "Missing" }); await Student.findOneAndUpdate({ mobile, lecture }, { $set: { name, mobile, place, className, chapter: chapter || null, lecture, time: Date.now() } }, { upsert: true, new: true }); res.json({ success: true }); });
 
+// ── ADMIN ROUTES
 app.post("/api/admin/add-question", requireAdmin, async (req, res) => {
-	try {
-		let { chapter, lecture, topic, questions, replace } = req.body || {};
-		if (!lecture || !Array.isArray(questions) || !questions.length) {
-			return res.status(400).json({ error: "Missing" });
-		}
-
-		questions = questions.map(normalizeQuestion);
-		questions = await uploadQuestionImages(questions);
-
-		let existing;
-		if (chapter) {
-			const r = await db.execute({ sql: "SELECT * FROM questions WHERE chapter = ? AND lecture = ? LIMIT 1", args: [chapter, lecture] });
-			existing = r.rows[0] || null;
-		} else {
-			const r = await db.execute({ sql: "SELECT * FROM questions WHERE (chapter IS NULL OR chapter = '') AND lecture = ? LIMIT 1", args: [lecture] });
-			existing = r.rows[0] || null;
-		}
-
-		if (existing) {
-			const oldQs = replace ? [] : (() => {
-				try { return JSON.parse(existing.questions_json || "[]"); } catch { return []; }
-			})();
-			const merged = [...oldQs, ...questions];
-			await db.execute({
-				sql: "UPDATE questions SET questions_json = ?, topic = ?, updated_at = ? WHERE id = ?",
-				args: [JSON.stringify(merged), topic || existing.topic || "", Date.now(), existing.id],
-			});
-			await refreshCache(chapter || null, lecture);
-			return res.json({ success: true, added: questions.length, total: merged.length });
-		}
-
-		await db.execute({
-			sql: "INSERT INTO questions (chapter, lecture, topic, questions_json, updated_at) VALUES (?, ?, ?, ?, ?)",
-			args: [chapter || null, lecture, topic || "", JSON.stringify(questions), Date.now()],
-		});
-		await refreshCache(chapter || null, lecture);
-		res.json({ success: true, added: questions.length, total: questions.length });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
+    const { chapter, lecture, topic, questions, replace } = req.body;
+    if (!lecture || !Array.isArray(questions) || !questions.length) return res.status(400).json({ error: "Missing" });
+    let existing = await Question.findOne({ chapter: chapter || null, lecture });
+    if (!existing && !chapter) existing = await Question.findOne({ lecture, $or: [{ chapter: null }, { chapter: { $exists: false } }] });
+    if (existing) {
+        const existingQs = existing.questions || [];
+        const newQs = questions.map((q, i) => ({ ...q, _tempIdx: existingQs.length + i }));
+        const updatedQs = [...existingQs, ...newQs];
+        await Question.updateOne({ _id: existing._id }, { $set: { questions: updatedQs, topic: topic || existing.topic || "", updatedAt: Date.now() }, $unset: { question: "", options: "", correctIndex: "" } });
+        await refreshCache(chapter, lecture);
+        return res.json({ success: true, added: questions.length, total: updatedQs.length });
+    }
+    const data = { chapter: chapter || null, lecture, topic: topic || "", questions, updatedAt: Date.now() };
+    await Question.create(data);
+    await refreshCache(chapter, lecture);
+    res.json({ success: true, added: questions.length, total: questions.length });
 });
-
-app.get("/api/admin/students", requireAdmin, async (req, res) => {
-	try {
-		const result = await db.execute("SELECT * FROM students ORDER BY time DESC");
-		res.json(result.rows.map(normalizeStudentRow));
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-app.get("/api/admin/questions", requireAdmin, async (req, res) => {
-	try {
-		const result = await db.execute("SELECT * FROM questions");
-		res.json(result.rows.map(normalizeQuestionRow));
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
 app.delete("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, res) => {
-	try {
-		const chapter = decodeURIComponent(req.params.chapter || "");
-		const lecture = decodeURIComponent(req.params.lecture || "");
-		await db.execute({
-			sql: "DELETE FROM questions WHERE lecture = ? AND (chapter = ? OR chapter IS NULL OR chapter = '')",
-			args: [lecture, chapter === "_none_" ? null : chapter],
-		});
-		delete questionCache[`${chapter === "_none_" ? "" : chapter}::${lecture}`];
-		res.json({ success: true });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
+    const chapter = decodeURIComponent(req.params.chapter), lecture = decodeURIComponent(req.params.lecture);
+    await Question.deleteMany({ lecture, $or: [{ chapter }, { chapter: null }, { chapter: { $exists: false } }] });
+    delete questionCache[`${chapter}::${lecture}`];
+    res.json({ success: true });
 });
-
-app.put("/api/admin/question/:chapter/:lecture", requireAdmin, async (req, res) => {
-	try {
-		const rawChapter = decodeURIComponent(req.params.chapter || "");
-		const lecture = decodeURIComponent(req.params.lecture || "");
-		const { chapter, topic, questions } = req.body || {};
-
-		if (!lecture) return res.status(400).json({ error: "Lecture is required." });
-		if (!Array.isArray(questions)) return res.status(400).json({ error: "Questions array is required." });
-
-		const chapterForMatch = (rawChapter === "_none_" || rawChapter === "") ? null : rawChapter;
-		const chapterForSave = (chapter === "_none_" || chapter === "") ? null : (chapter ?? chapterForMatch);
-
-		let existing;
-		if (chapterForMatch) {
-			const r = await db.execute({ sql: "SELECT * FROM questions WHERE chapter = ? AND lecture = ? LIMIT 1", args: [chapterForMatch, lecture] });
-			existing = r.rows[0] || null;
-		} else {
-			const r = await db.execute({ sql: "SELECT * FROM questions WHERE (chapter IS NULL OR chapter = '') AND lecture = ? LIMIT 1", args: [lecture] });
-			existing = r.rows[0] || null;
-		}
-
-		if (!existing) return res.status(404).json({ error: "Lecture not found." });
-
-		const normalizedQuestions = questions.map(normalizeQuestion);
-		await db.execute({
-			sql: "UPDATE questions SET chapter = ?, topic = ?, questions_json = ?, updated_at = ? WHERE id = ?",
-			args: [chapterForSave, topic || existing.topic || "", JSON.stringify(normalizedQuestions), Date.now(), existing.id],
-		});
-
-		await refreshCache(chapterForSave, lecture);
-		res.json({ success: true, updated: normalizedQuestions.length });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
 app.post("/api/admin/mass-delete", requireAdmin, async (req, res) => {
-	try {
-		const items = Array.isArray(req.body?.items) ? req.body.items : [];
-		if (!items.length) return res.status(400).json({ error: "No items" });
-		let deleted = 0;
-		for (const it of items) {
-			const chapter = it?.chapter || null;
-			const lecture = it?.lecture;
-			if (!lecture) continue;
-			await db.execute({
-				sql: "DELETE FROM questions WHERE lecture = ? AND (chapter = ? OR chapter IS NULL OR chapter = '')",
-				args: [lecture, chapter],
-			});
-			delete questionCache[`${chapter || ""}::${lecture}`];
-			deleted++;
-		}
-		res.json({ success: true, deleted });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
+    const { items } = req.body;
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No items" });
+    let deleted = 0;
+    for (const { chapter, lecture } of items) { await Question.deleteMany({ lecture, $or: [{ chapter }, { chapter: null }, { chapter: { $exists: false } }] }); delete questionCache[`${chapter || ""}::${lecture}`]; deleted++; }
+    res.json({ success: true, deleted });
+});
+app.get("/api/admin/students", requireAdmin, async (req, res) => { try { const all = await Student.find({}).sort({ time: -1 }).lean(); res.json(all.map(normalizeStudent)); } catch { res.status(500).json({ error: "Failed" }); } });
+app.get("/api/admin/questions", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); res.json(all.map(normalizeQuestion));    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post("/api/admin/rename-chapter", requireAdmin, async (req, res) => {
-	try {
-		const { oldName, newName } = req.body || {};
-		if (!oldName || !newName) return res.status(400).json({ error: "Missing old or new chapter name." });
-
-		const qr = await db.execute({ sql: "UPDATE questions SET chapter = ? WHERE chapter = ?", args: [newName, oldName] });
-		const sr = await db.execute({ sql: "UPDATE students SET chapter = ? WHERE chapter = ?", args: [newName, oldName] });
-		const ar = await db.execute({ sql: "UPDATE attempts SET chapter = ? WHERE chapter = ?", args: [newName, oldName] });
-		const total = (qr.rowsAffected || 0) + (sr.rowsAffected || 0) + (ar.rowsAffected || 0);
-		if (!total) return res.status(404).json({ error: "Chapter not found." });
-
-		await loadQuestions();
-		res.json({
-			success: true,
-			updated: {
-				questions: qr.rowsAffected || 0,
-				students: sr.rowsAffected || 0,
-				attempts: ar.rowsAffected || 0,
-				total,
-			},
-		});
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
+    try {
+        const { oldName, newName } = req.body;
+        if (!oldName || !newName) return res.status(400).json({ error: "Missing old or new chapter name." });
+        
+        const result = await Question.updateMany({ chapter: oldName }, { $set: { chapter: newName } });
+        if (result.matchedCount === 0) return res.status(404).json({ error: "Chapter not found or no questions exist." });
+        
+        await loadQuestions();
+        res.json({ success: true, updated: result.modifiedCount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post("/api/admin/rename-topic", requireAdmin, async (req, res) => {
-	try {
-		const { chapter, oldName, newName } = req.body || {};
-		if (!oldName || !newName) return res.status(400).json({ error: "Missing old or new topic name." });
-		let result;
-		if (chapter) {
-			result = await db.execute({ sql: "UPDATE questions SET topic = ? WHERE topic = ? AND chapter = ?", args: [newName, oldName, chapter] });
-		} else {
-			result = await db.execute({ sql: "UPDATE questions SET topic = ? WHERE topic = ?", args: [newName, oldName] });
-		}
-		if (!result.rowsAffected) return res.status(404).json({ error: "Topic not found." });
-		await loadQuestions();
-		res.json({ success: true, updated: result.rowsAffected });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
+    try {
+        const { chapter, oldName, newName } = req.body;
+        if (!oldName || !newName) return res.status(400).json({ error: "Missing old or new topic name." });
+        
+        let query = { topic: oldName };
+        if (chapter) query.chapter = chapter;
+        
+        const result = await Question.updateMany(query, { $set: { topic: newName } });
+        if (result.matchedCount === 0) return res.status(404).json({ error: "Topic not found." });
+        
+        await loadQuestions();
+        res.json({ success: true, updated: result.modifiedCount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
-app.post("/api/admin/reload-cache", requireAdmin, async (req, res) => {
-	try {
-		await loadQuestions();
-		res.json({ success: true, cached: Object.keys(questionCache).length });
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-app.get("/api/admin/migrate", requireAdmin, async (req, res) => {
-	try {
-		const result = await db.execute("SELECT * FROM questions");
-		const all = result.rows.map(normalizeQuestionRow);
-		const corrupted = all.filter((x) => !Array.isArray(x.questions));
-		res.json({
-			total: all.length,
-			corrupted: corrupted.length,
-			corruptedLectures: corrupted.map((q) => ({ lecture: q.lecture, chapter: q.chapter, _id: q._id })),
-		});
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-app.post("/api/admin/migrate", requireAdmin, async (req, res) => {
-	try {
-		const result = await db.execute("SELECT * FROM questions");
-		const corruptedIds = result.rows
-			.filter((row) => {
-				try {
-					const q = JSON.parse(row.questions_json || "[]");
-					return !Array.isArray(q);
-				} catch {
-					return true;
-				}
-			})
-			.map((row) => row.id);
-
-		for (const id of corruptedIds) {
-			await db.execute({ sql: "DELETE FROM questions WHERE id = ?", args: [id] });
-		}
-
-		await loadQuestions();
-		res.json({
-			success: true,
-			deleted: corruptedIds.length,
-			message: corruptedIds.length ? `Deleted ${corruptedIds.length} corrupted record(s).` : "No corrupted records found.",
-		});
-	} catch (e) {
-		res.status(500).json({ error: e.message || "Failed" });
-	}
-});
-
-
+app.post("/api/admin/reload-cache", requireAdmin, async (req, res) => { try { await loadQuestions(); res.json({ success: true, cached: Object.keys(questionCache).length }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const c = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(normalizeQuestion).filter(q => q._corrupted); res.json({ total: all.length, corrupted: c.length, corruptedLectures: c.map(q => ({ lecture: q.lecture, chapter: q.chapter || null, _id: q._id })) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post("/api/admin/migrate", requireAdmin, async (req, res) => { try { const all = await Question.find({}).lean(); const ids = all.filter(q => !(q.questions && q.questions.length && q.questions[0].question) && !(q.question && q.question.trim())).map(q => q._id); if (!ids.length) return res.json({ success: true, deleted: 0, message: "No corrupted records found." }); await Question.deleteMany({ _id: { $in: ids } }); await loadQuestions(); res.json({ success: true, deleted: ids.length, message: `Deleted ${ids.length} corrupted record(s).` }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
-	try {
-		const { questionImages, answerImages, manualAnswerKey, options } = req.body || {};
-		if (!Array.isArray(questionImages) || !questionImages.length) {
-			return res.status(400).json({ error: "At least one question image is required." });
-		}
-		if (questionImages.length > 12) {
-			return res.status(400).json({ error: "Maximum 12 question images per import." });
-		}
-		if (!GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
-
-		const strictValidation = options?.strictValidation !== false;
-		const recoverMissing = options?.recoverMissing !== false;
-		const maxQuestionsPerImage = clamp(parseInt(options?.maxQuestionsPerImage, 10) || 40, 5, 80);
-
-		function getQuestionNumber(q) {
-			if (Number.isInteger(q?.__questionNumber)) return q.__questionNumber;
-			const m = String(q?.question || "").match(/^\s*(?:q\.?\s*)?(\d{1,3})\s*[\).:\u2013\-]/i);
-			if (!m) return null;
-			const n = parseInt(m[1], 10);
-			return Number.isInteger(n) ? n : null;
-		}
-
-		function splitLeakedOptionsFromQuestion(rawQuestion, existingOptions) {
-			const text = String(rawQuestion || "").replace(/\s+/g, " ").trim();
-			if (!text) return { question: "", options: existingOptions };
-
-			const re = /(?:\(([a-dA-D])\)|\b([a-dA-D])[\).])\s*/g;
-			const matches = [...text.matchAll(re)];
-			if (matches.length < 2) return { question: text, options: existingOptions };
-
-			const firstToken = String(matches[0][1] || matches[0][2] || "").toLowerCase();
-			const firstLetter = "abcd".indexOf(firstToken);
-			if (firstLetter !== 0) return { question: text, options: existingOptions };
-
-			const options = Array.isArray(existingOptions) ? [...existingOptions] : ["", "", "", ""];
-			while (options.length < 4) options.push("");
-
-			for (let i = 0; i < matches.length; i++) {
-				const cur = matches[i];
-				const letterToken = String(cur[1] || cur[2] || "").toLowerCase();
-				const letter = "abcd".indexOf(letterToken);
-				if (letter < 0 || letter > 3) continue;
-				const start = cur.index + cur[0].length;
-				const end = i < matches.length - 1 ? matches[i + 1].index : text.length;
-				const chunk = text.slice(start, end).trim().replace(/^[,;:\-\.\s]+|[,;:\-\.\s]+$/g, "");
-				if (!chunk) continue;
-				if (!String(options[letter] || "").trim() || chunk.length > String(options[letter] || "").trim().length) {
-					options[letter] = chunk;
-				}
-			}
-
-			const question = text.slice(0, matches[0].index).trim();
-			return { question, options };
-		}
-
-		function sanitizeExtractedQuestion(raw) {
-			const questionNumber = getQuestionNumber(raw);
-			const inputOptions = Array.isArray(raw?.options) ? raw.options.slice(0, 4) : [];
-			while (inputOptions.length < 4) inputOptions.push("");
-
-			let qText = String(raw?.question || "").trim();
-			qText = qText.replace(/^\s*(?:q\.?\s*)?\d{1,3}\s*[\).:\u2013\-]\s*/i, "").trim();
-
-			const split = splitLeakedOptionsFromQuestion(qText, inputOptions);
-			return {
-				...raw,
-				question: split.question || qText,
-				options: split.options,
-				__questionNumber: questionNumber,
-			};
-		}
-
-		function stemSig(q) {
-			return String(q?.question || "")
-				.toLowerCase()
-				.replace(/^\s*(?:q\.?\s*)?\d{1,3}\s*[\).:\u2013\-]?\s*/i, "")
-				.replace(/\s+/g, " ")
-				.replace(/[^a-z0-9$\\\-+*/=() ]/g, "")
-				.trim();
-		}
-
-		function qualityScore(q) {
-			const stem = stemSig(q);
-			const opts = (Array.isArray(q?.options) ? q.options : []).filter((x) => String(x || "").trim()).length;
-			const hasAnswer = Array.isArray(q?.correctIndexes) && q.correctIndexes.length ? 1 : 0;
-			return stem.length + opts * 50 + hasAnswer * 20;
-		}
-
-		function parseManualAnswerMap(txt) {
-			const map = new Map();
-			const lines = String(txt || "").split(/\r?\n/);
-			for (const rawLine of lines) {
-				const line = rawLine.trim();
-				if (!line) continue;
-				const m = line.match(/^(\d{1,3})\s*[-:.]\s*([A-Da-d](?:\s*,\s*[A-Da-d])*)\s*$/);
-				if (!m) continue;
-				const qn = parseInt(m[1], 10);
-				const idx = [...new Set(
-					m[2]
-						.split(",")
-						.map((x) => "abcd".indexOf(String(x).trim().toLowerCase()))
-						.filter((x) => x >= 0)
-				)];
-				if (Number.isInteger(qn) && idx.length) map.set(qn, idx);
-			}
-			return map;
-		}
-
-		async function extractAnswerMapFromImages(images) {
-			const map = new Map();
-			if (!Array.isArray(images) || !images.length) return map;
-			const parts = images.slice(0, 4).map(toImgPart);
-			const answerRaw = await callGroq(
-				parts,
-				"You are a strict answer-key parser.",
-				`Extract answer key mapping from these images. Return ONLY JSON object like {"1":[2],"2":[0,3]}. Use indexes A=0,B=1,C=2,D=3. No markdown.`,
-				900,
-				0.0
-			);
-			const parsed = tryParse(cleanJson(answerRaw)) || {};
-			Object.entries(parsed).forEach(([k, v]) => {
-				const qn = parseInt(k, 10);
-				const idx = Array.isArray(v)
-					? [...new Set(v.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n >= 0 && n < 4))]
-					: [];
-				if (Number.isInteger(qn) && idx.length) map.set(qn, idx);
-			});
-			return map;
-		}
-
-		const answerMap = manualAnswerKey?.trim()
-			? parseManualAnswerMap(manualAnswerKey)
-			: await extractAnswerMapFromImages(Array.isArray(answerImages) ? answerImages : []);
-
-		const extractionSystem = `Extract physics MCQs from screenshot and return ONLY JSON array.
-Each item must contain:
-{"question":"...","options":["...","...","...","..."],"hasImage":false,"imageRegion":null}
-Rules:
-1) Preserve equations in $...$ or $$...$$.
-2) Always return exactly 4 options (use empty strings when missing).
-3) Do not invent missing text.
-4) For diagram-based questions set hasImage=true and provide imageRegion fractions x,y,w,h in [0,1] when possible.
-5) Include all visible numbered questions in reading order.`;
-
-		const extracted = [];
-		let recoveredCount = 0;
-		let seq = 0;
-
-		for (let i = 0; i < questionImages.length; i++) {
-			const imagePart = toImgPart(questionImages[i]);
-			const raw = await callGroq(
-				[imagePart],
-				extractionSystem,
-				`Extract all visible questions from this screenshot. Max ${maxQuestionsPerImage} items. Return only JSON array.`,
-				2200,
-				0.0
-			);
-			let arr = parseJsonArray(raw) || [];
-
-			if (recoverMissing && arr.length < 2) {
-				const retryRaw = await callGroq(
-					[imagePart],
-					extractionSystem,
-					"Retry extraction aggressively. Capture every numbered question including partial ones. Return only JSON array.",
-					2200,
-					0.1
-				);
-				const retryArr = parseJsonArray(retryRaw) || [];
-				if (retryArr.length > arr.length) {
-					recoveredCount += retryArr.length - arr.length;
-					arr = retryArr;
-				}
-			}
-
-			arr.slice(0, maxQuestionsPerImage).forEach((q) => {
-				extracted.push({ ...q, imageSourceIndex: i, __seq: seq++ });
-			});
-		}
-
-		if (!extracted.length) {
-			return res.status(500).json({ error: "No questions extracted. Try clearer images or smaller import batches." });
-		}
-
-		const bestByKey = new Map();
-		for (const row of extracted) {
-			const q = sanitizeExtractedQuestion(row);
-			const num = getQuestionNumber(q);
-			const key = num !== null ? `num:${num}` : `sig:${stemSig(q)}::${(q.options || []).join("|").slice(0, 160).toLowerCase()}`;
-			const prev = bestByKey.get(key);
-			if (!prev || qualityScore(q) > qualityScore(prev)) bestByKey.set(key, q);
-		}
-
-		const deduplicatedCount = extracted.length - bestByKey.size;
-		const orderedRaw = [...bestByKey.values()].sort((a, b) => (a.__seq || 0) - (b.__seq || 0));
-
-		for (const q of orderedRaw) {
-			const n = getQuestionNumber(q);
-			if (n !== null && answerMap.has(n)) {
-				q.correctIndexes = answerMap.get(n);
-				q.isMultiCorrect = q.correctIndexes.length > 1;
-			}
-		}
-
-		const normalized = orderedRaw.map((q) => normalizeQuestion(q));
-
-		let lowConfidenceCount = 0;
-		for (const q of normalized) {
-			if (q.hasImage && Number.isInteger(q.imageSourceIndex)) {
-				q.imageSourceIndex = clamp(q.imageSourceIndex, 0, questionImages.length - 1);
-			}
-
-			if (strictValidation) {
-				const filledOpts = (q.options || []).filter((o) => String(o || "").trim()).length;
-				if (!String(q.question || "").trim() || filledOpts < 2) lowConfidenceCount++;
-			}
-		}
-
-		const questions = normalized.filter((q) => String(q.question || "").trim());
-		if (!questions.length) {
-			return res.status(500).json({ error: "Extraction produced invalid questions only. Try better quality source images." });
-		}
-
-		res.json({
-			questions,
-			diagnostics: {
-				recoveredCount,
-				deduplicatedCount,
-				lowConfidenceCount,
-				answerKeyEntries: answerMap.size,
-				inputImages: questionImages.length,
-			},
-		});
-	} catch (e) {
-		console.error("/api/admin/extract error:", e);
-		res.status(500).json({ error: e.message || "Extraction failed" });
-	}
+    const { questionImages, answerImages, manualAnswerKey } = req.body;
+    if (!questionImages || !Array.isArray(questionImages) || !questionImages.length) return res.status(400).json({ error: "At least one question image required" });
+    if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
+    function getMime(b64) { if (b64.startsWith("/9j/")) return "image/jpeg"; if (b64.startsWith("iVBORw")) return "image/png"; return "image/jpeg"; }
+    let answerKeyDesc = manualAnswerKey?.trim() ? `The answer key is: ${manualAnswerKey.trim()}. Parse it as question number → answer letter(s).` : answerImages?.length ? `The last ${answerImages.length} image(s) are the answer key.` : "No answer key provided — do your best to identify correct answers from context.";
+    const prompt = `You are a physics teacher extracting MCQ questions from Indian exam papers (JEE/NEET/HC Verma style).\n\n${answerKeyDesc}\n\nTASK: Extract EVERY question from ALL question images and match each to its answer.\nOutput ONLY a raw JSON array. No markdown, no explanation.\n\nMOST CRITICAL RULE — SEPARATING QUESTION FROM OPTIONS:\nIndian exam papers have TWO styles of writing options:\n\nSTYLE 1 — Options listed BELOW the question separately:\n  Q: "Which law states F=ma?"\n  (A) Newton's 1st  (B) Newton's 2nd  (C) Newton's 3rd  (D) Kepler's\n  → question = "Which law states F=ma?"\n  → options = ["Newton's 1st", "Newton's 2nd", "Newton's 3rd", "Kepler's"]\n\nSTYLE 2 — Options EMBEDDED inside question text as (a)(b)(c)(d):\n  "In a semiconductor (a) no free electrons at 0K (b) more electrons than conductor (c) free electrons increase with temp (d) it is an insulator"\n  → question = "In a semiconductor"  [STEM ONLY — stop before the first (a)]\n  → options = ["no free electrons at 0K", "more electrons than conductor", "free electrons increase with temp", "it is an insulator"]\n\n  "Match the following: (a) A (b) B (c) C (d) D"\n  → question = "Match the following:"\n  → options = ["A", "B", "C", "D"]\n\nCRITICAL ENFORCEMENT ON OPTIONS:\n1. IF the option text is JUST A SINGLE LETTER (e.g., "(a) A", "(b) B"), you MUST extract that exact letter (e.g. "A"). Do NOT leave the option blank.\n2. Do NOT mistake single-character options as part of the "(a)" prefix. The letter after the "(a)" is the answer text.\n3. Identify all 4 options exactly as written. The options array MUST always have exactly 4 strings.\n\nJSON format per question:\n{"question":"stem only","options":["A text","B text","C text","D text"],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false}\n\nLaTeX math (KaTeX in $...$):\n- pi→$\\\\pi$, omega→$\\\\omega$, epsilon→$\\\\varepsilon$, T^4→$T^4$, T_1→$T_1$\n- cos→$\\\\cos$, sin→$\\\\sin$, 1/2 mv^2→$\\\\frac{1}{2}mv^2$\n- s^{-1}→$s^{-1}$, E_0 cos(100 pi t)→$E_0\\\\cos(100\\\\pi t)$\n- Do NOT add trailing $ at end of plain text sentences\n\nOTHER RULES:\n- hasImage:true if question has a diagram/figure/graph\n- correctIndexes: 0=A,1=B,2=C,3=D. Numbers 1/2/3/4 → 0/1/2/3\n- A,C in answer key → correctIndexes:[0,2], isMultiCorrect:true\n- Extract all questions in the order they appear`;
+    try {
+        const contentParts = [];
+        for (const img of questionImages) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
+        for (const img of (answerImages || [])) contentParts.push({ type: "image_url", image_url: { url: `data:${getMime(img)};base64,${img}` } });
+        contentParts.push({ type: "text", text: prompt });
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY }, body: JSON.stringify({ model: "meta-llama/llama-4-scout-17b-16e-instruct", max_tokens: 6000, temperature: 0.1, messages: [{ role: "user", content: contentParts }] }) });
+        if (!r.ok) { const e = await r.json(); const msg = (e.error && e.error.message) || "Groq error"; console.error("Groq API error:", msg); return res.status(502).json({ error: msg }); }
+        const data = await r.json();
+        let text = ((data.choices?.[0]?.message?.content) || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
+        text = text.replace(/\s*\$\\\$\s*"/g, '"').replace(/\s*\$\\s\$\s*"/g, '"');
+        const arrStart = text.indexOf("["), arrEnd = text.lastIndexOf("]");
+        if (arrStart === -1 || arrEnd === -1) return res.status(500).json({ error: "AI did not return valid JSON." });
+        text = text.slice(arrStart, arrEnd + 1);
+        let parsed;
+        try { parsed = JSON.parse(text); } catch { text = text.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}"); try { parsed = JSON.parse(text); } catch { return res.status(500).json({ error: "Could not parse AI response. Try clearer images." }); } }
+        if (!Array.isArray(parsed) || !parsed.length) return res.status(500).json({ error: "No questions found." });
+        parsed = parsed.map(q => { if (!q.correctIndexes?.length) q.correctIndexes = [typeof q.correctIndex === "number" ? q.correctIndex : 0]; q.isMultiCorrect = q.correctIndexes.length > 1; if (q.question) q.question = q.question.replace(/\s*\$\\\$\s*$/, "").trim(); q.options = (q.options || []).map(o => (o || "").replace(/\s*\$\\\$\s*$/, "").trim()); return q; });
+        res.json({ questions: parsed });
+    } catch (e) { console.error("Extract error:", e); res.status(500).json({ error: "Server error: " + e.message }); }
 });
 
-app.use((req, res) => {
-	res.status(404).json({ error: "Not found" });
-});
 
-app.use((err, req, res, next) => {
-	console.error("Unhandled:", err);
-	res.status(500).json({ error: "Internal server error" });
-});
+// ── Catch-all: no stack traces leaked to clients
+app.use((req, res) => res.status(404).json({ error: "Not found" }));
+app.use((err, req, res, next) => { console.error("Unhandled:", err); res.status(500).json({ error: "Internal server error" }); });
 
-initDB()
-	.then(() => loadQuestions())
-	.then(() => {
-		app.listen(PORT, () => {
-			console.log(`Server on port ${PORT}`);
-			console.log("GROQ_API_KEY:", GROQ_API_KEY ? "set" : "MISSING");
-			console.log("TURSO_DATABASE_URL:", process.env.TURSO_DATABASE_URL ? "set" : "MISSING");
-			console.log("Cloudinary:", process.env.CLOUDINARY_CLOUD_NAME ? "configured" : "MISSING");
-		});
-	})
-	.catch((e) => {
-		console.error("FATAL: DB init failed:", e);
-		process.exit(1);
-	});
+app.listen(PORT, () => {
+    console.log(`Server on port ${PORT}`);
+    console.log("GROQ_API_KEY:", process.env.GROQ_API_KEY ? "set" : "MISSING");
+    console.log("Security: lockout, timing-safe login, security headers active");
+});
