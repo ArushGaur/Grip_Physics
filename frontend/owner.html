@@ -2972,11 +2972,11 @@
             </div>
         </div>
 
-        <!-- IMPORT FROM SCREENSHOT -->
+        <!-- SMART IMPORT -->
         <div class="section" id="section-importQuestion">
             <div class="page-header">
-                <h1>Import from Screenshot</h1>
-                <p>AI extracts questions automatically from your screenshots.</p>
+                <h1>Smart Import</h1>
+                <p>Bulk import with AI extraction, validation, and lecture auto-assignment.</p>
             </div>
             <div class="panel">
                 <div class="form-row">
@@ -2985,54 +2985,54 @@
                             id="existingChapters2"></datalist></div>
                     <div class="field"><label>Starting Lecture Number</label><input id="imp-lecture" type="number"
                             min="1" placeholder="e.g. 4">
-                        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">3 questions → lectures 4,
-                            5, 6</div>
+                        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">Questions are grouped and
+                            assigned from this lecture onward.</div>
                     </div>
                     <div class="field"><label>Topic Name</label><input id="imp-topic" placeholder="e.g. Introduction">
                     </div>
                 </div>
                 <div class="field" style="margin-top:8px">
-                    <label>📄 Question Screenshots <span style="color:var(--accent);font-weight:500">— paste (Ctrl+V),
-                            drag & drop, or click</span></label>
+                    <label>Question Sheets <span style="color:var(--accent);font-weight:500">- paste (Ctrl+V),
+                            drag and drop, or click</span></label>
                     <div class="upload-zone" id="qZone" tabindex="0">
                         <input type="file" accept="image/*" multiple id="qFileInput" onchange="handleQFiles(this)">
-                        <div class="upload-icon">📸</div>
-                        <p><strong>Click, drag & drop, or paste</strong> — multiple screenshots supported</p>
+                        <div class="upload-icon">SCAN</div>
+                        <p><strong>Add one or more pages</strong> - best quality improves extraction accuracy</p>
                     </div>
                     <div id="qPreviews" class="multi-preview-grid"></div>
                 </div>
                 <div class="field">
-                    <label>🔑 Answer Key</label>
+                    <label>Answer Key Source</label>
                     <div class="answer-key-tabs">
-                        <div class="ak-tab active" id="ak-tab-screenshot" onclick="switchAKTab('screenshot')">📸
-                            Screenshot(s)</div>
-                        <div class="ak-tab" id="ak-tab-manual" onclick="switchAKTab('manual')">✏️ Type Manually</div>
+                        <div class="ak-tab active" id="ak-tab-screenshot" onclick="switchAKTab('screenshot')">Image
+                            Key</div>
+                        <div class="ak-tab" id="ak-tab-manual" onclick="switchAKTab('manual')">Manual Key</div>
                     </div>
                     <div id="ak-screenshot-panel">
                         <div class="upload-zone" id="aZone" tabindex="0">
                             <input type="file" accept="image/*" multiple id="aFileInput" onchange="handleAFiles(this)">
-                            <div class="upload-icon">🔑</div>
-                            <p><strong>Click, drag & drop, or paste</strong> the answer key screenshot(s)</p>
+                            <div class="upload-icon">KEY</div>
+                            <p><strong>Add answer key image(s)</strong> - optional if you use manual key</p>
                         </div>
                         <div id="aPreviews" class="multi-preview-grid"></div>
                     </div>
                     <div id="ak-manual-panel" style="display:none">
                         <textarea id="manualAnswerKey"
-                            placeholder="Type answer key e.g.:&#10;1-C&#10;2-A,D (multi-correct)&#10;3-B"
+                            placeholder="Type answer key, for example:&#10;1-C&#10;2-A,D&#10;3-B"
                             style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.85rem;resize:vertical;outline:none;height:120px;margin-top:2px"></textarea>
-                        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:5px">Format: number —
-                            letter(s). Comma for multi-correct.</div>
+                        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:5px">Format: question number -
+                            letter(s), comma for multi-correct.</div>
                     </div>
                 </div>
                 <div class="extract-status" id="extractStatus"></div>
-                <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>🤖
-                    Extract Questions with AI</button>
+                <button class="btn btn-primary btn-full mt-20" id="extractBtn" onclick="extractWithAI()" disabled>Run
+                    Smart Import</button>
             </div>
             <div id="extractedList" style="display:none">
                 <div class="panel">
                     <div
                         style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-                        <div class="panel-title" style="margin-bottom:0">📋 Extracted Questions — Review & Edit</div>
+                        <div class="panel-title" style="margin-bottom:0">Extracted Questions - Review and Edit</div>
                         <div style="display:flex;gap:8px">
                             <button class="btn btn-ghost" id="undoBtn" onclick="undoAction()" disabled
                                 style="padding:6px 12px;font-size:0.8rem" title="Ctrl+Z">↩ Undo</button>
@@ -3040,12 +3040,12 @@
                                 style="padding:6px 12px;font-size:0.8rem" title="Ctrl+Y">↪ Redo</button>
                         </div>
                     </div>
-                    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:14px">Each question gets its own
-                        lecture. Multi-correct shows ✦. Questions with diagrams show 🖼 with extracted image.</p>
+                    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:14px">Verify text, options, answer
+                        keys, and lecture number before saving.</p>
                     <div id="extractedQContainer"></div>
                     <div class="flex-end mt-20">
                         <button class="btn btn-ghost" onclick="addExtractedQ()">+ Add Question</button>
-                        <button class="btn btn-primary" onclick="saveExtractedQuestions()">💾 Save All to
+                        <button class="btn btn-primary" onclick="saveExtractedQuestions()">Save All to
                             Database</button>
                     </div>
                 </div>
@@ -4269,81 +4269,90 @@
         ══════════════════════════════════════════════════════════════════ */
         async function extractWithAI() {
             const chapter = document.getElementById("imp-chapter").value.trim();
-            const startLec = parseInt(document.getElementById("imp-lecture").value);
+            const startLec = parseInt(document.getElementById("imp-lecture").value, 10);
             const status = document.getElementById("extractStatus");
+            const extractBtn = document.getElementById("extractBtn");
 
             if (!chapter) { showErrorModal("Please enter a chapter name.", "Missing fields"); return; }
-            if (!startLec || startLec < 1) { showErrorModal("Please enter a starting lecture number.", "Invalid lecture"); return; }
-            if (!qImagesBase64.length) { showErrorModal("Please upload at least one question screenshot.", "Missing screenshots"); return; }
+            if (!Number.isInteger(startLec) || startLec < 1) { showErrorModal("Please enter a valid starting lecture number.", "Invalid lecture"); return; }
+            if (!qImagesBase64.length) { showErrorModal("Upload at least one question sheet image.", "Missing sheets"); return; }
+            if (qImagesBase64.length > 12) {
+                showErrorModal("You can import up to 12 question images at once for stable extraction. Please split into batches.", "Batch limit");
+                return;
+            }
 
             const manualAK = document.getElementById("manualAnswerKey").value.trim();
-            const useManual = document.getElementById("ak-tab-manual").classList.contains("active") && manualAK;
+            const isManualTab = document.getElementById("ak-tab-manual").classList.contains("active");
+            const useManual = isManualTab && manualAK.length > 0;
             if (!useManual && !aImagesBase64.length) {
-                showErrorModal("Please upload an answer key screenshot or switch to manual entry.", "Missing answer key");
+                showErrorModal("Provide answer key images or switch to manual key mode.", "Missing answer key");
                 return;
             }
 
             status.className = "extract-status loading";
             status.style.display = "block";
-            status.innerHTML = '<span class="spinner"></span>&nbsp; Sending to AI — detecting questions, equations, and diagrams…';
-            document.getElementById("extractBtn").disabled = true;
+            status.innerHTML = '<span class="spinner"></span>&nbsp; Running smart extraction and validation...';
+            extractBtn.disabled = true;
             document.getElementById("extractedList").style.display = "none";
 
             try {
-                const payload = { questionImages: qImagesBase64 };
+                const payload = {
+                    questionImages: qImagesBase64,
+                    options: {
+                        strictValidation: true,
+                        recoverMissing: true,
+                        maxQuestionsPerImage: 40
+                    }
+                };
                 if (useManual) payload.manualAnswerKey = manualAK;
                 else payload.answerImages = aImagesBase64;
 
                 const r = await fetch(`${API_BASE}/api/admin/extract`, {
-                    method: "POST", credentials: "include",
+                    method: "POST",
+                    credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(data.error || "Extraction failed on server");
 
-                if (!r.ok) { const e = await r.json(); throw new Error(e.error || "Server error"); }
-                const data = await r.json();
-                const parsed = data.questions;
-                if (!Array.isArray(parsed) || !parsed.length) throw new Error("No questions found");
+                const parsed = Array.isArray(data.questions) ? data.questions : [];
+                if (!parsed.length) throw new Error("No questions were extracted. Try clearer images or smaller batches.");
 
                 pushUndo(snapshotState());
 
-                // Process AI-detected images with OpenCV enhancement where available
-                const cvReady = isOpenCVReady();
-                status.innerHTML = `<span class="spinner"></span>&nbsp; Processing ${parsed.length} question(s) — extracting images${cvReady ? " (OpenCV ✓)" : ""} and equations…`;
+                status.innerHTML = `<span class="spinner"></span>&nbsp; Post-processing ${parsed.length} extracted question(s)...`;
                 await processAIResults(parsed, qImagesBase64);
 
-                extractedQuestions = parsed.map(q => ({
+                extractedQuestions = parsed.map((q, idx) => ({
                     ...q,
-                    assignedLecture: startLec,
+                    assignedLecture: startLec + idx,
                     manualImageB64: null
                 }));
-
-                const imgCount = parsed.filter(q => q.hasImage).length;
-                const imgDetected = parsed.filter(q => q.hasImage && q.extractedImageB64).length;
-                const imgManual = imgCount - imgDetected;
-                const multiCount = parsed.filter(q => q.isMultiCorrect).length;
-
-                let summary = `✅ Found ${parsed.length} question(s) — all assigned to Lecture ${startLec}.`;
-                if (multiCount) summary += ` ${multiCount} multi-correct.`;
-
-                if (imgCount) summary += ` 🖼 ${imgCount} with diagram(s)`;
-                if (imgDetected && imgCount) summary += ` (${imgDetected} auto-cropped by AI`;
-                if (imgManual && imgCount) summary += imgDetected ? `, <strong>${imgManual} need manual upload</strong>)` : ` (<strong>${imgManual} need manual upload</strong>)`;
-                else if (imgDetected && imgCount) summary += `)`;
-                summary += `.`;
-
-                status.className = "extract-status success";
-                status.innerHTML = summary;
 
                 renderExtractedQuestions(extractedQuestions);
                 document.getElementById("extractedList").style.display = "block";
 
+                const diag = data.diagnostics || {};
+                const recovered = Number(diag.recoveredCount || 0);
+                const deduped = Number(diag.deduplicatedCount || 0);
+                const lowConfidence = Number(diag.lowConfidenceCount || 0);
+                const multiCount = extractedQuestions.filter(q => q.isMultiCorrect).length;
+
+                let summary = `Imported ${parsed.length} question(s). Lecture range: ${startLec} to ${startLec + parsed.length - 1}.`;
+                if (multiCount) summary += ` Multi-correct: ${multiCount}.`;
+                if (recovered) summary += ` Recovered: ${recovered}.`;
+                if (deduped) summary += ` Deduplicated: ${deduped}.`;
+                if (lowConfidence) summary += ` ${lowConfidence} item(s) marked low-confidence, review carefully.`;
+
+                status.className = "extract-status success";
+                status.textContent = summary;
             } catch (err) {
                 status.className = "extract-status error";
-                status.innerHTML = `❌ ${err.message}`;
+                status.textContent = `Import failed: ${err.message}`;
+            } finally {
+                extractBtn.disabled = false;
             }
-
-            document.getElementById("extractBtn").disabled = false;
         }
 
         /* ══════════════════════════════════════════════════════════════════
