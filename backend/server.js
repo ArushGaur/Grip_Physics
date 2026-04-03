@@ -967,255 +967,26 @@ app.post("/api/admin/migrate", requireAdmin, async (req, res) => {
 
 app.post("/api/admin/extract", requireAdmin, async (req, res) => {
 	try {
-		const { questionImages, answerImages, manualAnswerKey } = req.body || {};
+		const { questionImages, answerImages, manualAnswerKey, options } = req.body || {};
 		if (!Array.isArray(questionImages) || !questionImages.length) {
-			return res.status(400).json({ error: "At least one question image required" });
+			return res.status(400).json({ error: "At least one question image is required." });
+		}
+		if (questionImages.length > 12) {
+			return res.status(400).json({ error: "Maximum 12 question images per import." });
 		}
 		if (!GROQ_API_KEY) return res.status(500).json({ error: "GROQ_API_KEY not set on server" });
 
-		const answerContext = manualAnswerKey?.trim()
-			? `ANSWER KEY:\n${manualAnswerKey.trim()}\nUse this to fill correctIndexes.`
-			: Array.isArray(answerImages) && answerImages.length
-				? "Answer key images are provided. Use them to infer correctIndexes."
-				: "If no answer key is visible, set correctIndexes to [0] as placeholder.";
+		const strictValidation = options?.strictValidation !== false;
+		const recoverMissing = options?.recoverMissing !== false;
+		const maxQuestionsPerImage = clamp(parseInt(options?.maxQuestionsPerImage, 10) || 40, 5, 80);
 
-		const EXTRACTION_SYSTEM = `You extract physics MCQ questions from screenshots. THIS IS CRITICAL: EXTRACT EVERY SINGLE QUESTION VISIBLE.
-Return ONLY a JSON array of objects:
-{
-  "question": "...",
-  "options": ["A","B","C","D"],
-  "correctIndexes": [0],
-  "isMultiCorrect": false,
-  "hasImage": false,
-  "imageRegion": null
-}
-
-ABSOLUTE RULE - DO NOT SKIP ANY QUESTIONS:
-0) MANDATORY: Extract EVERY numbered question (1., 2., 3., etc.) visible in the screenshot. Do NOT omit any question for any reason.
-   If you see question numbers 1 through 15, output exactly 15 questions. If you see numbers 1,2,3,5,6 (no 4), output 5 questions.
-   Count the questions before extracting - verify your count matches visible question numbers.
-1) Read two-column pages: left column top-to-bottom first, then right column top-to-bottom. Extract ALL numbered questions in order.
-2) If one question is split at the bottom of image N and top of image N+1, keep text faithful; backend will merge.
-3) Always return exactly 4 options per question (fill missing with "").
-4) Preserve equations using $...$ and $$...$$. Keep mathematical symbols, superscripts, subscripts, fractions, roots, and units intact.
-5) hasImage=true only when question references a figure/graph/circuit.
-6) imageRegion uses fractions {x,y,w,h} in [0,1] for that figure, else null.
-
-MULTI-LINE OPTION RULES (very important):
-7) Options labeled (a)(b)(c)(d) may wrap across multiple lines. Collect ALL lines belonging to each option label into a single option string. Do NOT split one option into two entries.
-8) When a question has only 2 visible option labels on one side and 2 on the other side of the column (e.g. (a)(b) left, (c)(d) right), treat them all as the 4 options of the SAME question.
-9) If a question body continues across two columns (e.g. question text in left column, options (c)(d) in right column), join them as one question. Do NOT treat (c) or (d) as a new question.
-
-PARTIAL / SPLIT QUESTION RULES:
-10) A question whose options list ends with only (a) and (b) visible means (c) and (d) are cut off. Mark options[2] and options[3] as "" — do NOT invent text.
-11) Question 8 pattern: "When two waves ... interfere" has 4 sub-options (a)(b)(c)(d). All 4 must be captured even if (c)(d) appear at the top of the next column.
-12) Question 13 pattern: questions mentioning "beats per second" with a number like "6 beats per second" are complete questions — capture the full body including all embedded numbers before listing options.
-
-NUMBERING:
-13) Every question starts with a number like "1.", "2.", etc. Use this to avoid merging separate questions.
-14) Text starting with a lower-case letter like "(a)", "(b)" immediately after a question stem = answer option, NOT a new question.
-15) If you are unsure, keep the question with partial text/options rather than dropping it.
-
-EDGE CASES TO WATCH FOR:
-16) Questions that look like diagrams, tables, or figure references - if they have a number and options, extract them.
-17) Very long questions (spanning 3+ lines) - capture the ENTIRE question text, do not truncate.
-18) Dense text or small font - read carefully, extract even if hard to read.
-19) Hidden or faint questions - extract if visible at all.
-20) Questions at page boundaries - extract even if partially cut off.
-
-${answerContext}`;
-
-		const answerPartsAll = Array.isArray(answerImages) ? answerImages.map(toImgPart) : [];
-		const answerParts = answerPartsAll.slice(0, 2);
-		if (answerPartsAll.length > answerParts.length) {
-			console.log(`[extract] answer key images limited to ${answerParts.length}/${answerPartsAll.length} to control TPM`);
-		}
-
-		const extracted = [];
-		const seen = new Set();
-
-		function keyOf(q) {
-			const stem = String(q?.question || "").toLowerCase().replace(/\s+/g, " ").slice(0, 220);
-			const opts = (Array.isArray(q?.options) ? q.options : []).map((x) => String(x || "").toLowerCase().trim()).join("|");
-			return `${stem}||${opts}`;
-		}
-
-		function pushUnique(q, sourceImageIndex = null) {
-			const normalized = normalizeQuestion({ ...q, imageSourceIndex: sourceImageIndex });
-			const k = keyOf(normalized);
-			if (seen.has(k)) return false;
-			seen.add(k);
-			extracted.push(normalized);
-			return true;
-		}
-
-		function getNum(q) {
+		function getQuestionNumber(q) {
 			const m = String(q?.question || "").match(/^\s*(?:q\.?\s*)?(\d{1,3})\s*[\).:\u2013\-]/i);
 			if (!m) return null;
 			const n = parseInt(m[1], 10);
 			return Number.isInteger(n) ? n : null;
 		}
 
-		for (let i = 0; i < questionImages.length; i++) {
-			const parts = [toImgPart(questionImages[i]), ...answerParts];
-			const raw = await callGroq(parts, EXTRACTION_SYSTEM, "Extract all questions from this screenshot. Return ONLY JSON array.", 2200);
-			const arr = parseJsonArray(raw) || [];
-			for (const q of arr) pushUnique(q, i);
-
-			// Recovery pass 1: Count visible question numbers and find any gaps
-			const countPrompt = `Analyze this screenshot carefully. 
-1) Count how many numbered question headers appear (1., 2., 3., etc.)
-2) What are the question numbers visible?
-3) Are there any questions that might have been missed by prior extraction?
-
-CRITICAL: Look for:
-- Questions at edges of the page
-- Questions with unusual formatting
-- Multi-part questions with sub-sections
-- Questions with equations or complex math notation
-- Questions that might be hard to read
-
-Return JSON: {"visibleCount": N, "visibleNumbers": [1,2,3,...], "potentiallyMissed": "description of any questions that might need re-extraction"}`;
-			const countRaw = await callGroq(parts, "You are a question counter and detection specialist.", countPrompt, 800, 0.0);
-			const countInfo = tryParse(cleanJson(countRaw)) || {};
-			const visibleCount = countInfo.visibleCount || 0;
-			const extractedCount = arr.length;
-			console.log(`[extract] Image ${i}: visible=${visibleCount}, extracted=${extractedCount}, potentially_missed="${countInfo.potentiallyMissed}"`);
-
-			// Recovery pass 2: If extraction count < visible count, be aggressive
-			if (extractedCount < visibleCount * 0.8) {
-				const aggressiveRecoveryPrompt = `CRITICAL FAILURE: Only ${extractedCount} questions extracted but ${visibleCount} are visible.
-RE-EXTRACT AGGRESSIVELY - we missed ${Math.max(1, visibleCount - extractedCount)} or more questions.
-
-Look for:
-- All numbered questions (1., 2., 3., ... Q1, Q2, etc.)
-- Multi-column layouts: extract LEFT column first top-to-bottom, then RIGHT column
-- Questions that wrap across lines
-- Questions with equations, graphs, or diagrams
-- Questions at the very edges/boundaries
-
-PREVIOUSLY EXTRACTED (DO NOT RE-EXTRACT THESE):
-${JSON.stringify(arr).slice(0, 6000)}
-
-FIND AND RETURN NEW QUESTIONS NOT IN THE ABOVE LIST.
-Return ONLY JSON array. Include even partial questions if visible.`;
-				const aggressiveRaw = await callGroq(parts, EXTRACTION_SYSTEM, aggressiveRecoveryPrompt, 1800, 0.1);
-				const aggressiveArr = parseJsonArray(aggressiveRaw) || [];
-				console.log(`[extract] Aggressive recovery pass: found ${aggressiveArr.length} additional questions`);
-				for (const q of aggressiveArr) {
-					if (pushUnique(q, i)) {
-						console.log(`[extract] Added from recovery: "${String(q.question || "").slice(0, 60)}..."`);
-					}
-				}
-			} else {
-				// Recovery pass 3: Standard recovery for edge cases even when count looks OK
-				const standardRecoveryPrompt = `You already extracted ${extractedCount} questions from this screenshot.
-FIND ONLY the missed questions that are visible but NOT in the prior extraction list.
-Pay special attention to:
-- Equation-heavy questions
-- Questions at column boundaries  
-- Questions with very short or very long text
-- Questions with unusual formatting
-- Questions at page edges
-
-PRIOR EXTRACTION (DO NOT RE-EXTRACT):
-${JSON.stringify(arr).slice(0, 5000)}
-
-Return ONLY JSON array of ADDITIONAL questions. If nothing is missing, return [] exactly.`;
-				const standardRaw = await callGroq(parts, EXTRACTION_SYSTEM, standardRecoveryPrompt, 1500, 0.0);
-				const standardArr = parseJsonArray(standardRaw) || [];
-				for (const q of standardArr) {
-					if (pushUnique(q, i)) {
-						console.log(`[extract] Added from standard recovery: "${String(q.question || "").slice(0, 60)}..."`);
-					}
-				}
-			}
-		}
-
-		// Cross-image merge pass: ask AI directly for boundary fragment merge.
-		for (let i = 1; i < questionImages.length; i++) {
-			const leftCandidates = extracted
-				.map((q, idx) => ({ q, idx }))
-				.filter((x) => x.q.imageSourceIndex === i - 1);
-			const rightCandidates = extracted
-				.map((q, idx) => ({ q, idx }))
-				.filter((x) => x.q.imageSourceIndex === i);
-
-			if (!leftCandidates.length || !rightCandidates.length) continue;
-
-			const left = leftCandidates[leftCandidates.length - 1];
-			const right = rightCandidates[0];
-
-			const mergePrompt = `These are two consecutive screenshots. A question may be split across them.
-
-Fragment from image 1 (last question):
-Question: "${String(left.q.question || "").slice(0, 300)}"
-Options: ${JSON.stringify((left.q.options || []).slice(0, 4))}
-
-Fragment from image 2 (first question):
-Question: "${String(right.q.question || "").slice(0, 300)}"
-Options: ${JSON.stringify((right.q.options || []).slice(0, 4))}
-
-Return only JSON:
-{"split":true,"merged":{"question":"...","options":["...","...","...","..."],"correctIndexes":[0],"isMultiCorrect":false,"hasImage":false,"imageRegion":null}}
-or
-{"split":false}
-
-Mark split=true when:
-- IMAGE 1 bottom question has fewer than 4 real options (empty string "" counts as missing) AND image 2 top text contains the missing (c)/(d) options for that same question.
-- OR IMAGE 1 bottom text/options clearly continue in IMAGE 2 top text/options.
-- The fragment from image 2 starts with an option label like "(c)" or "(d)" or lower-case continuation text — NOT a new numbered question.
-
-Mark split=false when image 2 starts with a new numbered question (e.g. "9.", "10.").
-
-When merging: combine the question text faithfully and fill in all 4 options from both fragments. Preserve full merged text.`;
-
-			const mergeRaw = await callGroq(
-				[toImgPart(questionImages[i - 1]), toImgPart(questionImages[i]), ...answerParts],
-				"You are a strict JSON boundary merge assistant.",
-				mergePrompt,
-				700,
-				0.0
-			);
-			const mergeTxt = cleanJson(mergeRaw);
-			const s = mergeTxt.indexOf("{");
-			const e = mergeTxt.lastIndexOf("}");
-			const merged = s !== -1 && e > s ? tryParse(mergeTxt.slice(s, e + 1)) : null;
-
-			if (merged?.split === true && merged?.merged) {
-				const mergedQ = normalizeQuestion({ ...merged.merged, imageSourceIndex: i - 1 });
-				extracted[left.idx] = mergedQ;
-				extracted.splice(right.idx, 1);
-				console.log(`[extract] merged split boundary image ${i} -> ${i + 1}`);
-			} else {
-				console.log(`[extract] no boundary merge for image ${i} -> ${i + 1}`);
-			}
-		}
-
-		// Dedup by question number: keep richer option coverage.
-		const bestByNum = new Map();
-		for (const q of extracted) {
-			const n = getNum(q);
-			if (n === null) continue;
-			const prev = bestByNum.get(n);
-			const score = (x) => (x.options || []).filter((o) => String(o || "").trim()).length;
-			if (!prev || score(q) > score(prev)) bestByNum.set(n, q);
-		}
-
-		const final = [];
-		const seenNum = new Set();
-		for (const q of extracted) {
-			const n = getNum(q);
-			if (n === null) {
-				final.push(q);
-				continue;
-			}
-			if (seenNum.has(n)) continue;
-			seenNum.add(n);
-			final.push(bestByNum.get(n) || q);
-		}
-
-		// Fuzzy dedupe pass for near-identical repeats (common OCR/extraction issue).
 		function stemSig(q) {
 			return String(q?.question || "")
 				.toLowerCase()
@@ -1225,84 +996,160 @@ When merging: combine the question text faithfully and fill in all 4 options fro
 				.trim();
 		}
 
-		function optionSet(q) {
-			return new Set((Array.isArray(q?.options) ? q.options : [])
-				.map((o) => String(o || "").toLowerCase().replace(/\s+/g, " ").trim())
-				.filter(Boolean));
+		function qualityScore(q) {
+			const stem = stemSig(q);
+			const opts = (Array.isArray(q?.options) ? q.options : []).filter((x) => String(x || "").trim()).length;
+			const hasAnswer = Array.isArray(q?.correctIndexes) && q.correctIndexes.length ? 1 : 0;
+			return stem.length + opts * 50 + hasAnswer * 20;
 		}
 
-		function richness(q) {
-			const stemLen = stemSig(q).length;
-			const filledOpts = (Array.isArray(q?.options) ? q.options : []).filter((o) => String(o || "").trim()).length;
-			return stemLen + filledOpts * 40;
-		}
-
-		function areNearDup(a, b) {
-			// If both have clear question numbers and they're different, they're NOT duplicates
-			const numA = getNum(a);
-			const numB = getNum(b);
-			if (numA !== null && numB !== null && numA !== numB) return false;
-
-			const sa = stemSig(a);
-			const sb = stemSig(b);
-			if (!sa || !sb) return false;
-			
-			// For duplicates, require EXACT stem match, not substring
-			// Substring matching causes false positives on similar but different questions
-			const stemMatch = sa === sb;
-			if (!stemMatch) return false;
-			
-			const oa = optionSet(a);
-			const ob = optionSet(b);
-			if (!oa.size || !ob.size) {
-				// If one has no options, very likely a duplicate
-				return true;
+		function parseManualAnswerMap(txt) {
+			const map = new Map();
+			const lines = String(txt || "").split(/\r?\n/);
+			for (const rawLine of lines) {
+				const line = rawLine.trim();
+				if (!line) continue;
+				const m = line.match(/^(\d{1,3})\s*[-:.]\s*([A-Da-d](?:\s*,\s*[A-Da-d])*)\s*$/);
+				if (!m) continue;
+				const qn = parseInt(m[1], 10);
+				const idx = [...new Set(
+					m[2]
+						.split(",")
+						.map((x) => "abcd".indexOf(String(x).trim().toLowerCase()))
+						.filter((x) => x >= 0)
+				)];
+				if (Number.isInteger(qn) && idx.length) map.set(qn, idx);
 			}
-			
-			// Require at least 3 options matching (more strict than before)
-			let overlap = 0;
-			oa.forEach((x) => { if (ob.has(x)) overlap++; });
-			return overlap >= 3;
+			return map;
 		}
 
-		const deduped = [];
-		const dedupLog = [];
-		for (const q of final) {
-			const idx = deduped.findIndex((x) => areNearDup(x, q));
-			if (idx === -1) {
-				deduped.push(q);
-				continue;
-			}
-			// We found a likely duplicate
-			if (richness(q) > richness(deduped[idx])) {
-				dedupLog.push(`Kept richer version of Q${getNum(q)}: "${String(q.question || "").slice(0, 50)}..."`);
-				deduped[idx] = q;
-			} else {
-				dedupLog.push(`Removed duplicate of Q${getNum(q)}: "${String(q.question || "").slice(0, 50)}..."`);
-			}
-		}
-		if (dedupLog.length) {
-			console.log(`[extract] deduplication: ${dedupLog.join(" | ")}`);
-		}
-
-		if (!deduped.length) {
-			return res.status(500).json({ error: "Could not extract any questions. Please upload a cleaner screenshot." });
+		async function extractAnswerMapFromImages(images) {
+			const map = new Map();
+			if (!Array.isArray(images) || !images.length) return map;
+			const parts = images.slice(0, 4).map(toImgPart);
+			const answerRaw = await callGroq(
+				parts,
+				"You are a strict answer-key parser.",
+				`Extract answer key mapping from these images. Return ONLY JSON object like {"1":[2],"2":[0,3]}. Use indexes A=0,B=1,C=2,D=3. No markdown.`,
+				900,
+				0.0
+			);
+			const parsed = tryParse(cleanJson(answerRaw)) || {};
+			Object.entries(parsed).forEach(([k, v]) => {
+				const qn = parseInt(k, 10);
+				const idx = Array.isArray(v)
+					? [...new Set(v.map((n) => parseInt(n, 10)).filter((n) => Number.isInteger(n) && n >= 0 && n < 4))]
+					: [];
+				if (Number.isInteger(qn) && idx.length) map.set(qn, idx);
+			});
+			return map;
 		}
 
-		const questions = deduped.map((q) => {
-			const next = normalizeQuestion(q);
-			if (next.hasImage && !Number.isInteger(next.imageSourceIndex)) next.imageSourceIndex = 0;
-			if (Number.isInteger(next.imageSourceIndex)) {
-				next.imageSourceIndex = clamp(next.imageSourceIndex, 0, questionImages.length - 1);
+		const answerMap = manualAnswerKey?.trim()
+			? parseManualAnswerMap(manualAnswerKey)
+			: await extractAnswerMapFromImages(Array.isArray(answerImages) ? answerImages : []);
+
+		const extractionSystem = `Extract physics MCQs from screenshot and return ONLY JSON array.
+Each item must contain:
+{"question":"...","options":["...","...","...","..."],"hasImage":false,"imageRegion":null}
+Rules:
+1) Preserve equations in $...$ or $$...$$.
+2) Always return exactly 4 options (use empty strings when missing).
+3) Do not invent missing text.
+4) For diagram-based questions set hasImage=true and provide imageRegion fractions x,y,w,h in [0,1] when possible.
+5) Include all visible numbered questions in reading order.`;
+
+		const extracted = [];
+		let recoveredCount = 0;
+
+		for (let i = 0; i < questionImages.length; i++) {
+			const imagePart = toImgPart(questionImages[i]);
+			const raw = await callGroq(
+				[imagePart],
+				extractionSystem,
+				`Extract all visible questions from this screenshot. Max ${maxQuestionsPerImage} items. Return only JSON array.`,
+				2200,
+				0.0
+			);
+			let arr = parseJsonArray(raw) || [];
+
+			if (recoverMissing && arr.length < 2) {
+				const retryRaw = await callGroq(
+					[imagePart],
+					extractionSystem,
+					"Retry extraction aggressively. Capture every numbered question including partial ones. Return only JSON array.",
+					2200,
+					0.1
+				);
+				const retryArr = parseJsonArray(retryRaw) || [];
+				if (retryArr.length > arr.length) {
+					recoveredCount += retryArr.length - arr.length;
+					arr = retryArr;
+				}
 			}
-			return next;
+
+			arr.slice(0, maxQuestionsPerImage).forEach((q) => {
+				extracted.push({ ...q, imageSourceIndex: i });
+			});
+		}
+
+		if (!extracted.length) {
+			return res.status(500).json({ error: "No questions extracted. Try clearer images or smaller import batches." });
+		}
+
+		const bestByKey = new Map();
+		for (const q of extracted) {
+			const num = getQuestionNumber(q);
+			const key = num !== null ? `num:${num}` : `sig:${stemSig(q)}::${(q.options || []).join("|").slice(0, 160).toLowerCase()}`;
+			const prev = bestByKey.get(key);
+			if (!prev || qualityScore(q) > qualityScore(prev)) bestByKey.set(key, q);
+		}
+
+		let deduplicatedCount = extracted.length - bestByKey.size;
+		const normalized = [...bestByKey.values()].map((q) => normalizeQuestion(q));
+
+		normalized.sort((a, b) => {
+			const na = getQuestionNumber(a);
+			const nb = getQuestionNumber(b);
+			if (na !== null && nb !== null) return na - nb;
+			if (na !== null) return -1;
+			if (nb !== null) return 1;
+			return String(a.question || "").localeCompare(String(b.question || ""));
 		});
 
-		const withImg = questions.filter((q) => q.hasImage).length;
-		const withRegion = questions.filter((q) => q.imageRegion).length;
-		console.log(`[extract] returning ${questions.length} questions, hasImage=${withImg}, imageRegion=${withRegion}`);
+		let lowConfidenceCount = 0;
+		for (const q of normalized) {
+			if (q.hasImage && Number.isInteger(q.imageSourceIndex)) {
+				q.imageSourceIndex = clamp(q.imageSourceIndex, 0, questionImages.length - 1);
+			}
 
-		res.json({ questions });
+			const n = getQuestionNumber(q);
+			if (n !== null && answerMap.has(n)) {
+				q.correctIndexes = answerMap.get(n);
+				q.isMultiCorrect = q.correctIndexes.length > 1;
+			}
+
+			if (strictValidation) {
+				const filledOpts = (q.options || []).filter((o) => String(o || "").trim()).length;
+				if (!String(q.question || "").trim() || filledOpts < 2) lowConfidenceCount++;
+			}
+		}
+
+		const questions = normalized.filter((q) => String(q.question || "").trim());
+		if (!questions.length) {
+			return res.status(500).json({ error: "Extraction produced invalid questions only. Try better quality source images." });
+		}
+
+		res.json({
+			questions,
+			diagnostics: {
+				recoveredCount,
+				deduplicatedCount,
+				lowConfidenceCount,
+				answerKeyEntries: answerMap.size,
+				inputImages: questionImages.length,
+			},
+		});
 	} catch (e) {
 		console.error("/api/admin/extract error:", e);
 		res.status(500).json({ error: e.message || "Extraction failed" });
