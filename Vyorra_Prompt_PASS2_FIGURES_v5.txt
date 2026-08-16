@@ -1,0 +1,146 @@
+VYORRA — JEE/NEET EXTRACTION, PASS 2 OF 2: FIGURES ONLY
+=======================================================
+
+This is the second half of a two-pass digitisation. Pass 1 already captured
+all the text — questions, options, answers, solutions — into one JSON file.
+Nothing here needs to repeat any of that.
+
+This pass has one job: redraw every printed figure on these pages as an SVG,
+and tag each one with the question number and the slot it belongs to. My
+importer merges this file into the questions file by question number, so the
+tags are the whole point — an untagged drawing has nowhere to go.
+
+
+OUTPUT SHAPE
+------------
+A bare JSON array. One object per figure. A question with three figures gets
+three objects.
+
+[
+  { "question_number": 102, "target": "solution", "svg": "<svg …</svg>" },
+  { "question_number": 104, "target": "question", "svg": "<svg …</svg>" },
+  { "question_number": 107, "target": "option_c", "svg": "<svg …</svg>" }
+]
+
+No wrapper object, no markdown fence, no commentary between objects.
+
+
+THE THREE FIELDS
+----------------
+question_number   integer, the number printed on the page. This is what the
+                  merge keys on, so it has to match pass 1 exactly.
+
+target            which slot the figure belongs to:
+
+                  "question"    a diagram attached to the question stem
+                  "option_a"    the figure IS option A
+                  "option_b" / "option_c" / "option_d"
+                  "solution"    a diagram drawn as part of the working
+                  "table"       a figure inside a table cell — also send
+                                "row" and "col", both 0-based, plus
+                                "table_index" if the question has more than
+                                one table
+                  "option_table"  a figure inside an option's table — also
+                                send "option": "a", plus "row" and "col"
+
+svg               the drawing itself, as one line of SVG markup.
+
+Optional: "caption" with a few words describing the figure. I only use it to
+find things by eye when something looks off; it is never shown to students.
+
+
+WHICH SLOT
+----------
+If the figure sits with the question text at the top, it is "question". If it
+sits beside the worked solution lower down, it is "solution". If it is one of
+four small pictures the student chooses between, it is the matching option.
+
+Worth saying plainly: on a solutions booklet, most figures are solution
+figures. An earlier version of these notes claimed solution diagrams were
+rare, which led to them being skipped wholesale on pages that clearly had
+them. Please go by what the page shows. When a figure could arguably belong
+to either the stem or the working, put it on "solution" — it renders in both
+places in my app, and the solution slot is the one that is usually empty.
+
+
+WHAT THE SVG NEEDS TO LOOK LIKE
+-------------------------------
+My importer sanitises everything and then rasterises it to PNG, so a few
+things matter:
+
+  • Start with a plain namespace: <svg xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 260 200"> — a bare URL, not a markdown link. Copy-pasting
+    through a chat window has a habit of turning it into
+    [http://…](http://…%5C) which I then have to repair.
+  • Always include a viewBox. Width/height attributes are optional.
+  • One line per SVG, with the inner double quotes escaped as \" so the JSON
+    stays valid.
+  • Presentation attributes only: stroke, fill, stroke-width. No <style>
+    blocks, no CSS classes.
+  • Nothing that loads or runs anything: no <script>, <foreignObject>,
+    <image>, <iframe>, <use href>, and no on* handlers. These are stripped on
+    import, so a figure that depends on them arrives broken.
+  • Text: font-family="serif" or "sans-serif", font-size 11–16. Label the
+    things the solution refers to — points, axes, angles, given lengths.
+  • Keep each one under roughly 12 KB. These are diagrams, not illustrations:
+    clean lines and correct labels beat shading and gradients.
+
+
+DRAWING GUIDANCE BY TYPE
+------------------------
+Geometry / coordinate geometry: draw the axes with light strokes, mark and
+label every named point, and keep the relative positions plausible — if the
+problem says the point is outside the circle, draw it outside.
+
+Graphs and conics: show the shape and its key features (vertex, focus,
+asymptotes, intercepts) rather than a precise plot. Label intercepts that the
+working uses.
+
+Circuits: standard symbols, straight wires, components labelled with their
+values ($R_1 = 2\Omega$ style labels are fine as plain text).
+
+Mechanics: bodies as simple rectangles or circles, forces as arrows with
+labels at the tip, angles marked with a small arc.
+
+Organic structures: skeletal formulae — lines for bonds, element symbols
+only where they are not carbon, double bonds as parallel lines.
+
+Ray optics: the axis, the lens or mirror, and at least two rays with
+direction arrows.
+
+
+IF A FIGURE CANNOT BE REDRAWN FAITHFULLY
+----------------------------------------
+A photograph, a scanned graph with dozens of plotted points, or anything too
+intricate to reproduce honestly — skip it and mention the number in a short
+line of text after the array. I would much rather upload that one by hand
+than publish a diagram that misleads a student. Please don't emit an empty
+<svg> or a placeholder box for these; an empty figure looks correct in my
+importer and is worse than a missing one.
+
+
+LENGTH
+------
+8 to 12 figures per reply. If there are more, stop after the last complete
+object and tell me which number you reached — I'll ask for the rest. A cut-off
+SVG in the middle of the last object is the one failure I cannot recover.
+
+
+EXAMPLE
+-------
+[
+  {
+    "question_number": 102,
+    "target": "solution",
+    "caption": "A(1,0), B(0,1), C(h,k) on the line x - y = 3",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 240 180\"><line x1=\"20\" y1=\"150\" x2=\"225\" y2=\"150\" stroke=\"#888\" stroke-width=\"1\"/><line x1=\"40\" y1=\"15\" x2=\"40\" y2=\"165\" stroke=\"#888\" stroke-width=\"1\"/><line x1=\"55\" y1=\"160\" x2=\"210\" y2=\"35\" stroke=\"#333\" stroke-width=\"1.5\"/><circle cx=\"70\" cy=\"150\" r=\"3\" fill=\"#333\"/><circle cx=\"40\" cy=\"120\" r=\"3\" fill=\"#333\"/><circle cx=\"165\" cy=\"72\" r=\"3\" fill=\"#333\"/><text x=\"66\" y=\"166\" font-family=\"serif\" font-size=\"12\">A(1,0)</text><text x=\"6\" y=\"118\" font-family=\"serif\" font-size=\"12\">B(0,1)</text><text x=\"172\" y=\"68\" font-family=\"serif\" font-size=\"12\">C(h,k)</text><text x=\"150\" y=\"110\" font-family=\"serif\" font-size=\"11\">x - y = 3</text></svg>"
+  },
+  {
+    "question_number": 110,
+    "target": "table",
+    "row": 0,
+    "col": 1,
+    "caption": "List II entry 1: two blocks on an incline",
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 90\"><path d=\"M10 75 L110 75 L110 30 Z\" fill=\"none\" stroke=\"#333\" stroke-width=\"1.5\"/><rect x=\"72\" y=\"38\" width=\"18\" height=\"12\" fill=\"none\" stroke=\"#333\" stroke-width=\"1.5\" transform=\"rotate(-24 81 44)\"/><text x=\"14\" y=\"70\" font-family=\"serif\" font-size=\"11\">30°</text></svg>"
+  }
+]

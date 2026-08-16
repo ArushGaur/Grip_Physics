@@ -1,0 +1,152 @@
+VYORRA — JEE/NEET EXTRACTION, PASS 1 OF 2: QUESTIONS ONLY
+=========================================================
+
+I digitise question papers and solution booklets into JSON for my own
+question bank. Doing the text and the diagrams in one pass turned out to be
+too much work for one reply, so it is now split into two passes:
+
+  Pass 1 (this prompt)  ->  all the text: questions, options, answers,
+                            solutions. No drawings at all.
+  Pass 2 (other prompt) ->  only the figures, as SVG, tagged with the
+                            question number and slot they belong to.
+
+My importer merges the two files by question number, so the only thing that
+matters here is that every question carries its printed number and an honest
+note about which figures exist.
+
+
+WHAT I NEED FROM YOU
+--------------------
+Read the attached pages and return a bare JSON array. One object per
+question, keys in this order:
+
+  question_number    the printed number, as an integer (101, 102, ...)
+  subject            "Mathematics" | "Physics" | "Chemistry"
+  unit               broad unit, e.g. "Coordinate Geometry"
+  chapter            e.g. "Conic Sections"
+  topic              e.g. "Parabola"
+  year               "2025" or "" if unknown
+  month              "January" or ""
+  day                "22" or ""
+  shift              "Shift 1" | "Shift 2" | ""
+  question_text      the stem, maths in $...$
+  tables             see TABLES below, or null
+  option_a           option text, or "\u200b" if the option is a figure only
+  option_b
+  option_c
+  option_d
+  optionTables       per-option tables, or null (camelCase on purpose)
+  correct_answer     "A"-"D", or "AC" style for multi-correct, or the number
+                     for integer questions, or "NONE"
+  solution           the full worked solution as text, maths in $...$
+  has_image          true if this question has ANY printed figure anywhere
+                     (stem, options, or solution)
+  figures_needed     array naming each slot that has a printed figure, e.g.
+                     ["solution"] or ["question","option_c"] or []
+  image_description  null
+  question_type      "MCQ" | "MSQ" | "INTEGER"
+
+Nothing else. No wrapper object, no markdown fence around the array, no
+commentary between objects.
+
+
+figures_needed — THE ONE FIELD THAT LINKS THE TWO PASSES
+--------------------------------------------------------
+This is how I know what to expect from pass 2, and my importer warns me when
+something listed here never arrives. Please fill it from what is actually
+printed on the page.
+
+Allowed values:
+  "question"                a diagram attached to the stem
+  "option_a" / "_b" / "_c" / "_d"   a diagram used as an option
+  "solution"                a diagram drawn as part of the worked solution
+  "table:R:C"               a figure inside a table cell, row R col C,
+                            both 0-based
+  "option_table:a:R:C"      a figure inside option A's table, row R col C
+
+A note on solution figures, because I got this wrong when I wrote an earlier
+version of these instructions: if the source is a solutions booklet, figures
+in the worked solutions are common, not rare. Earlier I told the model that
+solution diagrams were unusual, and it dutifully reported none even on pages
+that clearly had them. Please judge each page on what it shows. If a figure
+sits next to the working rather than the stem, it belongs to "solution".
+
+
+MATHS FORMATTING
+----------------
+Plain LaTeX between single dollar signs. No backticks anywhere.
+
+  correct:    "question_text": "If $y = mx + 4$ is a tangent, then $b$ is:"
+              "option_a": "$-32$"
+
+  incorrect:  "question_text": "If $`y = mx + 4`$ is a tangent..."
+              "option_a": "$`-32`$"
+
+The backtick form breaks my renderer, and a previous run produced it on every
+single field, so it is worth double-checking before you send.
+
+
+SOLUTIONS
+---------
+Write the solution as it is printed. Please don't work the problem again and
+correct yourself mid-string — text like "...=6\sqrt{3}, recompute: actual
+answer is $8\sqrt{2}$" ends up in front of students exactly as written. If
+the printed answer key disagrees with the printed working, keep the working
+and add a short parenthetical: "(printed answer key says C)".
+
+If a step depends on a figure, describe it in words as well as referring to
+it, so the text still stands alone: "the chord AB, drawn perpendicular to the
+axis, ..." rather than only "as shown in the figure".
+
+
+TABLES
+------
+  "tables": [{ "position": "after_question_text",
+               "headers": ["List I", "List II"],
+               "rows": [[{"text":"A"}, {"text":"1"}]] }]
+
+A cell whose content is a picture: {"text":"","imageNeeded":true} — and add
+"table:R:C" to figures_needed so pass 2 draws it.
+
+
+LENGTH
+------
+15 to 25 questions per reply is comfortable. If you are running out of room,
+stop after the last complete object and tell me the last number you did —
+I'll ask for the next batch. A truncated final object is the one thing I
+cannot recover from, so please end on a complete one.
+
+
+EXAMPLE (one object)
+--------------------
+[
+  {
+    "question_number": 102,
+    "subject": "Mathematics",
+    "unit": "Coordinate Geometry",
+    "chapter": "Straight Lines",
+    "topic": "Locus",
+    "year": "2025",
+    "month": "January",
+    "day": "22",
+    "shift": "Shift 1",
+    "question_text": "Let $A(1,0)$ and $B(0,1)$. A point $C(h,k)$ moves on the line $x - y = 3$. The locus of the centroid of $\\triangle ABC$ is:",
+    "tables": null,
+    "option_a": "$3x - 3y = 8$",
+    "option_b": "$3x - 3y = 2$",
+    "option_c": "$x - y = 2$",
+    "option_d": "$x - y = 8$",
+    "optionTables": null,
+    "correct_answer": "A",
+    "solution": "The centroid is $\\left(\\frac{1+0+h}{3}, \\frac{0+1+k}{3}\\right)$. Writing $x = \\frac{1+h}{3}$ and $y = \\frac{1+k}{3}$ gives $h = 3x-1$ and $k = 3y-1$. Substituting into $h - k = 3$ yields $3x - 3y = 3$, i.e. $3x - 3y = 8$ after using the printed values of $A$ and $B$.",
+    "has_image": true,
+    "figures_needed": ["solution"],
+    "image_description": null,
+    "question_type": "MCQ"
+  }
+]
+
+That question has a small diagram beside its worked solution — points $A$,
+$B$, $C(h,k)$ and the line $x-y=3$ — so has_image is true and
+figures_needed lists "solution", even though no drawing appears in this file.
+Pass 2 supplies it.

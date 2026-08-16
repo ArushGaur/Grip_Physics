@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# WORKER TIER  —  heavy, slow, CPU-bound jobs only
+#
+# This is the image that keeps LibreOffice. It serves NO HTTP traffic; it just
+# pulls paper-generation jobs off the Redis queue.
+#
+# Why this split matters: generating a DOCX/PDF pins a CPU core for several
+# seconds. On a combined server that blocks the event loop and every student
+# request queues behind it. Here, a teacher generating a paper can never slow
+# down a student taking a test.
+#
+# Run 1-2 of these. They scale independently of the API tier.
+#   docker build -f Dockerfile.worker -t grip-worker .
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-slim
+
+# LibreOffice headless for DOCX → PDF, plus tini for clean SIGTERM handling
+# (a worker must finish or safely release its current job before dying).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libreoffice-writer \
+    libreoffice-core \
+    fonts-liberation \
+    python3 \
+    tini \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+
+# How many paper jobs this worker runs at once. Keep it at ~1 per vCPU:
+# LibreOffice is CPU-bound, so over-subscribing makes everything slower.
+ENV WORKER_CONCURRENCY=2
+
+COPY package*.json ./
+RUN npm ci --omit=dev || npm install --omit=dev
+
+COPY . .
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "worker.js"]

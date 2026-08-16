@@ -1,0 +1,211 @@
+Hi! I maintain a JEE question-bank app, and I'm digitizing the attached PDF into JSON for it. Could you extract every question from it?
+
+Heads up on what this PDF is: it's a SOLUTIONS booklet, so most pages are worked solutions rather than clean question statements, and the figures printed in it are usually part of the solution working (a constructed diagram, a sketched curve, a labelled triangle) rather than part of the original question. Both kinds matter to me, and there's a field for each.
+
+My importer renders diagrams from inline SVG, so instead of describing a figure in words (which I can't use), I'd like you to redraw each figure as a small SVG in the JSON. Any figure that doesn't make it into the JSON is one I have to screenshot and paste in by hand, which is the slow part I'm trying to eliminate. A rough, correctly-labelled schematic is much more useful to me than a perfect description.
+
+If a figure isn't reasonably drawable as a schematic — a photograph, a scan of handwriting — just set "image_needed": true on that question and skip its SVG. I'll do those by hand.
+
+
+── Which field a figure belongs in ──────────────────────────────────────
+
+This is the one distinction I'd most like to get right, so a quick guide:
+
+  solution_svg  — a figure that appears next to the worked solution: a curve sketched
+                  while solving, a constructed triangle, a circle drawn tangent to
+                  something, a free-body diagram. In a solutions booklet like this one,
+                  this is where MOST figures belong. If a diagram sits beside the
+                  algebra rather than beside the question statement, it goes here.
+
+  question_svg  — a figure that is part of the original question statement, i.e. the
+                  student would have seen it in the exam. Typically the question text
+                  says "as shown in the figure" or the question is unanswerable without
+                  the diagram.
+
+  option_svgs   — 4-element array, index 0=A … 3=D, for "pick the correct graph /
+                  circuit / structure" questions, one drawing per slot.
+
+When you genuinely can't tell which side a figure belongs to, put it in solution_svg —
+I'd rather have it in the slightly wrong field than not have it. Please don't leave a
+printed figure out of the JSON entirely just because its role is ambiguous.
+
+(For context: my previous version of these notes said solution figures were rare and
+usually absent. That was written for clean question papers and is wrong for this PDF —
+please ignore that idea if you saw it. Here, a figure beside the solution working is
+the normal case.)
+
+
+── Math formatting — one small but important detail ────────────────────────
+
+Math needs plain single dollar signs with no backticks:
+
+  correct:    "then $b$ is equal to $-128$"
+  incorrect:  "then $`b`$ is equal to $`-128`$"
+
+The backtick form ($`b`$) is what I keep receiving, and my LaTeX renderer treats the
+backtick as a literal character, so it shows up on screen inside the equation. Plain
+$ … $ only, please. Ordinary prose stays unformatted.
+
+
+── Output shape ────────────────────────────────────────────────────
+
+A top-level JSON array (starting with [ and ending with ]), in a code block in your
+reply. Not wrapped as {"questions": [...]}, since my parser expects the bare array.
+
+Keys per question, in this order:
+  question_number, subject, unit, chapter, topic, year, month, day, shift,
+  question_text, question_svg, tables, option_a, option_b, option_c, option_d,
+  option_svgs, optionTables, correct_answer, solution, solution_svg,
+  has_image, image_description, question_type
+
+Notes on the less obvious ones:
+  optionTables    — exact camelCase. 4-element array, index 0=A, each entry either
+                    {"headers":[...],"rows":[[...]]} or null.
+  tables          — [{"position":"after_question_text","headers":[...],"rows":[[...]]}]
+                    or null. Please don't repeat table data inside question_text.
+                    A table cell that is itself a figure: {"text": "", "svg": "<svg …/>"}
+  correct_answer  — "A"–"D" for MCQ, joined letters like "AC" for MSQ, a number for
+                    INTEGER, or the string "NONE" for none-of-these.
+  question_type   — "MCQ", "MSQ" or "INTEGER".
+  has_image       — true if you supplied any SVG anywhere in that question, including a
+                    solution_svg. (I've been getting has_image:false on questions that
+                    do have a solution figure, which hides them from my review screen.)
+  image_description — null. (The SVG replaces it; my UI has nowhere to show text here.)
+
+One quirk of my UI: when an option is purely a figure with no text of its own, its text
+field needs to be a zero-width space "\u200b" rather than "" or null, otherwise the four
+option slots collapse in the layout.
+
+On the solutions themselves: a clean final derivation is what I need. If your working
+disagrees with the printed answer, please just give the correct derivation and add a
+short note at the end like "(printed answer key says C)" — I've been getting solutions
+that contain a wrong derivation followed by "...recompute: actual answer is X", and I
+can't publish those to students.
+
+
+── A filled-in example ──────────────────────────────────────────────
+
+Note where the figure went: this question had no diagram in the exam, but the solution
+sketches one, so it's in solution_svg and has_image is true. Math is plain $ … $.
+
+[
+  {
+    "question_number": 102,
+    "subject": "Mathematics",
+    "unit": "Conic Sections",
+    "chapter": "Parabola",
+    "topic": "Tangents to curves",
+    "year": "2019",
+    "month": "April",
+    "day": "12",
+    "shift": "2",
+    "question_text": "The tangents to the curve $y = (x-2)^2 - 1$ at its points of intersection with the line $x - y = 3$, intersect at the point:",
+    "question_svg": null,
+    "tables": null,
+    "option_a": "$\\left(\\frac{5}{2}, 1\\right)$",
+    "option_b": "$\\left(-\\frac{5}{2}, -1\\right)$",
+    "option_c": "$\\left(\\frac{5}{2}, -1\\right)$",
+    "option_d": "$\\left(-\\frac{5}{2}, 1\\right)$",
+    "option_svgs": null,
+    "optionTables": null,
+    "correct_answer": "C",
+    "solution": "Tangent at $(h,k)$: $(2h-4)x - y - 4h + 6 - k = 0$. Matching with $x-y-3=0$ gives $\\frac{2h-4}{1} = 1$, so $h=\\frac{5}{2}$ and $k=-1$.",
+    "solution_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 240 170\"><g stroke=\"#111\" stroke-width=\"2\" fill=\"none\"><path d=\"M30 140 Q90 20 200 40\"/><path d=\"M40 30 L210 130\"/><path d=\"M70 20 L150 150\"/></g><g font-family=\"serif\" font-size=\"12\" fill=\"#111\"><text x=\"96\" y=\"44\">A</text><text x=\"166\" y=\"78\">B</text><text x=\"36\" y=\"112\">C (h, k)</text><text x=\"176\" y=\"142\">x \u2212 y = 3</text></g></svg>",
+    "has_image": true,
+    "image_description": null,
+    "question_type": "MCQ"
+  }
+]
+
+And a figure-choice question, where the four drawings need to be distinguishable from
+each other and the option texts are the zero-width space:
+
+  "option_a": "\u200b",
+  "option_b": "\u200b",
+  "option_c": "\u200b",
+  "option_d": "\u200b",
+  "option_svgs": [
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 100\"><g stroke=\"#111\" stroke-width=\"2\" fill=\"none\"><path d=\"M20 90 V10 M20 90 H110\"/><path d=\"M20 90 L100 20\"/></g><g font-family=\"serif\" font-size=\"12\"><text x=\"6\" y=\"14\">y</text><text x=\"104\" y=\"102\">x</text></g></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 100\"><g stroke=\"#111\" stroke-width=\"2\" fill=\"none\"><path d=\"M20 90 V10 M20 90 H110\"/><path d=\"M20 90 Q70 88 100 20\"/></g><g font-family=\"serif\" font-size=\"12\"><text x=\"6\" y=\"14\">y</text><text x=\"104\" y=\"102\">x</text></g></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 100\"><g stroke=\"#111\" stroke-width=\"2\" fill=\"none\"><path d=\"M20 90 V10 M20 90 H110\"/><path d=\"M20 20 Q70 20 100 88\"/></g><g font-family=\"serif\" font-size=\"12\"><text x=\"6\" y=\"14\">y</text><text x=\"104\" y=\"102\">x</text></g></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 100\"><g stroke=\"#111\" stroke-width=\"2\" fill=\"none\"><path d=\"M20 90 V10 M20 90 H110\"/><path d=\"M20 50 H110\"/></g><g font-family=\"serif\" font-size=\"12\"><text x=\"6\" y=\"14\">y</text><text x=\"104\" y=\"102\">x</text></g></svg>"
+  ],
+
+
+── What my importer needs from the SVG ────────────────────────────────────
+
+These are constraints of my renderer, not style preferences:
+
+• Root element <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 W H"> … </svg>.
+  I need both the xmlns and the viewBox — the viewBox is what lets it scale on phones.
+  Please write the namespace as a bare URL, not as a markdown link.
+• One line, valid inside a JSON string: internal quotes escaped as \", no raw newlines.
+• Presentation attributes rather than <style> or CSS classes:
+  stroke="#111" stroke-width="2" fill="none". Dark strokes on white/transparent.
+• Nothing external and no scripting: my sanitizer strips <script>, <foreignObject>,
+  <image>, <iframe>, on* handlers and external URLs before rendering, so anything in
+  those would silently vanish and leave a broken figure.
+• Fonts limited to font-family="serif" or "sans-serif", font-size 11–16. Unicode inside
+  <text> is fine (Ω, θ, μ, °, →, ², −).
+• Keep each figure under about 12 KB — primitives only (line, path, circle, rect,
+  polyline, polygon, ellipse, text, g, marker, defs).
+
+
+── What makes a figure usable, by type ────────────────────────────────────
+
+The general rule: a student should be able to follow the question or the solution from
+your drawing alone. Every quantity, angle, label and connection that the working depends
+on should be visible, and nothing should contradict the PDF. If a label is unreadable in
+the scan, please leave it out rather than guessing at a value.
+
+Coordinate geometry / conics (most of this PDF) — draw the axes when they matter, label
+the curve or give its equation as <text>, mark and label the named points ((1,2), C(h,k)),
+show tangent and normal lines as straight lines touching at the right place, and label
+any given line with its equation (x − y = 3). Dash construction lines. Getting tangency
+visually right matters more than a perfectly accurate curve.
+
+Circuits — resistor as a zig-zag or open rectangle, cell as long/short parallel lines,
+capacitor as two parallel plates, inductor as loops, meters as circles labelled A or V.
+Label components with their values and mark current direction. Series vs parallel needs
+to be visibly right.
+
+Graphs — both axes with arrowheads and the printed labels/units, origin marked, plus any
+intercept, asymptote or turning point the answer hinges on. The curve's shape should be
+unmistakable (linear vs parabolic vs exponential vs saturating vs sinusoidal).
+
+Ray optics — dashed principal axis, lens as a double-arrow ellipse or mirror as an arc
+with hatching behind it, F and 2F marked, object as an upright arrow, a couple of
+construction rays with arrowheads, image on the correct side and orientation.
+
+Mechanics / free-body — blocks as rectangles, pulleys as circles, strings as lines,
+inclines with the angle arc labelled (θ = 30°), each force a labelled arrow (mg, N, T, f),
+given masses and lengths marked.
+
+Geometry / vectors — vertices labelled, angles arced and labelled, equal sides ticked,
+construction lines dashed, vectors arrowheaded and named.
+
+Molecular structures — skeletal line-angle formulae: vertices are carbons, heteroatoms
+written as <text> (O, N, Cl, OH, NH₂, COOH). Double bond as two parallel lines, triple as
+three. Benzene as a hexagon with three alternating inner double bonds. For stereochemistry,
+a bold wedge as a filled narrow-to-wide polygon and a dashed bond via stroke-dasharray,
+with R/S or cis/trans labelled when the question turns on it. These are the ones I'd most
+expect to need fixing by hand, so if a structure is too intricate to be faithful, flagging
+it is better than approximating it.
+
+Apparatus (calorimeter, U-tube, manometer, Young's double slit, potentiometer, Wheatstone
+bridge) — outline the setup, light fill or hatching for liquids, label every named part and
+dimension.
+
+
+── Length ────────────────────────────────────────────────────────
+
+SVG is verbose, so this may not fit in one reply. If you're running short of room, please
+finish the question you're on, close the JSON array so it still parses, and tell me the
+next question number — I'll ask you to continue from there. I'd much rather do several
+rounds with complete figures than get everything at once with the diagrams dropped. Ten
+to fifteen questions per reply works well.
+
+A couple of things worth a glance before you send: that the JSON parses (no trailing
+commas, quotes escaped), that math uses plain $ … $ with no backticks, that each SVG has
+its xmlns and viewBox, and that every figure printed in the PDF ended up in one of the
+three SVG fields. Thanks!

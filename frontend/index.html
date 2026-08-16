@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Vyorra — Exam &amp; Question Bank Software for Institutes</title>
+	<meta name="description"
+		content="One platform for coaching institutes: AI question banking, print-ready papers, proctored online tests, attendance and student analytics. Web + Android.">
+	<meta name="theme-color" content="#07231d">
+
+	<!-- ── Canonical & indexing ── -->
+	<link rel="canonical" href="https://vyorra.in/">
+	<meta name="robots"
+		content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+	<meta name="googlebot" content="index, follow">
+
+	<!-- ── Open Graph (WhatsApp, LinkedIn, Facebook) ── -->
+	<meta property="og:type" content="website">
+	<meta property="og:site_name" content="Vyorra">
+	<meta property="og:locale" content="en_IN">
+	<meta property="og:url" content="https://vyorra.in/">
+	<meta property="og:title" content="Vyorra — Exam &amp; Question Bank Software for Institutes">
+	<meta property="og:description"
+		content="Turn your PDFs and handwritten papers into a living question bank, then generate print-ready papers, run proctored online tests and get student analytics the same evening.">
+	<meta property="og:image" content="https://vyorra.in/assets/og-image.jpg">
+	<meta property="og:image:secure_url" content="https://vyorra.in/assets/og-image.jpg">
+	<meta property="og:image:type" content="image/jpeg">
+	<meta property="og:image:width" content="1200">
+	<meta property="og:image:height" content="630">
+	<meta property="og:image:alt" content="Vyorra institute dashboard showing students, question bank, tests and attendance">
+
+	<!-- ── Twitter / X ── -->
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="Vyorra — Exam &amp; Question Bank Software for Institutes">
+	<meta name="twitter:description"
+		content="One platform for question banking, paper generation, online tests, attendance and analytics — built for Indian coaching institutes.">
+	<meta name="twitter:image" content="https://vyorra.in/assets/og-image.jpg">
+	<meta name="twitter:image:alt" content="Vyorra institute dashboard">
+
+	<!-- ── Misc ── -->
+	<meta name="author" content="Vyorra">
+	<meta name="application-name" content="Vyorra">
+	<meta name="format-detection" content="telephone=no">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
+		rel="stylesheet">
+	<link rel="icon" href="assets/favicon.ico" sizes="any">
+	<link rel="icon" type="image/png" href="assets/logo-512.png" sizes="512x512">
+	<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+	<link rel="stylesheet" href="style.css">
+	<link rel="preload" as="image" href="assets/institute-dashboard.webp" fetchpriority="high">
+
+	<!-- ── Structured data (Google rich results) ── -->
+	<script type="application/ld+json">
+	{
+	  "@context": "https://schema.org",
+	  "@graph": [
+	    {
+	      "@type": "Organization",
+	      "@id": "https://vyorra.in/#organization",
+	      "name": "Vyorra",
+	      "url": "https://vyorra.in/",
+	      "logo": {
+	        "@type": "ImageObject",
+	        "url": "https://vyorra.in/assets/logo-512.png",
+	        "width": 512,
+	        "height": 512
+	      },
+	      "description": "Vyorra builds examination infrastructure for coaching institutes and schools — question banking, paper generation, online testing, attendance and analytics.",
+	      "areaServed": {
+	        "@type": "Country",
+	        "name": "India"
+	      }
+	    },
+	    {
+	      "@type": "WebSite",
+	      "@id": "https://vyorra.in/#website",
+	      "url": "https://vyorra.in/",
+	      "name": "Vyorra",
+	      "inLanguage": "en-IN",
+	      "publisher": { "@id": "https://vyorra.in/#organization" }
+	    },
+	    {
+	      "@type": "SoftwareApplication",
+	      "@id": "https://vyorra.in/#software",
+	      "name": "Vyorra",
+	      "applicationCategory": "EducationalApplication",
+	      "applicationSubCategory": "Examination and assessment management",
+	      "operatingSystem": "Web, Android",
+	      "url": "https://vyorra.in/",
+	      "image": "https://vyorra.in/assets/og-image.jpg",
+	      "description": "One platform for coaching institutes: AI question banking, print-ready paper generation, proctored online tests, attendance and student analytics.",
+	      "publisher": { "@id": "https://vyorra.in/#organization" },
+	      "featureList": [
+	        "AI question import from PDF, Word and scanned papers",
+	        "Print-ready question paper generation (DOCX and PDF)",
+	        "Proctored online tests with device binding",
+	        "Attendance tracking",
+	        "Student-level performance analytics",
+	        "Android app for institutes"
+	      ],
+	      "offers": {
+	        "@type": "Offer",
+	        "price": "15000",
+	        "priceCurrency": "INR",
+	        "description": "₹15,000 per year for every 100 students. Includes both panels, the Android app, onboarding, question migration and faculty training.",
+	        "url": "https://vyorra.in/#pricing",
+	        "availability": "https://schema.org/InStock"
+	      }
+	    },
+	    {
+	      "@type": "FAQPage",
+	      "@id": "https://vyorra.in/#faq",
+	      "mainEntity": [
+	        {
+	          "@type": "Question",
+	          "name": "Do we have to re-type our existing question papers?",
+	          "acceptedAnswer": {
+	            "@type": "Answer",
+	            "text": "No. Upload the PDFs, Word files or scans you already have. Our importer extracts questions, options and solutions into a review pool, where your faculty approve or fix them before they enter the bank."
+	          }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "Is there a mobile app?",
+	          "acceptedAnswer": {
+	            "@type": "Answer",
+	            "text": "Yes. The institute app is available for Android on Google Play, with the same dashboard, question library, attendance and results as the web panel. The student portal also installs as an app on any phone."
+	          }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "Is our question bank visible to other institutes?",
+	          "acceptedAnswer": {
+	            "@type": "Answer",
+	            "text": "Never. Every institute is isolated with its own data scope, its own passcodes and its own branding. Content you upload stays yours."
+	          }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "How is cheating handled?",
+	          "acceptedAnswer": {
+	            "@type": "Answer",
+	            "text": "Attempts are bound to a device and roll number, tab-switching is logged, and repeat attempts are blocked. Flags go to a teacher review queue — the system never punishes a student automatically."
+	          }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "What happens if our student count grows mid-year?",
+	          "acceptedAnswer": {
+	            "@type": "Answer",
+	            "text": "You move to the next slab and pay only the difference for the remaining months. Nothing stops working while you upgrade."
+	          }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "How long does onboarding take?",
+	          "acceptedAnswer": {
+	            "@type": "Answer",
+	            "text": "Most institutes are running their first online test within a week: two days for setup and branding, two to three for bank migration, and one training session for faculty."
+	          }
+	        }
+	      ]
+	    }
+	  ]
+	}
+	</script>
+</head>
+
+<body>
+	<a class="skip-link" href="#main">Skip to content</a>
+
+	<!-- ─────────────────────────── HEADER ─────────────────────────── -->
+	<header class="site-header" id="siteHeader">
+		<div class="shell header-inner">
+			<a class="brand" href="#top" aria-label="Vyorra home">
+				<img class="brand-mark" src="assets/logo.png" width="256" height="256" alt="Vyorra logo">
+				<span class="brand-word">Vyorra</span>
+			</a>
+
+			<nav class="nav" id="primaryNav" aria-label="Primary">
+				<a href="#platform">Platform</a>
+				<a href="#features">Features</a>
+				<a href="#app">Mobile app</a>
+				<a href="#pricing">Pricing</a>
+				<a href="#faq">FAQ</a>
+				<a href="/institute-panel-demo" target="_blank" rel="noopener">Live demo</a>
+				<a class="btn btn-primary nav-cta" href="#demo">Book a demo</a>
+			</nav>
+
+			<button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="primaryNav"
+				aria-label="Open menu">
+				<span></span><span></span><span></span>
+			</button>
+		</div>
+	</header>
+
+	<main id="main">
+		<!-- ─────────────────────────── HERO ─────────────────────────── -->
+		<section class="hero" id="top">
+			<div class="hero-glow" aria-hidden="true"></div>
+			<div class="shell hero-grid">
+				<div class="hero-copy">
+					<span class="eyebrow reveal">Assessment infrastructure for institutes</span>
+					<h1 class="reveal">Run every exam your institute takes on <em>one</em> system.</h1>
+					<p class="lede reveal">Vyorra turns your question papers, PDFs and handwritten sets into a
+						living question bank — then generates print-ready papers, launches online tests, and
+						returns student-level analytics the same evening. On web, and on Android.</p>
+					<div class="hero-actions reveal">
+						<a class="btn btn-primary btn-lg" href="#demo">Book a demo</a>
+						<a class="btn btn-ghost btn-lg" href="#platform">See the platform</a>
+					</div>
+					<dl class="hero-stats reveal">
+						<div>
+							<dt data-count="92" data-suffix="%">92%</dt>
+							<dd>Less time spent typesetting papers</dd>
+						</div>
+						<div>
+							<dt data-count="1" data-suffix=" min">1 min</dt>
+							<dd>From topic selection to finished paper</dd>
+						</div>
+						<div>
+							<dt data-count="2" data-suffix=" panels">2 panels</dt>
+							<dd>One for your faculty, one for your students</dd>
+						</div>
+					</dl>
+				</div>
+
+				<div class="hero-visual reveal">
+					<figure class="window tilt">
+						<img src="assets/institute-dashboard.webp" width="1380" height="922" loading="eager"
+							alt="Vyorra institute dashboard showing total students, question bank size, tests conducted, latest test results and attendance charts">
+					</figure>
+					<div class="float-card float-a" aria-hidden="true">
+						<b>Paper generated</b>
+						<span>JEE Mains · 30 Q · DOCX + PDF</span>
+					</div>
+					<div class="float-card float-b" aria-hidden="true">
+						<b>AI import complete</b>
+						<span>48 questions read from PDF</span>
+					</div>
+				</div>
+			</div>
+
+			<div class="shell marquee-wrap reveal">
+				<p class="marquee-label">Built for the exams Indian institutes actually teach</p>
+				<ul class="marquee">
+					<li>JEE Mains</li>
+					<li>JEE Advanced</li>
+					<li>NEET</li>
+					<li>Foundation</li>
+					<li>Board Exams</li>
+					<li>Olympiads</li>
+				</ul>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── PLATFORM ─────────────────────────── -->
+		<section class="section" id="platform">
+			<div class="shell">
+				<div class="section-head reveal">
+					<span class="kicker">The platform</span>
+					<h2>Two panels. One source of truth.</h2>
+					<p>Your faculty get a workspace. Your students get an app. A question added on Monday is
+						testable on Tuesday and analysed by Friday — without anything being re-entered.</p>
+				</div>
+
+				<div class="duo">
+					<article class="duo-card reveal">
+						<div class="duo-copy">
+							<span class="duo-label">Panel 01</span>
+							<h3>Institute Panel</h3>
+							<p>The teacher's workspace: question library, combine &amp; create, students,
+								attendance and test results — in light or dark theme, with a passcode layer on
+								staff actions.</p>
+							<ul class="ticks">
+								<li>Subject → chapter → topic → question library</li>
+								<li>Offline papers and online tests from one pool</li>
+								<li>Attendance, batches and performance dashboards</li>
+							</ul>
+							<p class="demo-line">Want to see it working? <a href="institute-panel-demo.html"
+									target="_blank" rel="noopener">Open the live Institute Panel demo</a> and click
+								through every screen your faculty will use — no signup needed.</p>
+						</div>
+						<figure class="window">
+							<img src="assets/question-library.webp" width="1440" height="778" loading="eager"
+								alt="Question library browsing Chemistry, Physics, Biology and Mathematics with chapter and topic counts">
+						</figure>
+					</article>
+
+					<article class="duo-card dark reveal">
+						<div class="duo-copy">
+							<span class="duo-label">Panel 02</span>
+							<h3>Student Portal</h3>
+							<p>Students log in with roll number and OTP, see assigned tests with deadlines,
+								attempt them in a locked test window, and track scores, streaks and attendance
+								day by day.</p>
+							<ul class="ticks">
+								<li>Assigned tests with marking scheme and end time</li>
+								<li>Instant scorecards with solutions</li>
+								<li>Own attendance record, visible any time</li>
+							</ul>
+						</div>
+						<figure class="window">
+							<img src="assets/student-dashboard.webp" width="1440" height="775" loading="eager"
+								alt="Student dashboard showing assigned tests, completed tests, average score and day streak">
+						</figure>
+					</article>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── FEATURES ─────────────────────────── -->
+		<section class="section section-soft" id="features">
+			<div class="shell">
+				<div class="section-head reveal">
+					<span class="kicker">Capabilities</span>
+					<h2>Everything the exam cell does, rebuilt properly.</h2>
+					<p>No spreadsheets, no scattered Word files, no last-minute photocopy panic.</p>
+				</div>
+
+				<div class="feature-grid">
+					<article class="feature reveal">
+						<svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+							<path d="M6 3h8l4 4v14H6z" />
+							<path d="M14 3v4h4" />
+							<path d="M9 13h6M9 17h4" />
+						</svg>
+						<h3>AI question import</h3>
+						<p>Upload a PDF, DOCX or a photo of an old sheet. Vyorra reads questions, options,
+							answers and solutions — including maths and circuit diagrams — and files them under
+							the right chapter.</p>
+					</article>
+					<article class="feature reveal">
+						<svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+							<rect x="3" y="4" width="18" height="16" rx="2" />
+							<path d="M3 9h18M9 9v11" />
+						</svg>
+						<h3>Structured question bank</h3>
+						<p>Thousands of questions organised subject → chapter → topic, with MCQ, multiple
+							correct, numerical, matrix match and comprehension types. Search, edit and bulk-clean
+							in place.</p>
+					</article>
+					<article class="feature reveal">
+						<svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+							<path d="M4 4h16v16H4z" />
+							<path d="M8 8h8M8 12h8M8 16h5" />
+						</svg>
+						<h3>Paper studio</h3>
+						<p>Pick topics and weightage; get a print-ready PDF and an editable DOCX with correct
+							math typesetting, your institute header, marking scheme and answer key.</p>
+					</article>
+					<article class="feature reveal">
+						<svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+							<circle cx="12" cy="12" r="9" />
+							<path d="M12 7v5l3 2" />
+						</svg>
+						<h3>Online test engine</h3>
+						<p>Schedule windows, assign batches, set +4/−1 style marking, and watch submissions
+							arrive live with auto-evaluated scores and a question palette students already
+							understand.</p>
+					</article>
+					<article class="feature reveal">
+						<svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+							<path d="M12 3l7 3v6c0 4.4-2.9 7.6-7 9-4.1-1.4-7-4.6-7-9V6z" />
+							<path d="M9.5 12.2l1.8 1.8 3.4-3.6" />
+						</svg>
+						<h3>Exam integrity</h3>
+						<p>Device binding, single-attempt locks, tab-switch tracking, and a review queue so a
+							teacher decides before any student is flagged.</p>
+					</article>
+					<article class="feature reveal">
+						<svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+							<path d="M4 19V9M10 19V5M16 19v-6M22 19H2" />
+						</svg>
+						<h3>Analytics &amp; attendance</h3>
+						<p>Accuracy trends, subject splits, topper and lowest scores, present-streaks and monthly
+							attendance ratios — ready for the parent-teacher meeting.</p>
+					</article>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── DEEP DIVES ─────────────────────────── -->
+		<section class="section" id="workflow">
+			<div class="shell">
+				<div class="section-head reveal">
+					<span class="kicker">How it works</span>
+					<h2>From a pile of old papers to a live test — in a week.</h2>
+				</div>
+
+				<ol class="steps">
+					<li class="reveal">
+						<span class="step-no">1</span>
+						<h3>Onboard</h3>
+						<p>We create your institute, brand the panels with your name and logo, and import your
+							student roll list.</p>
+					</li>
+					<li class="reveal">
+						<span class="step-no">2</span>
+						<h3>Build the bank</h3>
+						<p>Faculty upload PDFs and images; AI extraction plus a review pool turns them into clean,
+							tagged questions.</p>
+					</li>
+					<li class="reveal">
+						<span class="step-no">3</span>
+						<h3>Assess</h3>
+						<p>Generate offline papers for class tests and schedule online tests for the same syllabus
+							from one pool.</p>
+					</li>
+					<li class="reveal">
+						<span class="step-no">4</span>
+						<h3>Improve</h3>
+						<p>Results land instantly. Teachers see weak topics per batch; students see exactly what to
+							revise next.</p>
+					</li>
+				</ol>
+
+				<div class="split reveal">
+					<div class="split-copy">
+						<span class="kicker">Question library</span>
+						<h3>Every question, with its solution, one click away.</h3>
+						<p>Open any question to see the full statement with rendered equations and figures, the
+							correct option marked, the year it appeared, and a step-by-step solution — then send
+							it straight to a paper.</p>
+						<ul class="ticks">
+							<li>Add to paper without leaving the question</li>
+							<li>Previous-year papers indexed by year and paper</li>
+							<li>Auto-generate a full paper from selected topics</li>
+						</ul>
+					</div>
+					<figure class="window split-visual-img">
+						<img src="assets/question-detail.webp" width="1440" height="774" loading="eager"
+							alt="A capacitor question with circuit diagram, four options, the correct answer highlighted and a worked solution">
+					</figure>
+				</div>
+
+				<div class="split reverse reveal">
+					<div class="split-copy">
+						<span class="kicker">Test analysis</span>
+						<h3>Every attempt, reviewable question by question.</h3>
+						<p>The moment a test closes, students get score, accuracy, marks and time — plus a
+							palette that separates correct, wrong and skipped questions so revision starts with
+							the right ones.</p>
+						<ul class="ticks">
+							<li>Correct, incorrect and not-attempted filters</li>
+							<li>Chosen option shown against the right answer</li>
+							<li>Full attempt history kept for the year</li>
+						</ul>
+					</div>
+					<figure class="window split-visual-img">
+						<img src="assets/test-analysis.webp" width="1440" height="768" loading="eager"
+							alt="Test analysis screen with score, accuracy, marks, time and a question palette marking correct, wrong and skipped questions">
+					</figure>
+				</div>
+
+				<div class="split reveal">
+					<div class="split-copy">
+						<span class="kicker">Attendance</span>
+						<h3>Attendance both sides can trust.</h3>
+						<p>Faculty mark a batch in seconds and open any student for overall percentage, present
+							streak, monthly trend and the last 30 days. Students see the same record in their own
+							calendar — so no parent call is ever a surprise.</p>
+						<ul class="ticks">
+							<li>Per-student attendance profile with charts</li>
+							<li>Month-by-month present ratio</li>
+							<li>Student-side calendar view</li>
+						</ul>
+					</div>
+					<div class="stack-visual">
+						<figure class="window stack-back">
+							<img src="assets/student-attendance.webp" width="1440" height="775" loading="eager"
+								alt="Student attendance calendar for August 2026 in dark theme">
+						</figure>
+						<figure class="window stack-front">
+							<img src="assets/attendance-profile.webp" width="1440" height="768" loading="eager"
+								alt="Teacher view of a student attendance profile with overall attendance donut and monthly present percentage">
+						</figure>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── MOBILE APP ─────────────────────────── -->
+		<section class="app-section" id="app">
+			<div class="shell app-grid">
+				<div class="app-copy reveal">
+					<span class="kicker light">On Google Play</span>
+					<h2>The institute app, in your pocket.</h2>
+					<p>Vyorra ships a dedicated Android app for institutes. Directors and faculty can check
+						the dashboard, open the question library, mark attendance and read results between
+						classes — same data as the web panel, built for one thumb.</p>
+					<ul class="ticks light">
+						<li>Bottom-tab navigation: Home, Library, Students, Attend, Results</li>
+						<li>Live test results and attendance on the go</li>
+						<li>Installs on any Android phone — students get their portal as an app too</li>
+					</ul>
+					<div class="app-actions">
+						<a class="store-badge" href="#demo" aria-label="Get the Vyorra institute app on Google Play">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M3.6 2.3 13.9 12 3.6 21.7c-.4-.3-.6-.8-.6-1.4V3.7c0-.6.2-1.1.6-1.4z"
+									fill="#00d2b4" />
+								<path d="M16.6 8.9 5.4 2.4c-.4-.2-.9-.3-1.3-.2L14.9 12l1.7-3.1z" fill="#ffffff" />
+								<path d="M16.6 15.1 14.9 12 4.1 21.8c.4.1.9 0 1.3-.2l11.2-6.5z" fill="#cfe9e2" />
+								<path d="M20.4 10.7c.9.5.9 2.1 0 2.6l-2.6 1.5-1.9-2.8 1.9-2.8 2.6 1.5z" fill="#f0c243" />
+							</svg>
+							<span>
+								<small>Get it on</small>
+								<b>Google Play</b>
+							</span>
+						</a>
+						<a class="btn btn-ghost light" href="#demo">Request access</a>
+					</div>
+				</div>
+
+				<div class="app-visual reveal">
+					<figure class="phone-shot">
+						<img src="assets/mobile-app.webp" width="807" height="1638" loading="eager"
+							alt="Vyorra institute Android app showing total students, question bank, tests conducted and latest test results with a bottom tab bar">
+					</figure>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── METRICS ─────────────────────────── -->
+		<section class="band">
+			<div class="shell band-grid">
+				<blockquote class="reveal">
+					<p>“Our faculty used to lose two evenings a week to typing papers. Now a full test goes out
+						before the last class ends.”</p>
+					<footer>Academic Head · Science coaching institute, Lucknow</footer>
+				</blockquote>
+				<div class="band-stats reveal">
+					<div><b data-count="120000" data-suffix="+">120,000+</b><span>Questions managed</span></div>
+					<div><b data-count="99" data-suffix=".9%">99.9%</b><span>Test-window uptime</span></div>
+					<div><b data-count="24" data-suffix="×7">24×7</b><span>Support during exam season</span></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── PRICING ─────────────────────────── -->
+		<section class="section" id="pricing">
+			<div class="shell">
+				<div class="section-head reveal">
+					<span class="kicker">Pricing</span>
+					<h2>₹15,000 a year for every 100 students.</h2>
+					<p>One simple slab. Every plan includes both panels, the Android app, onboarding, question
+						migration and faculty training — no setup fee, no per-test charge.</p>
+				</div>
+
+				<div class="price-grid">
+					<article class="price reveal">
+						<h3>100 students</h3>
+						<p class="price-tag"><span>₹</span>15,000<small>/year</small></p>
+						<p class="price-note">Best for a single batch or a new centre.</p>
+						<ul class="ticks">
+							<li>Institute panel + student portal</li>
+							<li>Android app for the institute</li>
+							<li>Unlimited papers and online tests</li>
+							<li>Email support</li>
+						</ul>
+						<a class="btn btn-ghost" href="#demo">Start here</a>
+					</article>
+
+					<article class="price highlight reveal">
+						<span class="badge">Most chosen</span>
+						<h3>200 students</h3>
+						<p class="price-tag"><span>₹</span>30,000<small>/year</small></p>
+						<p class="price-note">For an established centre running multiple batches.</p>
+						<ul class="ticks">
+							<li>Everything in the 100-student slab</li>
+							<li>AI import from PDF, DOCX &amp; images</li>
+							<li>Attendance &amp; batch dashboards</li>
+							<li>Priority support during exam season</li>
+						</ul>
+						<a class="btn btn-primary" href="#demo">Book a demo</a>
+					</article>
+
+					<article class="price reveal">
+						<h3>300+ students</h3>
+						<p class="price-tag"><span>₹</span>45,000<small>/year</small></p>
+						<p class="price-note">Then ₹15,000 for every additional 100 students.</p>
+						<ul class="ticks">
+							<li>Everything in the 200-student slab</li>
+							<li>Branded panels and app icon</li>
+							<li>Data migration from your old system</li>
+							<li>Dedicated account manager</li>
+						</ul>
+						<a class="btn btn-ghost" href="#demo">Talk to us</a>
+					</article>
+				</div>
+
+				<p class="price-foot reveal">Pricing scales in slabs of 100 students — 500 students is
+					₹75,000 a year, 1,000 students is ₹1,50,000 a year. Multi-branch groups get a combined
+					quote.</p>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── FAQ ─────────────────────────── -->
+		<section class="section section-soft" id="faq">
+			<div class="shell faq-wrap">
+				<div class="section-head left reveal">
+					<span class="kicker">FAQ</span>
+					<h2>Questions institutes ask us first.</h2>
+					<p>Still unsure? A 30-minute demo answers most of it with your own question paper.</p>
+				</div>
+				<div class="faq-list reveal">
+					<details>
+						<summary>Do we have to re-type our existing question papers?</summary>
+						<p>No. Upload the PDFs, Word files or scans you already have. Our importer extracts
+							questions, options and solutions into a review pool, where your faculty approve or fix
+							them before they enter the bank.</p>
+					</details>
+					<details>
+						<summary>Is there a mobile app?</summary>
+						<p>Yes. The institute app is available for Android on Google Play, with the same
+							dashboard, question library, attendance and results as the web panel. The student
+							portal also installs as an app on any phone.</p>
+					</details>
+					<details>
+						<summary>Is our question bank visible to other institutes?</summary>
+						<p>Never. Every institute is isolated with its own data scope, its own passcodes and its
+							own branding. Content you upload stays yours.</p>
+					</details>
+					<details>
+						<summary>How is cheating handled?</summary>
+						<p>Attempts are bound to a device and roll number, tab-switching is logged, and repeat
+							attempts are blocked. Flags go to a teacher review queue — the system never punishes a
+							student automatically.</p>
+					</details>
+					<details>
+						<summary>What happens if our student count grows mid-year?</summary>
+						<p>You move to the next slab and pay only the difference for the remaining months. Nothing
+							stops working while you upgrade.</p>
+					</details>
+					<details>
+						<summary>How long does onboarding take?</summary>
+						<p>Most institutes are running their first online test within a week: two days for setup
+							and branding, two to three for bank migration, and one training session for faculty.</p>
+					</details>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────────────────── DEMO / CTA ─────────────────────────── -->
+		<section class="cta" id="demo">
+			<div class="shell cta-grid">
+				<div class="cta-copy reveal">
+					<h2>Bring your hardest paper. We'll build it live.</h2>
+					<p>Tell us about your institute and we'll set up a 30-minute walkthrough with your own
+						syllabus, batches and marking scheme.</p>
+					<ul class="cta-points">
+						<li>No setup fee on annual plans</li>
+						<li>Free migration of your first 1,000 questions</li>
+						<li>Training for your entire faculty</li>
+					</ul>
+				</div>
+
+				<form class="cta-form reveal" id="demoForm" novalidate>
+					<div class="field">
+						<label for="name">Your name</label>
+						<input id="name" name="name" type="text" autocomplete="name" placeholder="Arush Gaur"
+							required>
+					</div>
+					<div class="field">
+						<label for="institute">Institute name</label>
+						<input id="institute" name="institute" type="text" placeholder="Vidya Classes" required>
+					</div>
+					<div class="field-row">
+						<div class="field">
+							<label for="phone">Phone</label>
+							<input id="phone" name="phone" type="tel" inputmode="tel" placeholder="98XXXXXXXX"
+								required>
+						</div>
+						<div class="field">
+							<label for="students">Students</label>
+							<select id="students" name="students">
+								<option>Up to 100</option>
+								<option>100 – 200</option>
+								<option>200 – 500</option>
+								<option>500+</option>
+							</select>
+						</div>
+					</div>
+					<div class="field">
+						<label for="message">What do you want to fix first?</label>
+						<textarea id="message" name="message" rows="3"
+							placeholder="Paper making, online tests, result analysis…"></textarea>
+					</div>
+					<button class="btn btn-primary btn-block" type="submit">Request a demo</button>
+					<p class="form-note" id="formNote" role="status">We reply within one working day.</p>
+				</form>
+			</div>
+		</section>
+	</main>
+
+	<!-- ─────────────────────────── FOOTER ─────────────────────────── -->
+	<footer class="site-footer">
+		<div class="shell footer-grid">
+			<div class="footer-brand">
+				<a class="brand" href="#top">
+					<img class="brand-mark" src="assets/logo.png" width="256" height="256" alt="Vyorra logo">
+					<span class="brand-word">Vyorra</span>
+				</a>
+				<p>Assessment infrastructure for schools and coaching institutes.</p>
+			</div>
+			<nav aria-label="Product">
+				<h4>Product</h4>
+				<a href="#platform">Platform</a>
+				<a href="/institute-panel-demo" target="_blank" rel="noopener">Live demo</a>
+				<a href="#features">Features</a>
+				<a href="#app">Mobile app</a>
+				<a href="#pricing">Pricing</a>
+			</nav>
+			<nav aria-label="Sign in">
+				<h4>Sign in</h4>
+				<a href="institute.html">Institute panel</a>
+				<a href="#demo">Student portal</a>
+				<a href="#app">Android app</a>
+			</nav>
+			<div class="footer-contact">
+				<h4>Talk to us</h4>
+				<a href="mailto:hello@vyorra.com">hello@vyorra.com</a>
+				<a href="tel:+919000000000">+91 90000 00000</a>
+				<p>Mon–Sat, 9am – 8pm IST</p>
+			</div>
+		</div>
+		<div class="shell footer-base">
+			<p>© <span id="year">2026</span> Vyorra. All rights reserved.</p>
+			<p>Privacy · Terms · Security</p>
+		</div>
+	</footer>
+
+	<!-- ────────────────────── THANK-YOU POPUP ────────────────────── -->
+	<!-- Shown by script.js after the demo form is submitted successfully. -->
+	<div class="thanks-modal" id="thanksModal" role="dialog" aria-modal="true" aria-labelledby="thanksTitle"
+		aria-describedby="thanksText" hidden>
+		<div class="thanks-backdrop" data-thanks-close></div>
+
+		<div class="thanks-card" role="document">
+			<button class="thanks-x" type="button" aria-label="Close" data-thanks-close>&times;</button>
+
+			<div class="thanks-icon" aria-hidden="true">
+				<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"
+					stroke-linecap="round" stroke-linejoin="round">
+					<path d="M20 6 9 17l-5-5" />
+				</svg>
+			</div>
+
+			<h3 class="thanks-title" id="thanksTitle">Thanks — request received!</h3>
+			<p class="thanks-text" id="thanksText">Our team will call you within one working day to set up your
+				30-minute walkthrough.</p>
+
+			<ul class="thanks-points">
+				<li>We'll build your hardest paper live</li>
+				<li>Bring your own syllabus and marking scheme</li>
+				<li>No setup fee on annual plans</li>
+			</ul>
+
+			<button class="btn btn-primary btn-block" type="button" data-thanks-close>Got it</button>
+			<p class="thanks-foot">Need us sooner? <a href="tel:+918809089608">+91 88090 89608</a></p>
+		</div>
+	</div>
+
+	<script src="script.js"></script>
+</body>
+
+</html>

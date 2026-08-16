@@ -1,0 +1,41 @@
+{
+  "name": "Triumph",
+  "short_name": "Triumph",
+  "description": "Triumph Educator Panel — access question library and manage students",
+  "start_url": "/institute.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080714",
+  "theme_color": "#080714",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/triumph-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/triumph-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Question Library",
+      "url": "/institute.html#manageQuestions",
+      "description": "Browse the question library"
+    },
+    {
+      "name": "Students",
+      "url": "/institute.html#students",
+      "description": "Manage registered students"
+    }
+  ]
+}

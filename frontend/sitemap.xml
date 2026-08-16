@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <url>
+    <loc>https://vyorra.in/</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://vyorra.in/assets/og-image.jpg</image:loc>
+      <image:title>Vyorra — Examination Operating System for Institutes</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://vyorra.in/assets/institute-dashboard.webp</image:loc>
+      <image:title>Vyorra institute dashboard</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://vyorra.in/assets/question-library.webp</image:loc>
+      <image:title>Vyorra question library</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://vyorra.in/assets/mobile-app.webp</image:loc>
+      <image:title>Vyorra Android app for institutes</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://vyorra.in/institute-panel-demo</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+</urlset>

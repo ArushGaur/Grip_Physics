@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Student Portal — Vyorra</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://vyorra.in/test_window">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+            options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+            startup: { typeset: false }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async defer id="MathJax-script"></script>
+    <link rel="stylesheet" href="test_window.css?v=1.0.6">
+</head>
+
+<body>
+
+    <!-- ambient -->
+    <div class="bg-ambience"></div>
+    <div class="bg-dots"></div>
+
+    <!-- loading frame -->
+    <div id="loader" role="status" aria-live="polite" aria-label="Loading content">
+        <div class="loader-frame">
+            <div class="loader-side">
+                <div class="loader-chip"></div>
+                <div class="loader-chip"></div>
+                <div class="loader-chip"></div>
+                <div class="loader-chip"></div>
+                <div class="loader-chip"></div>
+                <div class="loader-status" id="loaderStatus">Loading…</div>
+            </div>
+            <div class="loader-main">
+                <div class="loader-bar w35"></div>
+                <div class="loader-bar sm w65"></div>
+                <div class="loader-cards">
+                    <div class="loader-card">
+                        <div class="loader-bar w55"></div>
+                        <div class="loader-bar sm w35"></div>
+                    </div>
+                    <div class="loader-card">
+                        <div class="loader-bar w45"></div>
+                        <div class="loader-bar sm w20"></div>
+                    </div>
+                    <div class="loader-card">
+                        <div class="loader-bar w75"></div>
+                        <div class="loader-bar sm w35"></div>
+                    </div>
+                    <div class="loader-card">
+                        <div class="loader-bar w55"></div>
+                        <div class="loader-bar sm w20"></div>
+                    </div>
+                </div>
+                <div class="loader-list">
+                    <div class="loader-list-item">
+                        <div class="loader-dot"></div>
+                        <div>
+                            <div class="loader-bar w90"></div>
+                            <div class="loader-bar sm w55" style="margin-top:7px"></div>
+                        </div>
+                        <div class="loader-bar sm w90"></div>
+                    </div>
+                    <div class="loader-list-item">
+                        <div class="loader-dot"></div>
+                        <div>
+                            <div class="loader-bar w75"></div>
+                            <div class="loader-bar sm w45" style="margin-top:7px"></div>
+                        </div>
+                        <div class="loader-bar sm w90"></div>
+                    </div>
+                    <div class="loader-list-item">
+                        <div class="loader-dot"></div>
+                        <div>
+                            <div class="loader-bar w65"></div>
+                            <div class="loader-bar sm w35" style="margin-top:7px"></div>
+                        </div>
+                        <div class="loader-bar sm w90"></div>
+                    </div>
+                    <div class="loader-list-item">
+                        <div class="loader-dot"></div>
+                        <div>
+                            <div class="loader-bar w90"></div>
+                            <div class="loader-bar sm w55" style="margin-top:7px"></div>
+                        </div>
+                        <div class="loader-bar sm w90"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- logout popup -->
+    <div class="popup-overlay" id="logoutPopup">
+        <div class="popup">
+            <div class="popup-icon">👋</div>
+            <div class="popup-title">Log out?</div>
+            <div class="popup-body">You will need your email and password to log in again. Unsaved changes will be lost.</div>
+            <div class="popup-actions">
+                <button class="btn-ghost" onclick="closeLogoutPopup()">Stay</button>
+                <button class="btn-danger-solid" onclick="doLogout()">Yes, Log out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- start test popup -->
+    <div class="popup-overlay" id="startTestPopup">
+        <div class="popup start-test-popup">
+            <div class="popup-icon">▶</div>
+            <div class="popup-title" id="startTestPopupTitle">Start Test?</div>
+            <div class="popup-body" id="startTestPopupBody">Check the details below before you start.</div>
+            <div class="test-start-grid">
+                <div class="test-start-chip">
+                    <div class="test-start-chip-label">Maximum Marks</div>
+                    <div class="test-start-chip-value" id="startTestMaxMarks">—</div>
+                </div>
+                <div class="test-start-chip">
+                    <div class="test-start-chip-label">Maximum Time</div>
+                    <div class="test-start-chip-value" id="startTestMaxTime">—</div>
+                </div>
+                <div class="test-start-chip">
+                    <div class="test-start-chip-label">Questions</div>
+                    <div class="test-start-chip-value" id="startTestQuestions">—</div>
+                </div>
+                <div class="test-start-chip">
+                    <div class="test-start-chip-label">Marking Scheme</div>
+                    <div class="test-start-chip-value" id="startTestScheme">+4 / -1</div>
+                </div>
+            </div>
+            <div class="popup-actions">
+                <button class="btn-ghost" onclick="closeStartTestPopup()">Cancel</button>
+                <button class="btn-danger-solid" onclick="confirmStartSelectedTest()">Start Test</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- start test loader -->
+    <div class="popup-overlay" id="startTestLoader">
+        <div class="popup start-loader-popup">
+            <div class="popup-icon" style="background:rgba(96,200,255,0.12);border-color:rgba(96,200,255,0.22)">⏳</div>
+            <div class="popup-title">Preparing your test</div>
+            <div class="popup-body" id="startTestLoaderBody">Loading questions and starting the timer.</div>
+            <div class="start-loader-progress">
+                <div class="start-loader-fill" id="startTestLoaderFill"></div>
+            </div>
+            <div class="start-loader-row">
+                <div class="start-loader-status" id="startTestLoaderStatus">Loading…</div>
+                <div class="start-loader-pct" id="startTestLoaderPct">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- app shell -->
+    <div class="app-shell" id="appShell">
+
+        <!-- sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <div class="sidebar-brand">
+                    <div class="sidebar-brand-mark">⚡</div>
+                    <div>
+                        <div class="sidebar-brand-name" id="sidebarBrandName">Student Portal</div>
+                        <div class="sidebar-brand-sub">Student Portal v2</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-user" id="sidebarUser">
+                <div class="sidebar-avatar-row">
+                    <div class="sidebar-avatar" id="sidebarAvatar">—</div>
+                    <div>
+                        <div class="sidebar-user-name" id="sidebarName">—</div>
+                        <div class="sidebar-user-roll" id="sidebarRoll">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-nav">
+                <div class="sidebar-nav-label">Menu</div>
+                <div class="sidebar-nav-item active" onclick="navDash()">
+                    <span class="nav-icon">🏠</span> Dashboard
+                </div>
+                <div class="sidebar-nav-item" id="navTests" onclick="showTestAnalysisList(); closeSidebar()">
+                    <span class="nav-icon">📊</span> Test Analysis
+                    <span class="nav-badge" id="navTestsBadge" style="display:none">0</span>
+                </div>
+                <div class="sidebar-nav-item" id="navAttendance" onclick="navAttendance(); closeSidebar()">
+                    <span class="nav-icon">📅</span> Attendance
+                </div>
+                <div class="sidebar-nav-item" id="navEdit" style="display:none" onclick="showEditProfile()">
+                    <span class="nav-icon">👤</span> Profile
+                </div>
+            </div>
+
+            <div class="sidebar-bottom">
+                <button class="sidebar-action" onclick="toggleTheme()" id="themeBtn">🌙 Toggle Theme</button>
+                <button class="sidebar-action danger" id="logoutSidebarBtn" style="display:none"
+                    onclick="openLogoutPopup()">↩ Log Out</button>
+            </div>
+        </nav>
+
+        <!-- mobile backdrop -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
+        <!-- main -->
+        <div class="main">
+
+            <!-- topbar -->
+            <header class="topbar">
+                <button class="topbar-menu-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+                <div class="topbar-title" id="topbarTitle">Dashboard</div>
+                <div class="topbar-right">
+                    <button class="theme-btn" onclick="toggleTheme()" id="topbarThemeBtn"
+                        title="Toggle theme">🌙</button>
+                </div>
+            </header>
+
+            <!-- page content -->
+            <div class="page-content" id="pageContent">
+
+                <!-- screen: login -->
+                <div id="screen-login" class="screen hidden">
+                    <div class="auth-wrap">
+                        <div class="auth-grid">
+                            <div class="auth-panel auth-panel-left">
+                                <div class="auth-left-brand">
+                                    <div class="auth-left-logo">⚡</div>
+                                    <div class="auth-left-heading">Your tests,<br>all in one place.</div>
+                                    <div class="auth-left-sub">Sign in to see the tests and study material
+                                        assigned to your class and batch.</div>
+                                </div>
+                                <div class="auth-features">
+                                    <div class="auth-feature">
+                                        <div class="auth-feature-dot"></div>All assigned tests in one place
+                                    </div>
+                                    <div class="auth-feature">
+                                        <div class="auth-feature-dot" style="background:var(--violet)"></div>Track your
+                                        progress over time
+                                    </div>
+                                    <div class="auth-feature">
+                                        <div class="auth-feature-dot" style="background:var(--green)"></div>Passwordless
+                                        email sign-in
+                                    </div>
+                                    <div class="auth-feature">
+                                        <div class="auth-feature-dot" style="background:var(--amber)"></div>Light & dark
+                                        mode support
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="auth-panel">
+                                <button type="button" class="auth-back-btn" id="loginBackBtn"
+                                    onclick="backToRoleChooser()" title="Back to login selection">← Back</button>
+                                <!-- Log In / Sign Up switch -->
+                                <div class="auth-tabs" id="authTabs">
+                                    <button type="button" class="auth-tab active" id="tabLogin"
+                                        onclick="setAuthMode('login')">Log In</button>
+                                    <button type="button" class="auth-tab" id="tabSignup"
+                                        onclick="setAuthMode('signup')">Sign Up</button>
+                                </div>
+
+                                <div style="margin-bottom:24px">
+                                    <div id="authEyebrow"
+                                        style="font-size:.75rem;font-family:var(--font-mono);color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">
+                                        Sign in</div>
+                                    <div id="authHeading"
+                                        style="font-family:var(--font-head);font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:6px">
+                                        Welcome back</div>
+                                    <div id="authSub" style="font-size:.9rem;color:var(--text-mid);line-height:1.7">
+                                        Enter your email and password.</div>
+                                </div>
+                                <div id="loginMsg" class="msg"></div>
+
+                                <!-- login: email + password together -->
+                                <div id="loginStep">
+                                    <div class="field">
+                                        <label>Email Address</label>
+                                        <input type="email" id="loginEmailInput" placeholder="you@example.com"
+                                            autocomplete="email" autocapitalize="none" spellcheck="false"
+                                            onkeydown="if(event.key==='Enter') document.getElementById('loginPwInput').focus()">
+                                    </div>
+                                    <div class="field">
+                                        <label>Password</label>
+                                        <input type="password" id="loginPwInput" placeholder="Your password"
+                                            autocomplete="current-password"
+                                            onkeydown="if(event.key==='Enter') doLogin()">
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                                        <input type="checkbox" id="showLoginPw"
+                                            onchange="toggleLoginPwVisible(this.checked)"
+                                            style="width:15px;height:15px;accent-color:var(--cyan);cursor:pointer">
+                                        <label for="showLoginPw"
+                                            style="font-size:.78rem;color:var(--text-dim);cursor:pointer;margin:0">Show
+                                            password</label>
+                                    </div>
+                                    <button class="btn-primary" onclick="doLogin()" id="loginSubmitBtn"
+                                        style="margin-top:16px">Log In →</button>
+                                    <div style="display:flex;justify-content:space-between;gap:10px;margin-top:14px">
+                                        <button onclick="setAuthMode('signup')" class="auth-link">New here? Sign
+                                            up</button>
+                                        <button onclick="forgotPassword()" id="forgotBtn" class="auth-link accent">Forgot
+                                            password?</button>
+                                    </div>
+                                </div>
+
+                                <!-- signup: email, then code, then password -->
+                                <div id="signupStep" style="display:none">
+                                    <div class="field">
+                                        <label>Email Address</label>
+                                        <input type="email" id="signupEmailInput" placeholder="you@example.com"
+                                            autocomplete="email" autocapitalize="none" spellcheck="false"
+                                            onkeydown="if(event.key==='Enter') doSignup()">
+                                    </div>
+                                    <button class="btn-primary" onclick="doSignup()" id="signupBtn"
+                                        style="margin-top:16px">Send Me a Code →</button>
+                                    <div style="text-align:center;margin-top:14px">
+                                        <button onclick="setAuthMode('login')" class="auth-link">Already registered? Log
+                                            in</button>
+                                    </div>
+                                    <div
+                                        style="text-align:center;font-size:.76rem;color:var(--text-dim);margin-top:16px;font-family:var(--font-mono)">
+                                        Use the email your teacher registered for you</div>
+                                </div>
+
+                                <!-- step 2: 6-digit code -->
+                                <div id="otpStep" style="display:none">
+                                    <div style="font-size:.86rem;color:var(--text-mid);line-height:1.6;margin-bottom:14px">
+                                        We sent a 6-digit code to <b id="otpSentTo"
+                                            style="color:var(--cyan);font-family:var(--font-mono)">your email</b>. It
+                                        expires in 10 minutes.</div>
+                                    <div class="field">
+                                        <label>6-Digit Code</label>
+                                        <input type="text" id="otpInput" placeholder="123456" inputmode="numeric"
+                                            autocomplete="one-time-code" maxlength="6"
+                                            style="letter-spacing:6px;font-family:var(--font-mono);font-size:1.15rem;text-align:center"
+                                            oninput="this.value=this.value.replace(/\D/g,'')"
+                                            onkeydown="if(event.key==='Enter') verifyLoginOtp()">
+                                    </div>
+                                    <button class="btn-primary" onclick="verifyLoginOtp()" id="verifyOtpBtn"
+                                        style="margin-top:16px">Verify & Sign In →</button>
+                                    <div style="display:flex;justify-content:space-between;gap:10px;margin-top:14px">
+                                        <button onclick="backToStart()" class="auth-link">←
+                                            Use a different email</button>
+                                        <button onclick="resendLoginOtp()" id="resendOtpBtn"
+                                            style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:.78rem;font-family:var(--font-body);text-decoration:underline;text-underline-offset:3px;padding:4px">Resend
+                                            code</button>
+                                    </div>
+                                </div>
+
+                                <!-- step 3: create a password (first sign-in or after a reset) -->
+                                <div id="setPwStep" style="display:none">
+                                    <div id="setPwIntro"
+                                        style="font-size:.86rem;color:var(--text-mid);line-height:1.6;margin-bottom:14px">
+                                        Email verified. Set a password so next time you can sign in with just
+                                        your email and password.</div>
+                                    <div class="field">
+                                        <label>New Password</label>
+                                        <input type="password" id="newPwInput" placeholder="At least 6 characters"
+                                            autocomplete="new-password">
+                                    </div>
+                                    <div class="field">
+                                        <label>Confirm Password</label>
+                                        <input type="password" id="newPw2Input" placeholder="Type it again"
+                                            autocomplete="new-password"
+                                            onkeydown="if(event.key==='Enter') submitNewPassword()">
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                                        <input type="checkbox" id="showNewPw" onchange="toggleNewPwVisible(this.checked)"
+                                            style="width:15px;height:15px;accent-color:var(--cyan);cursor:pointer">
+                                        <label for="showNewPw"
+                                            style="font-size:.78rem;color:var(--text-dim);cursor:pointer;margin:0">Show
+                                            password</label>
+                                    </div>
+                                    <button class="btn-primary" onclick="submitNewPassword()" id="setPwBtn"
+                                        style="margin-top:16px">Save Password &amp; Continue →</button>
+                                    <div
+                                        style="text-align:center;font-size:.76rem;color:var(--text-dim);margin-top:16px;font-family:var(--font-mono)">
+                                        Keep it private. Your teacher cannot see it</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- The old "Profile Setup" and "Pending Approval" screens were removed.
+                     Students never enter their name, class, section, mobile or date of
+                     birth - the institute enters all of it when adding them. Email + code
+                     takes them straight to the dashboard. -->
+
+                <!-- screen: dashboard -->
+                <div id="screen-dashboard" class="screen hidden">
+
+                    <!-- Page header -->
+                    <div class="page-header">
+                        <div class="page-greeting" id="dashGreeting">Welcome back</div>
+                        <div class="page-title" id="dashName">Hello, Student</div>
+                        <div class="page-sub" id="dashRoll">Here are the tests assigned to you.
+                        </div>
+                    </div>
+
+                    <!-- Notifications banner -->
+                    <div id="notificationBanner" style="display:none;margin-bottom:16px"></div>
+
+                    <!-- Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-tile c1">
+                            <span class="stat-tile-icon">📋</span>
+                            <div class="stat-num" id="statTests">—</div>
+                            <div class="stat-label">Assigned Tests</div>
+                        </div>
+                        <div class="stat-tile c2">
+                            <span class="stat-tile-icon">✅</span>
+                            <div class="stat-num" id="statCompleted">0</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                        <div class="stat-tile c3">
+                            <span class="stat-tile-icon">⭐</span>
+                            <div class="stat-num" id="statAvg">—</div>
+                            <div class="stat-label">Avg Score</div>
+                        </div>
+                        <div class="stat-tile c4">
+                            <span class="stat-tile-icon">🔥</span>
+                            <div class="stat-num">0</div>
+                            <div class="stat-label">Day Streak</div>
+                        </div>
+                    </div>
+
+                    <!-- Content grid -->
+                    <div class="content-grid">
+
+                        <!-- Tests panel -->
+                        <div>
+                            <div class="panel">
+                                <div class="panel-head">
+                                    <div class="panel-title">Assigned Tests</div>
+                                    <span class="panel-badge" id="testPanelBadge">0 Tests</span>
+                                </div>
+                                <div class="panel-body">
+                                    <div id="testsLoading"><span class="spin"></span> Loading tests…</div>
+                                    <div id="testGrid" class="test-list" style="display:none"></div>
+                                    <div id="testsEmpty" class="empty-state hidden">
+                                        <span class="ei">📭</span>
+                                        <p>No tests assigned yet.<br>Your teacher will add them soon.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right info panel -->
+                        <div class="info-panel">
+
+                            <!-- Student info -->
+                            <div class="info-card">
+                                <div class="info-card-title">Student Info</div>
+                                <div class="info-row">
+                                    <div class="info-icon-box blue">🎓</div>
+                                    <div>
+                                        <div class="info-val" id="infoClass">—</div>
+                                        <div class="info-lbl">Class / Batch</div>
+                                    </div>
+                                </div>
+                                <div class="info-row">
+                                    <div class="info-icon-box purple">📅</div>
+                                    <div>
+                                        <div class="info-val" id="infoDate">—</div>
+                                        <div class="info-lbl">Today</div>
+                                    </div>
+                                </div>
+                                <div class="info-row">
+                                    <div class="info-icon-box green">📞</div>
+                                    <div>
+                                        <div class="info-val" id="infoPhone">—</div>
+                                        <div class="info-lbl">Phone</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick links -->
+                            <div class="info-card">
+                                <div class="info-card-title">Quick Access</div>
+                                <div class="quick-links">
+                                    <div class="quick-link"><span class="quick-link-icon">📖</span>Study Materials<span
+                                            class="quick-link-arr">›</span></div>
+                                    <div class="quick-link"><span class="quick-link-icon">📊</span>My Progress<span
+                                            class="quick-link-arr">›</span></div>
+                                    <div class="quick-link" onclick="navAttendance()"><span
+                                            class="quick-link-icon">🗓️</span>Attendance<span
+                                            class="quick-link-arr">›</span></div>
+                                    <div class="quick-link" onclick="showEditProfile()"><span
+                                            class="quick-link-icon">⚙️</span>Settings<span
+                                            class="quick-link-arr">›</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Tip -->
+                            <div class="info-card"
+                                style="background:linear-gradient(135deg,var(--cyan-dim),var(--violet-dim));border-color:var(--border-hi)">
+                                <div
+                                    style="font-size:.76rem;font-family:var(--font-mono);color:var(--cyan);letter-spacing:1px;margin-bottom:8px">
+                                    STUDY TIP</div>
+                                <div style="font-size:.875rem;color:var(--text-mid);line-height:1.75">Try to revise a
+                                    lecture within a day or two. Short repeated revisions stick better than one long
+                                    session.</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                </div>
+                <!-- screen: attendance -->
+                <div id="screen-attendance" class="screen hidden">
+                    <div class="page-header">
+                        <div class="page-greeting">Attendance</div>
+                        <div class="page-title">My Attendance Record</div>
+                        <div class="page-sub">Attendance marked by your teacher, day by day.</div>
+                    </div>
+
+                    <div id="notificationBannerAtt" style="display:none;margin-bottom:16px"></div>
+
+                    <div class="att-calendar-controls">
+                        <button class="btn-ghost" onclick="attCalendarPrevMonth()">← <span
+                                class="att-hide-mobile">Previous</span></button>
+                        <div class="att-calendar-month-label" id="attCalendarLabel">January 2026</div>
+                        <button class="btn-ghost" onclick="attCalendarNextMonth()"><span
+                                class="att-hide-mobile">Next</span> →</button>
+                    </div>
+
+                    <div class="att-calendar-legend">
+                        <span><span class="att-dot att-dot-present"></span> Present</span>
+                        <span><span class="att-dot att-dot-absent"></span> Absent</span>
+                    </div>
+
+                    <div id="attCalendarGrid" class="att-calendar-grid"></div>
+
+                    <div class="att-summary" id="attSummary">
+                        <div class="att-summary-stat"><span class="att-summary-num" id="attSumPresent">0</span> Present
+                        </div>
+                        <div class="att-summary-stat"><span class="att-summary-num" id="attSumAbsent">0</span> Absent
+                        </div>
+                    </div>
+
+                    <div id="attCalendarLoading"
+                        style="text-align:center;padding:40px;color:var(--text-dim);display:none">Loading attendance
+                        data…</div>
+                    <div id="attCalendarEmpty"
+                        style="text-align:center;padding:40px;color:var(--text-dim);display:none">
+                        <div style="font-size:2.5rem;margin-bottom:8px">📅</div>
+                        <div style="font-size:0.95rem">No attendance records for this month.</div>
+                    </div>
+                </div>
+
+                <!-- screen: test analysis -->
+                <div id="screen-test-analysis" class="screen hidden">
+
+                    <div class="ta-header">
+                        <h1>Test Analysis</h1>
+                        <p>Your attempted tests and how your scores are moving</p>
+                    </div>
+                    <div class="ta-summary-bar">
+                        <div class="ta-sum-card">
+                            <div class="ta-sum-label">Tests Taken</div>
+                            <div class="ta-sum-val" id="taSumTests" style="color:var(--cyan)">—</div>
+                        </div>
+                        <div class="ta-sum-card">
+                            <div class="ta-sum-label">Avg Accuracy</div>
+                            <div class="ta-sum-val" id="taSumAvg" style="color:var(--green)">—</div>
+                        </div>
+                        <div class="ta-sum-card">
+                            <div class="ta-sum-label">Best Score</div>
+                            <div class="ta-sum-val" id="taSumBest" style="color:var(--violet)">—</div>
+                        </div>
+                        <div class="ta-sum-card">
+                            <div class="ta-sum-label">Total Time</div>
+                            <div class="ta-sum-val" id="taSumTime" style="color:var(--amber)">—</div>
+                        </div>
+                    </div>
+                    <div class="ta-list">
+                        <div id="testAnalysisListContainer"></div>
+                    </div>
+                </div>
+
+                <!-- screen: test summary analysis -->
+                <div id="screen-test-summary" class="screen hidden">
+
+
+                    <div class="ts-wrap">
+                        <button class="ts-back" onclick="showTestAnalysisList(true)">← Back</button>
+                        <div class="ts-title" id="tsSummaryTitle">—</div>
+                        <div class="ts-date" id="tsSummaryDate">—</div>
+
+                        <!-- Pie Chart Row -->
+                        <div class="ts-chart-row">
+                            <div class="ts-pie-wrap">
+                                <svg class="ts-pie-svg" width="160" height="160" viewBox="0 0 160 160" id="tsPieChart">
+                                    <circle cx="80" cy="80" r="60" fill="var(--bg-input)" />
+                                    <!-- Segments injected by JS -->
+                                    <text x="80" y="76" class="ts-pie-center" font-size="22" font-weight="800"
+                                        fill="var(--text)" id="tsPiePct">0%</text>
+                                    <text x="80" y="97" class="ts-pie-center" font-size="11" fill="var(--text-faint)"
+                                        id="tsPieLbl">Accuracy</text>
+                                </svg>
+                            </div>
+                            <div class="ts-legend">
+                                <div class="ts-legend-item">
+                                    <div class="ts-legend-dot" style="background:#22c55e"></div>
+                                    <div class="ts-legend-label">Correct</div>
+                                    <div>
+                                        <div class="ts-legend-val" style="color:#22c55e" id="tsLegCorrect">0</div>
+                                        <div class="ts-legend-pct" id="tsLegCorrectPct">0%</div>
+                                    </div>
+                                </div>
+                                <div class="ts-legend-item">
+                                    <div class="ts-legend-dot" style="background:#ef4444"></div>
+                                    <div class="ts-legend-label">Incorrect</div>
+                                    <div>
+                                        <div class="ts-legend-val" style="color:#ef4444" id="tsLegWrong">0</div>
+                                        <div class="ts-legend-pct" id="tsLegWrongPct">0%</div>
+                                    </div>
+                                </div>
+                                <div class="ts-legend-item">
+                                    <div class="ts-legend-dot" style="background:#6b7280"></div>
+                                    <div class="ts-legend-label">Not Attempted</div>
+                                    <div>
+                                        <div class="ts-legend-val" style="color:var(--text-faint)" id="tsLegSkipped">0
+                                        </div>
+                                        <div class="ts-legend-pct" id="tsLegSkippedPct">0%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="ts-stats-grid">
+                            <div class="ts-stat-card">
+                                <div class="ts-stat-label">Marks Obtained</div>
+                                <div class="ts-stat-val" id="tsMarks" style="color:var(--cyan)">—</div>
+                                <div class="ts-stat-sub" id="tsMarksMax">out of —</div>
+                            </div>
+                            <div class="ts-stat-card">
+                                <div class="ts-stat-label">Time Taken</div>
+                                <div class="ts-stat-val" id="tsTime" style="color:var(--amber)">—</div>
+                                <div class="ts-stat-sub">to complete</div>
+                            </div>
+                            <div class="ts-stat-card">
+                                <div class="ts-stat-label">Topper's Marks</div>
+                                <div class="ts-stat-val" id="tsTopper" style="color:#a78bfa">—</div>
+                                <div class="ts-stat-sub">highest in class</div>
+                            </div>
+                            <div class="ts-stat-card">
+                                <div class="ts-stat-label">Class Average</div>
+                                <div class="ts-stat-val" id="tsAvg" style="color:var(--green)">—</div>
+                                <div class="ts-stat-sub" id="tsAvgAttempts">— attempts</div>
+                            </div>
+                        </div>
+
+                        <!-- Comparison Bars -->
+                        <div class="ts-compare">
+                            <div class="ts-compare-title">Performance Comparison</div>
+                            <div class="ts-compare-row">
+                                <div class="ts-compare-lbl">Your Score</div>
+                                <div class="ts-compare-track">
+                                    <div class="ts-compare-fill" id="tsBarYou"
+                                        style="width:0%;background:linear-gradient(90deg,var(--cyan),var(--violet))">
+                                    </div>
+                                </div>
+                                <div class="ts-compare-num" id="tsBarYouNum" style="color:var(--cyan)">—</div>
+                            </div>
+                            <div class="ts-compare-row">
+                                <div class="ts-compare-lbl">Topper</div>
+                                <div class="ts-compare-track">
+                                    <div class="ts-compare-fill" id="tsBarTopper" style="width:0%;background:#a78bfa">
+                                    </div>
+                                </div>
+                                <div class="ts-compare-num" id="tsBarTopperNum" style="color:#a78bfa">—</div>
+                            </div>
+                            <div class="ts-compare-row">
+                                <div class="ts-compare-lbl">Class Avg</div>
+                                <div class="ts-compare-track">
+                                    <div class="ts-compare-fill" id="tsBarAvg" style="width:0%;background:var(--green)">
+                                    </div>
+                                </div>
+                                <div class="ts-compare-num" id="tsBarAvgNum" style="color:var(--green)">—</div>
+                            </div>
+                        </div>
+
+                        <!-- View Questions Button -->
+                        <button class="ts-view-btn" id="tsViewQuestionsBtn" onclick="openTestDetailFromSummary()">
+                            View Questions &amp; Solutions
+                        </button>
+                    </div>
+                </div>
+
+                <!-- screen: test detail analysis -->
+                <div id="screen-test-detail" class="screen hidden">
+
+
+                    <div class="td-shell">
+                        <!-- Top Bar -->
+                        <div class="td-topbar">
+                            <button onclick="showScreen('test-summary');setActiveNav('tests')" class="td-back">←
+                                Back</button>
+                            <div class="td-topbar-info">
+                                <div class="td-topbar-title" id="testDetailTitle"></div>
+                                <div class="td-topbar-sub" id="testDetailAttemptTime"></div>
+                            </div>
+                            <div class="td-topbar-stats">
+                                <div class="td-mini-stat">
+                                    <div class="td-mini-stat-val" id="testDetailScore" style="color:#60c8ff"></div>
+                                    <div class="td-mini-stat-lbl">Score</div>
+                                </div>
+                                <div class="td-mini-stat">
+                                    <div class="td-mini-stat-val" id="testDetailAccuracy" style="color:#34d399"></div>
+                                    <div class="td-mini-stat-lbl">Accuracy</div>
+                                </div>
+                                <div class="td-mini-stat">
+                                    <div class="td-mini-stat-val" id="testDetailMarks" style="color:#a78bfa"></div>
+                                    <div class="td-mini-stat-lbl">Marks</div>
+                                </div>
+                                <div class="td-mini-stat">
+                                    <div class="td-mini-stat-val" id="testDetailTime" style="color:#fbbf24"></div>
+                                    <div class="td-mini-stat-lbl">Time</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Split Body -->
+                        <div class="td-split">
+
+                            <!-- left: single question viewer -->
+                            <div class="td-left">
+                                <!-- Filter bar at top of left panel -->
+                                <div class="td-left-filterbar">
+                                    <button class="td-lf-btn active-all" id="tdrfAllL"
+                                        onclick="setTdPaletteFilter('all',this);syncFilterBtns('all')">
+                                        <span class="td-lf-dot" style="background:var(--cyan)"></span>
+                                        All
+                                        <span class="td-lf-count" id="tdrfAllCountL">0</span>
+                                    </button>
+                                    <button class="td-lf-btn" id="tdrfCorrectL"
+                                        onclick="setTdPaletteFilter('correct',this);syncFilterBtns('correct')">
+                                        <span class="td-lf-dot" style="background:#22c55e"></span>
+                                        Correct
+                                        <span class="td-lf-count" id="tdrfCorrectCountL">0</span>
+                                    </button>
+                                    <button class="td-lf-btn" id="tdrfWrongL"
+                                        onclick="setTdPaletteFilter('wrong',this);syncFilterBtns('wrong')">
+                                        <span class="td-lf-dot" style="background:#ef4444"></span>
+                                        Incorrect
+                                        <span class="td-lf-count" id="tdrfWrongCountL">0</span>
+                                    </button>
+                                    <button class="td-lf-btn" id="tdrfSkippedL"
+                                        onclick="setTdPaletteFilter('skipped',this);syncFilterBtns('skipped')">
+                                        <span class="td-lf-dot" style="background:#6b7280"></span>
+                                        Not Attempted
+                                        <span class="td-lf-count" id="tdrfSkippedCountL">0</span>
+                                    </button>
+                                </div>
+                                <!-- Status pill row -->
+                                <div class="td-left-header" style="padding:10px 20px 10px;">
+                                    <span class="td-qnav-counter" id="tdNavCounter"
+                                        style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-faint);">Q1
+                                        / 0</span>
+                                    <div id="tdCurrentStatusPill" class="td-q-status-pill"></div>
+                                </div>
+                                <div class="td-left-body" id="tdQuestionViewer">
+                                    <div style="text-align:center;padding:60px 20px;color:var(--text-faint)">Pick a question from the
+                                        palette to review it.</div>
+                                </div>
+                                <!-- Bottom navigation -->
+                                <div class="td-left-bottomnav">
+                                    <button class="td-bottomnav-btn td-bottomnav-prev" id="tdNavPrev"
+                                        onclick="tdNavigate(-1)">
+                                        ← Previous
+                                    </button>
+                                    <button class="td-bottomnav-btn td-bottomnav-next" id="tdNavNext"
+                                        onclick="tdNavigate(1)">
+                                        Next →
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- right: palette + filters -->
+                            <div class="td-right">
+                                <div class="td-right-header">
+                                    <div class="td-right-title">Question Palette</div>
+
+                                    <!-- Performance mini-bar -->
+                                    <div class="td-perf-mini">
+                                        <div class="td-perf-mini-track">
+                                            <div id="tdBarCorrect"
+                                                style="height:100%;background:#22c55e;transition:width .7s var(--ease)">
+                                            </div>
+                                            <div id="tdBarWrong"
+                                                style="height:100%;background:#ef4444;transition:width .7s .1s var(--ease)">
+                                            </div>
+                                            <div id="tdBarSkip"
+                                                style="height:100%;background:rgba(107,114,128,0.4);transition:width .7s .2s var(--ease);flex:1">
+                                            </div>
+                                        </div>
+                                        <div class="td-perf-mini-legend">
+                                            <span style="color:#22c55e;font-weight:700">■ <span id="tdLblCorrect"
+                                                    style="color:var(--text-faint);font-weight:400">Correct</span></span>
+                                            <span style="color:#ef4444;font-weight:700">■ <span id="tdLblWrong"
+                                                    style="color:var(--text-faint);font-weight:400">Wrong</span></span>
+                                            <span style="color:#6b7280;font-weight:700">■ <span id="tdLblSkip"
+                                                    style="color:var(--text-faint);font-weight:400">Skipped</span></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Filter Buttons -->
+                                    <div class="td-right-filters" style="margin-top:12px">
+                                        <button class="td-rfilter-btn active-all" id="tdrfAll"
+                                            onclick="setTdPaletteFilter('all',this)">
+                                            <span class="td-rfilter-dot" style="background:var(--cyan)"></span>
+                                            All Questions
+                                            <span class="td-rfilter-count" id="tdrfAllCount">0</span>
+                                        </button>
+                                        <button class="td-rfilter-btn" id="tdrfCorrect"
+                                            onclick="setTdPaletteFilter('correct',this)">
+                                            <span class="td-rfilter-dot" style="background:#22c55e"></span>
+                                            ✓ Correct
+                                            <span class="td-rfilter-count" id="tdrfCorrectCount">0</span>
+                                        </button>
+                                        <button class="td-rfilter-btn" id="tdrfWrong"
+                                            onclick="setTdPaletteFilter('wrong',this)">
+                                            <span class="td-rfilter-dot" style="background:#ef4444"></span>
+                                            ✗ Incorrect
+                                            <span class="td-rfilter-count" id="tdrfWrongCount">0</span>
+                                        </button>
+                                        <button class="td-rfilter-btn" id="tdrfSkipped"
+                                            onclick="setTdPaletteFilter('skipped',this)">
+                                            <span class="td-rfilter-dot" style="background:#6b7280"></span>
+                                            — Not Attempted
+                                            <span class="td-rfilter-count" id="tdrfSkippedCount">0</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Palette Grid -->
+                                <div class="td-right-body">
+                                    <div class="td-palette-legend">
+                                        <span class="td-legend-item"><span class="td-legend-dot"
+                                                style="background:rgba(34,197,94,0.7)"></span>Correct</span>
+                                        <span class="td-legend-item"><span class="td-legend-dot"
+                                                style="background:rgba(239,68,68,0.7)"></span>Wrong</span>
+                                        <span class="td-legend-item"><span class="td-legend-dot"
+                                                style="background:rgba(107,114,128,0.4)"></span>Skipped</span>
+                                    </div>
+                                    <div class="td-palette-grid" id="tdPaletteGrid"></div>
+                                </div>
+                            </div>
+
+                        </div><!-- end td-split -->
+
+                        <!-- Hidden container still needed for filter compatibility (not shown) -->
+                        <div id="testDetailQuestions" style="display:none"></div>
+                    </div><!-- end td-shell -->
+                </div>
+
+                <!-- screen: my details (read-only) -->
+                <div id="screen-edit" class="screen hidden">
+                    <div style="max-width:560px">
+                        <div style="margin-bottom:22px">
+                            <div
+                                style="font-family:var(--font-head);font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:4px">
+                                My Details</div>
+                            <div style="font-size:.9rem;color:var(--text-dim)">What your institute has on record for you.</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-stripe"></div>
+                            <div class="ro-grid" id="myDetailsGrid"></div>
+                            <div style="height:1px;background:var(--border);margin:18px 0"></div>
+                            <div class="ro-note">
+                                <span style="font-size:1.05rem">i</span>
+                                <div>Your institute manages these details, so they can't be edited here. Ask your
+                                    teacher if something looks wrong.</div>
+                            </div>
+                            <div class="ro-note" style="margin-top:10px">
+                                <span style="font-size:1.05rem">🔒</span>
+                                <div>Your password is private and is never shown. Forgot it? Sign out and use
+                                    <b>Forgot password?</b> on the sign-in screen to set a new one with an email code.
+                                </div>
+                            </div>
+                            <button class="btn-ghost" onclick="showScreen('dashboard')"
+                                style="width:100%;margin-top:16px;text-align:center">← Back to Dashboard</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end page-content -->
+
+            <!-- jee test portal -->
+            <!-- Injected outside page-content so it can be full-screen -->
+
+
+            <div id="jee-portal"
+                style="display:none;position:fixed;inset:0;z-index:500;background:#0a0c14;font-family:'Inter', sans-serif;overflow:hidden;flex-direction:column">
+
+                <!-- STRICT MODE WARNING OVERLAY -->
+                <div id="strict-warning-overlay"
+                    style="display:none;position:absolute;inset:0;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column">
+                    <div id="strict-warning-box"
+                        style="background:#111827;border:2px solid #fbbf24;border-radius:20px;padding:32px 36px;max-width:440px;width:92%;text-align:center;box-shadow:0 0 60px rgba(251,191,36,0.3),0 24px 60px rgba(0,0,0,0.8)">
+                        <div style="font-size:2.8rem;margin-bottom:12px" id="strict-warn-icon">⚠️</div>
+                        <div id="strict-warn-title"
+                            style="font-family:'Inter', sans-serif;font-size:1.3rem;font-weight:800;color:#fbbf24;margin-bottom:10px">
+                            Warning!</div>
+                        <div id="strict-warn-body"
+                            style="font-size:0.9rem;color:rgba(255,255,255,0.8);line-height:1.65;margin-bottom:22px">
+                        </div>
+                        <button id="strict-warn-btn" onclick="dismissStrictWarning()"
+                            style="padding:11px 28px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#111;border:none;border-radius:10px;font-size:0.92rem;font-weight:800;cursor:pointer;font-family:inherit">I
+                            Understand</button>
+                    </div>
+                </div>
+
+                <!-- JEE Top Bar -->
+                <div id="jeeTopBar"
+                    style="height:52px;background:#111827;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0">
+                    <!-- Brand - hidden on mobile via CSS -->
+                    <div id="jeeBrandLabel"
+                        style="font-weight:800;font-size:1rem;color:#60c8ff;font-family:'Inter', sans-serif;letter-spacing:1px;white-space:nowrap;flex-shrink:0">
+                        ⚡ <span id="jeeTopBarBrandText">INSTITUTE</span> TEST</div>
+                    <div style="flex:1;min-width:0"></div>
+                    <div id="jeeTestInfo"
+                        style="font-size:0.78rem;color:rgba(255,255,255,0.55);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">
+                    </div>
+                    <!-- Marking scheme toggle -->
+                    <div style="display:flex;align-items:center;gap:6px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);border-radius:8px;padding:5px 10px;cursor:pointer;flex-shrink:0"
+                        onclick="jeeToggleScheme()" id="jeeSchemeBtn" title="Toggle marking scheme">
+                        <span style="font-size:0.72rem;color:#34d399;font-weight:700" id="jeeSchemeLbl">+4 / -1</span>
+                    </div>
+                    <div class="jee-top-sep"
+                        style="width:1px;height:24px;background:rgba(255,255,255,0.1);margin:0 2px"></div>
+                    <!-- Timer - always visible -->
+                    <div id="jeeTimerWrap"
+                        style="display:flex;align-items:center;gap:5px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:6px 10px;flex-shrink:0">
+                        <span style="font-size:0.82rem">⏱</span>
+                        <span id="jeeTimer"
+                            style="font-family:'IBM Plex Mono', monospace;font-size:0.88rem;font-weight:700;color:#fbbf24;min-width:64px;letter-spacing:0.5px">00:00:00</span>
+                    </div>
+                    <!-- Mobile palette / drawer toggle -->
+                    <button id="jeePaletteToggle" onclick="jeeTogglePalette()"
+                        style="padding:7px 11px;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);border-radius:8px;color:#a78bfa;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:'Inter', sans-serif;display:flex;align-items:center;gap:4px;flex-shrink:0">≡ Qs</button>
+                    <button onclick="jeeSubmitConfirm()"
+                        style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:'Inter', sans-serif;white-space:nowrap;flex-shrink:0">Submit</button>
+                </div>
+
+                <!-- Mobile palette backdrop -->
+                <div id="jeePaletteBackdrop" onclick="jeeTogglePalette()"></div>
+
+                <!-- JEE Body -->
+                <div style="display:flex;flex:1;overflow:hidden;position:relative">
+
+                    <!-- Question Area (left) -->
+                    <div
+                        style="flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid rgba(255,255,255,0.07)">
+
+                        <!-- Question Display -->
+                        <div id="jeeQArea" style="flex:1;overflow-y:auto;padding:24px 28px">
+                            <!-- injected by JS -->
+                        </div>
+
+                        <!-- Bottom nav -->
+                        <div id="jeeBottomNav"
+                            style="border-top:1px solid rgba(255,255,255,0.07);padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));display:flex;align-items:center;gap:8px;background:#0d1020;flex-shrink:0;">
+
+
+                            <!-- Mobile-only: full-width Save & Next at top of bar -->
+                            <button onclick="jeeNav(1)" id="jeeNextBtnMobile">Save &amp; Next →</button>
+
+                            <!-- Controls row (Prev | counter | Mark | Clear | desktop Next) -->
+                            <div class="jee-ctrl-row">
+                                <button onclick="jeeNav(-1)" id="jeePrevBtn"
+                                    style="padding:9px 18px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:rgba(255,255,255,0.8);font-size:0.83rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s"
+                                    onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                                    onmouseout="this.style.background='rgba(255,255,255,0.06)'">← Prev</button>
+                                <div style="flex:1;text-align:center">
+                                    <span id="jeeQPos" style="font-size:0.82rem;color:rgba(255,255,255,0.5)">Q1 of
+                                        30</span>
+                                </div>
+                                <button onclick="jeeMarkForReview()" id="jeeMarkBtn"
+                                    style="padding:9px 13px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.25);border-radius:8px;color:#a78bfa;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">🔖
+                                    Mark</button>
+                                <button onclick="jeeClearResponse()" id="jeeClearBtn"
+                                    style="padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.55);font-size:0.8rem;cursor:pointer;font-family:inherit;transition:all .15s"
+                                    onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                    onmouseout="this.style.background='rgba(255,255,255,0.04)'">Clear</button>
+                                <!-- Desktop-only Save & Next -->
+                                <button onclick="jeeNav(1)" id="jeeNextBtn"
+                                    style="padding:9px 20px;background:linear-gradient(135deg,#60c8ff,#a78bfa);color:#fff;border:none;border-radius:8px;font-size:0.83rem;font-weight:700;cursor:pointer;font-family:inherit">Save
+                                    &amp; Next →</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Subject-wise Question Drawer -->
+                    <div id="jeeRightPanel"
+                        style="width:270px;flex-shrink:0;background:#0d1020;display:flex;flex-direction:column;overflow:hidden">
+
+                        <!-- Drawer Header: Grid view only -->
+                        <div style="border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0">
+                            <div style="text-align:center;padding:9px 0;font-size:0.72rem;font-weight:700;color:#60c8ff;border-bottom:2px solid #60c8ff">Question Palette</div>
+                        </div>
+
+                        <!-- Legend -->
+                        <div class="jee-drawer-legend" id="jeeLegendDiv">
+                            <div class="jee-legend-item"><div class="jee-legend-dot seen"></div>Seen</div>
+                            <div class="jee-legend-item"><div class="jee-legend-dot not-seen"></div>Not Seen</div>
+                            <div class="jee-legend-item"><div class="jee-legend-dot attempted"></div>Attempted</div>
+                            <div class="jee-legend-item"><div class="jee-legend-dot marked"></div>Marked</div>
+                            <div class="jee-legend-item"><div class="jee-legend-dot att-marked"></div>Attempted &amp; Marked</div>
+                        </div>
+
+                        <!-- Subject-wise question sections (built by JS) -->
+                        <div id="jeeQPaletteContainer" style="flex:1;overflow-y:auto">
+                            <!-- Hidden flat palette for backward compat -->
+                            <div id="jeeQPalette" style="display:none"></div>
+                            <!-- Subject sections injected here -->
+                            <div id="jeeSubjectSections"></div>
+                        </div>
+
+                        <!-- Live Tally + Marking scheme -->
+                        <!-- Submit button inside drawer (mobile) -->
+                        <div class="jee-drawer-submit-row" id="jeeDrawerSubmitRow">
+                            <button class="jee-drawer-submit-btn" onclick="jeeSubmitConfirm();jeeTogglePalette()">Submit Test</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- jee result portal -->
+            <div id="jee-result" style="display:none;position:fixed;inset:0;z-index:500;overflow-y:auto">
+                <div
+                    style="max-width:1280px;margin:0 auto;padding:32px 26px calc(64px + env(safe-area-inset-bottom, 0px))">
+
+                    <!-- Result Header -->
+                    <div style="text-align:center;margin-bottom:32px">
+                        <div
+                            style="font-family:'Inter', sans-serif;font-size:0.72rem;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);margin-bottom:8px">
+                            TEST COMPLETED</div>
+                        <div
+                            style="font-family:'Inter', sans-serif;font-size:2.2rem;font-weight:800;color:var(--text);margin-bottom:6px">
+                            Your Results</div>
+                        <div id="resultStudentName" style="font-size:0.95rem;color:var(--text-dim)"></div>
+                        <div id="resultTestMeta"
+                            style="font-size:0.8rem;color:var(--text-faint);margin-top:4px;font-family:'IBM Plex Mono', monospace">
+                        </div>
+                    </div>
+
+                    <!-- Two-column layout -->
+                    <div style="display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,0.92fr);gap:24px;margin-bottom:20px;align-items:stretch"
+                        id="res-two-col">
+
+                        <!-- LEFT COLUMN -->
+                        <div>
+                            <!-- Grade Badge + Score Card -->
+                            <div class="res-card" id="res-grade-card"
+                                style="background:linear-gradient(135deg,var(--cyan-dim),var(--violet-dim));border-color:var(--border-hi);text-align:center;padding:32px 24px;margin-bottom:16px">
+                                <div id="resultGradeBadge"
+                                    style="display:inline-block;font-family:'Inter', sans-serif;font-size:2.8rem;font-weight:800;line-height:1;margin-bottom:6px">
+                                </div>
+                                <div
+                                    style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);margin-bottom:10px">
+                                    TOTAL SCORE</div>
+                                <div id="resultScore"
+                                    style="font-family:'Inter', sans-serif;font-size:3.5rem;font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1">
+                                </div>
+                                <div id="resultPct" style="font-size:1rem;color:var(--text-dim);margin-top:8px"></div>
+                                <div id="resultMarksScore"
+                                    style="font-size:0.85rem;color:var(--text-faint);margin-top:5px;font-family:'IBM Plex Mono', monospace">
+                                </div>
+                                <div id="resultTimeSpent"
+                                    style="font-size:0.8rem;color:var(--text-faint);margin-top:5px"></div>
+                            </div>
+
+                            <!-- Stats Grid 2x2 -->
+                            <div id="res-stats-grid"
+                                style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+                                <div class="res-card" style="text-align:center;padding:18px 12px">
+                                    <div class="res-stat-num" style="color:#22c55e" id="res-correct">—</div>
+                                    <div class="res-stat-lbl">Correct</div>
+                                </div>
+                                <div class="res-card" style="text-align:center;padding:18px 12px">
+                                    <div class="res-stat-num" style="color:var(--error)" id="res-wrong">—</div>
+                                    <div class="res-stat-lbl">Wrong</div>
+                                </div>
+                                <div class="res-card" style="text-align:center;padding:18px 12px">
+                                    <div class="res-stat-num" style="color:var(--text-faint)" id="res-skipped">—</div>
+                                    <div class="res-stat-lbl">Skipped</div>
+                                </div>
+                                <div class="res-card" style="text-align:center;padding:18px 12px">
+                                    <div class="res-stat-num" style="color:var(--amber)" id="res-total">—</div>
+                                    <div class="res-stat-lbl">Total Qs</div>
+                                </div>
+                            </div>
+
+                            <!-- Performance Bar -->
+                            <div class="res-card" style="margin-bottom:16px">
+                                <div class="res-section-label">Performance Breakdown</div>
+                                <div
+                                    style="height:13px;background:var(--bg-input);border-radius:99px;overflow:hidden;margin-bottom:10px;display:flex">
+                                    <div id="res-bar-correct"
+                                        style="height:100%;background:#22c55e;transition:width .8s ease;border-radius:99px 0 0 99px">
+                                    </div>
+                                    <div id="res-bar-wrong"
+                                        style="height:100%;background:#ef4444;transition:width .8s ease .1s"></div>
+                                    <div id="res-bar-skip"
+                                        style="height:100%;background:rgba(255,255,255,0.08);transition:width .8s ease .2s;border-radius:0 99px 99px 0">
+                                    </div>
+                                </div>
+                                <div
+                                    style="display:flex;gap:16px;font-size:0.75rem;color:var(--text-faint);flex-wrap:wrap">
+                                    <span><span style="color:#22c55e">■</span> Correct (<span
+                                            id="res-pct-c">0</span>%)</span>
+                                    <span><span style="color:#ef4444">■</span> Wrong (<span
+                                            id="res-pct-w">0</span>%)</span>
+                                    <span><span style="color:var(--text-faint)">■</span> Skipped (<span
+                                            id="res-pct-s">0</span>%)</span>
+                                </div>
+                            </div>
+
+                            <!-- Subject-wise breakdown -->
+                            <div id="res-section-wrap" style="display:none;margin-bottom:16px">
+                                <div class="res-card">
+                                    <div class="res-section-label">Subject-wise Breakdown</div>
+                                    <div id="res-section-grid"
+                                        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div id="res-actions-wrap" style="display:flex;gap:12px;flex-wrap:wrap">
+                                <button onclick="jeeReturnToDashboard()"
+                                    style="padding:13px 28px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#fff;border:none;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:'Inter', sans-serif;transition:all .2s"
+                                    onmouseover="this.style.transform='translateY(-2px)'"
+                                    onmouseout="this.style.transform=''">← Back to Dashboard</button>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN: Answer Review -->
+                        <div>
+                            <div class="res-card"
+                                style="overflow:hidden;padding:0;margin-bottom:0;height:100%;min-height:100%;display:flex;flex-direction:column;box-shadow:var(--shadow-pop)">
+                                <div
+                                    style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex-shrink:0">
+                                    <div class="res-section-label" style="margin:0">Question Review</div>
+                                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                                        <div id="res-review-count"
+                                            style="font-size:0.75rem;color:var(--text-faint);font-family:'IBM Plex Mono', monospace">
+                                        </div>
+                                        <button onclick="jeeFilterReview('all')" id="rfAll"
+                                            style="padding:4px 10px;border-radius:20px;font-size:0.7rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--cyan-dim);color:var(--cyan);font-family:'Inter', sans-serif">All</button>
+                                        <button onclick="jeeFilterReview('correct')" id="rfCorrect"
+                                            style="padding:4px 10px;border-radius:20px;font-size:0.7rem;font-weight:700;cursor:pointer;border:1px solid rgba(34,197,94,0.25);background:rgba(34,197,94,0.07);color:#22c55e;font-family:'Inter', sans-serif">Correct</button>
+                                        <button onclick="jeeFilterReview('wrong')" id="rfWrong"
+                                            style="padding:4px 10px;border-radius:20px;font-size:0.7rem;font-weight:700;cursor:pointer;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.07);color:#ef4444;font-family:'Inter', sans-serif">Wrong</button>
+                                        <button onclick="jeeFilterReview('skipped')" id="rfSkipped"
+                                            style="padding:4px 10px;border-radius:20px;font-size:0.7rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--bg-input);color:var(--text-dim);font-family:'Inter', sans-serif">Skipped</button>
+                                    </div>
+                                </div>
+                                <div id="res-review-list"
+                                    style="flex:1;overflow-y:auto;padding:8px 12px;max-height:calc(100vh - 280px)">
+                                </div>
+                                <div id="res-review-empty"
+                                    style="display:none;padding:28px;text-align:center;font-size:0.85rem;color:var(--text-faint)">
+                                    No questions in this filter.</div>
+                            </div>
+                        </div>
+
+                    </div><!-- end two-col -->
+
+                </div>
+            </div>
+
+            <!-- jee submit confirmation dialog -->
+            <div id="jeeSubmitDlg"
+                style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px">
+                <div
+                    style="background:#111827;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:30px 28px;max-width:380px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.6)">
+                    <div style="font-size:1.8rem;margin-bottom:12px;text-align:center">⚠️</div>
+                    <div
+                        style="font-family:'Inter', sans-serif;font-size:1.15rem;font-weight:700;color:#f1f5ff;text-align:center;margin-bottom:8px">
+                        Submit Test?</div>
+                    <div id="jeeSubmitInfo"
+                        style="font-size:0.85rem;color:rgba(241,245,255,0.6);text-align:center;line-height:1.65;margin-bottom:22px">
+                    </div>
+                    <div style="display:flex;gap:10px">
+                        <button onclick="jeeCloseDlg()"
+                            style="flex:1;padding:11px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:rgba(255,255,255,0.8);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:'Inter', sans-serif">Cancel</button>
+                        <button onclick="jeeDoSubmit()"
+                            style="flex:1;padding:11px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:10px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:'Inter', sans-serif">Yes,
+                            Submit</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <script src="test_window.js?v=1.0.4" defer></script>
+
+
+
+
+
+            <footer class="main-footer">
+                <span id="footerBrandSpan">Student Portal v2</span>
+                <span id="footerRoll"></span>
+            </footer>
+
+        </div><!-- end main -->
+    </div><!-- end app-shell -->
+
+
+
+    <!-- refresh warning popup -->
+    <div id="refreshWarningPopup" style="
+        display:none;position:fixed;inset:0;z-index:10000;
+        background:rgba(6,8,16,0.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        align-items:center;justify-content:center;padding:20px;
+    ">
+
+        <div class="rwp-box">
+            <div class="rwp-icon">⚠️</div>
+            <div class="rwp-title">Test in Progress!</div>
+            <div class="rwp-body">Refreshing ends the current test and your answers will be lost.</div>
+            <div class="rwp-warning-tag">PROGRESS CANNOT BE RECOVERED</div>
+            <div class="rwp-btn-row">
+                <button class="rwp-btn-stay" onclick="_refreshWarningStay()">
+                    Continue Test
+                </button>
+                <button class="rwp-btn-leave" onclick="_refreshWarningLeave()">
+                    Refresh anyway &amp; lose progress
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- analytics -->
+    <script defer
+        src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447"
+        integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ=="
+        data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}'
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

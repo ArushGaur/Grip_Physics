@@ -1,0 +1,19 @@
+# robots.txt — https://vyorra.in
+# Vyorra — Examination Operating System for Institutes
+
+User-agent: *
+Allow: /
+
+# Backend API proxy — no crawlable content
+Disallow: /api/
+
+# Service workers and app manifests — not useful search results
+Disallow: /institute-sw.js
+Disallow: /developer-sw.js
+
+# NOTE: The private panels (/institute, /developer, /test_window, /institute_mockup)
+# are intentionally NOT disallowed here. They carry <meta name="robots" content="noindex">
+# instead, because Google must be able to crawl a page to see its noindex directive.
+# Blocking them here would keep them stuck in the index without a snippet.
+
+Sitemap: https://vyorra.in/sitemap.xml
