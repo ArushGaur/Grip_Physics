@@ -4,8 +4,9 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>FAQ — Vyorra Exam &amp; Question Bank Software</title>
-	<meta name="description" content="Answers to common questions about Vyorra: importing existing papers, the Android app, data isolation between institutes, proctoring, pricing slabs and onboarding time.">
+	<title>FAQ — Setup, Migration, Proctoring &amp; Billing | Vyorra</title>
+	<meta name="description"
+		content="Answers to the questions coaching institutes ask about Vyorra: question migration, paper generation, proctored online tests, the Android app, data privacy and billing slabs.">
 	<meta name="theme-color" content="#07231d">
 	<link rel="canonical" href="https://vyorra.in/faq">
 	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -14,17 +15,20 @@
 	<meta property="og:site_name" content="Vyorra">
 	<meta property="og:locale" content="en_IN">
 	<meta property="og:url" content="https://vyorra.in/faq">
-	<meta property="og:title" content="FAQ — Vyorra Exam &amp; Question Bank Software">
-	<meta property="og:description" content="Answers to common questions about Vyorra: importing existing papers, the Android app, data isolation between institutes, proctoring, pricing slabs and onboarding time.">
+	<meta property="og:title" content="FAQ — Setup, Migration, Proctoring &amp; Billing | Vyorra">
+	<meta property="og:description"
+		content="Question migration, paper generation, proctored online tests, the Android app, data privacy and billing — answered plainly.">
 	<meta property="og:image" content="https://vyorra.in/assets/og-image.jpg">
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="FAQ — Vyorra Exam &amp; Question Bank Software">
-	<meta name="twitter:description" content="Answers to common questions about Vyorra: importing existing papers, the Android app, data isolation between institutes, proctoring, pricing slabs and onboarding time.">
+	<meta name="twitter:title" content="FAQ — Setup, Migration, Proctoring &amp; Billing | Vyorra">
+	<meta name="twitter:description"
+		content="Question migration, paper generation, proctored online tests, the Android app, data privacy and billing — answered plainly.">
 	<meta name="twitter:image" content="https://vyorra.in/assets/og-image.jpg">
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
+	<link
+		href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
 		rel="stylesheet">
 	<link rel="icon" href="/favicon.ico" sizes="any">
 	<link rel="icon" type="image/png" href="/assets/icon-48.png" sizes="48x48">
@@ -34,251 +38,67 @@
 	<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
 	<link rel="manifest" href="/site.webmanifest">
 	<link rel="stylesheet" href="/style.css">
-	<style>
-		.doc {
-			padding: 128px 0 88px;
-		}
-
-		.doc .crumbs {
-			font-size: .82rem;
-			color: var(--ink-3);
-			margin-bottom: 18px;
-		}
-
-		.doc .crumbs a {
-			color: var(--ink-3);
-			text-decoration: none;
-		}
-
-		.doc .crumbs a:hover {
-			color: var(--teal);
-		}
-
-		.doc h1 {
-			font-size: clamp(2rem, 4vw, 2.9rem);
-			line-height: 1.12;
-			letter-spacing: -.02em;
-			margin: 0 0 16px;
-			color: var(--ink);
-		}
-
-		.doc .lede {
-			font-size: 1.1rem;
-			color: var(--ink-2);
-			max-width: 60ch;
-			margin: 0 0 44px;
-		}
-
-		.doc h2 {
-			font-size: 1.45rem;
-			margin: 48px 0 14px;
-			color: var(--ink);
-			letter-spacing: -.01em;
-		}
-
-		.doc h3 {
-			font-size: 1.05rem;
-			margin: 0 0 8px;
-			color: var(--ink);
-		}
-
-		.doc p {
-			color: var(--ink-2);
-			line-height: 1.65;
-			max-width: 68ch;
-		}
-
-		.doc-grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-			gap: 18px;
-			margin-top: 22px;
-		}
-
-		.doc-card {
-			border: 1px solid var(--line);
-			border-radius: var(--radius);
-			padding: 22px;
-			background: var(--canvas);
-			box-shadow: var(--shadow-sm);
-		}
-
-		.doc-card p {
-			margin: 0;
-			font-size: .93rem;
-		}
-
-		.doc-list {
-			list-style: none;
-			padding: 0;
-			margin: 18px 0 0;
-			max-width: 68ch;
-		}
-
-		.doc-list li {
-			position: relative;
-			padding-left: 26px;
-			margin-bottom: 12px;
-			color: var(--ink-2);
-			line-height: 1.6;
-		}
-
-		.doc-list li::before {
-			content: "";
-			position: absolute;
-			left: 0;
-			top: .55em;
-			width: 8px;
-			height: 8px;
-			border-radius: 50%;
-			background: var(--teal);
-		}
-
-		.doc-cta {
-			margin-top: 56px;
-			padding: 34px;
-			border-radius: var(--radius-lg);
-			background: var(--deep);
-			color: #fff;
-		}
-
-		.doc-cta h2 {
-			color: #fff;
-			margin: 0 0 10px;
-		}
-
-		.doc-cta p {
-			color: rgba(255, 255, 255, .78);
-			margin: 0 0 22px;
-		}
-
-		.doc-faq details {
-			border-bottom: 1px solid var(--line);
-			padding: 18px 0;
-		}
-
-		.doc-faq summary {
-			cursor: pointer;
-			font-weight: 600;
-			color: var(--ink);
-			list-style: none;
-		}
-
-		.doc-faq summary::-webkit-details-marker {
-			display: none;
-		}
-
-		.doc-faq p {
-			margin: 12px 0 0;
-		}
-
-		.price-box {
-			border: 2px solid var(--teal);
-			border-radius: var(--radius-lg);
-			padding: 30px;
-			max-width: 460px;
-			background: var(--teal-soft);
-		}
-
-		.price-box .amount {
-			font-size: 2.4rem;
-			font-weight: 700;
-			color: var(--deep-2);
-			letter-spacing: -.02em;
-		}
-	</style>
+	<link rel="stylesheet" href="/pages.css">
 
 	<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://vyorra.in/"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Frequently asked questions",
-      "item": "https://vyorra.in/faq"
-    }
-  ]
-}
-	</script>
-	<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Do we have to re-type our existing question papers?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "No. Upload the PDFs, Word files or scans you already have. Our importer extracts questions, options and solutions into a review pool, where your faculty approve or fix them before they enter the bank."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Is there a mobile app?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. The institute app is available for Android on Google Play, with the same dashboard, question library, attendance and results as the web panel. The student portal also installs as an app on any phone."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Is our question bank visible to other institutes?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Never. Every institute is isolated with its own data scope, its own passcodes and its own branding. Content you upload stays yours."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "How is cheating handled?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Attempts are bound to a device and roll number, tab-switching is logged, and repeat attempts are blocked. Flags go to a teacher review queue \u2014 the system never punishes a student automatically."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What happens if our student count grows mid-year?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "You move to the next slab and pay only the difference for the remaining months. Nothing stops working while you upgrade."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "How long does onboarding take?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Most institutes are running their first generated paper within a week. Migration of a large legacy archive runs in parallel and does not block day-to-day use."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Does it handle maths, chemistry and diagrams?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. Equations are preserved as real formulas rather than flattened images, and figures are cropped and attached to the question they belong to."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can we still print papers instead of going fully online?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. Print-ready DOCX and PDF output with your letterhead is a first-class feature, not an afterthought. Many institutes use Vyorra only for paper generation at first."
-      }
-    }
-  ]
-}
+	{
+	  "@context": "https://schema.org",
+	  "@graph": [
+	    {
+	      "@type": "BreadcrumbList",
+	      "itemListElement": [
+	        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://vyorra.in/" },
+	        { "@type": "ListItem", "position": 2, "name": "FAQ", "item": "https://vyorra.in/faq" }
+	      ]
+	    },
+	    {
+	      "@type": "FAQPage",
+	      "@id": "https://vyorra.in/faq#faq",
+	      "mainEntity": [
+	        {
+	          "@type": "Question",
+	          "name": "Do we have to re-type our existing question papers?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "No. Upload the PDFs, Word files or scans you already have. Our importer extracts questions, options and solutions into a review pool, where your faculty approve or fix them before they enter the bank." }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "How long does onboarding take?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "Most institutes are running their first generated paper within a week: two days for setup and branding, two to three for bank migration, and one training session for faculty. Migration of a large legacy archive runs in parallel and does not block day-to-day use." }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "Does it handle maths, chemistry and diagrams?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Equations are preserved as real formulas rather than flattened images, and figures are cropped and attached to the question they belong to." }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "Can we still print papers instead of going fully online?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Print-ready DOCX and PDF output with your letterhead is a first-class feature, not an afterthought. Many institutes use Vyorra only for paper generation at first." }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "How is cheating handled?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "Attempts are bound to a device and roll number, tab-switching is logged, and repeat attempts are blocked. Flags go to a teacher review queue — the system never punishes a student automatically." }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "Is our question bank visible to other institutes?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "Never. Every institute is isolated with its own data scope, its own passcodes and its own branding. Content you upload stays yours." }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "Is there a mobile app?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "Yes. The institute app is available for Android on Google Play, with the same dashboard, question library, attendance and results as the web panel. The student portal also installs as an app on any phone." }
+	        },
+	        {
+	          "@type": "Question",
+	          "name": "What happens if our student count grows mid-year?",
+	          "acceptedAnswer": { "@type": "Answer", "text": "You move to the next slab and pay only the difference for the remaining months. Nothing stops working while you upgrade." }
+	        }
+	      ]
+	    }
+	  ]
+	}
 	</script>
 </head>
 
@@ -296,10 +116,10 @@
 				<a href="/features">Features</a>
 				<a href="/mobile-app">Mobile app</a>
 				<a href="/pricing">Pricing</a>
-				<a href="/faq">FAQ</a>
-				<a href="/institute-panel-demo">Live demo</a>
+				<a href="/faq" class="active" aria-current="page">FAQ</a>
+				<a href="/institute_mockup">Live demo</a>
 				<a href="/contact">Contact</a>
-				<a class="btn btn-primary nav-cta" href="/contact">Book a demo</a>
+				<a class="btn btn-primary nav-cta" href="/contact#book">Book a demo</a>
 			</nav>
 
 			<button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="primaryNav"
@@ -310,53 +130,211 @@
 	</header>
 
 	<main id="main">
-		<section class="doc">
-			<div class="shell">
-				<nav class="crumbs" aria-label="Breadcrumb">
-					<a href="/">Home</a> › <span>Frequently asked questions</span>
-				</nav>
-				<h1>Frequently asked questions</h1>
-				<p class="lede">The questions institute owners and academic heads ask us most often, answered plainly.</p>
-
-				<div class="doc-faq">
-					<details>
-						<summary>Do we have to re-type our existing question papers?</summary>
-						<p>No. Upload the PDFs, Word files or scans you already have. Our importer extracts questions, options and solutions into a review pool, where your faculty approve or fix them before they enter the bank.</p>
-					</details>
-					<details>
-						<summary>Is there a mobile app?</summary>
-						<p>Yes. The institute app is available for Android on Google Play, with the same dashboard, question library, attendance and results as the web panel. The student portal also installs as an app on any phone.</p>
-					</details>
-					<details>
-						<summary>Is our question bank visible to other institutes?</summary>
-						<p>Never. Every institute is isolated with its own data scope, its own passcodes and its own branding. Content you upload stays yours.</p>
-					</details>
-					<details>
-						<summary>How is cheating handled?</summary>
-						<p>Attempts are bound to a device and roll number, tab-switching is logged, and repeat attempts are blocked. Flags go to a teacher review queue — the system never punishes a student automatically.</p>
-					</details>
-					<details>
-						<summary>What happens if our student count grows mid-year?</summary>
-						<p>You move to the next slab and pay only the difference for the remaining months. Nothing stops working while you upgrade.</p>
-					</details>
-					<details>
-						<summary>How long does onboarding take?</summary>
-						<p>Most institutes are running their first generated paper within a week. Migration of a large legacy archive runs in parallel and does not block day-to-day use.</p>
-					</details>
-					<details>
-						<summary>Does it handle maths, chemistry and diagrams?</summary>
-						<p>Yes. Equations are preserved as real formulas rather than flattened images, and figures are cropped and attached to the question they belong to.</p>
-					</details>
-					<details>
-						<summary>Can we still print papers instead of going fully online?</summary>
-						<p>Yes. Print-ready DOCX and PDF output with your letterhead is a first-class feature, not an afterthought. Many institutes use Vyorra only for paper generation at first.</p>
-					</details>
+		<!-- ─────────────────── HERO ─────────────────── -->
+		<section class="page-hero">
+			<div class="shell hero-inner solo">
+				<div>
+					<nav class="crumbs" aria-label="Breadcrumb">
+						<a href="/">Home</a> › <span aria-current="page">FAQ</span>
+					</nav>
+					<span class="hero-chip">Answers</span>
+					<h1>Questions institutes ask us <em>first</em>.</h1>
+					<p class="hero-lede">Migration, paper quality, proctoring, privacy and billing — answered
+						plainly, without sales language. Anything still unclear is usually settled in a
+						30-minute demo on your own question paper.</p>
+					<div class="hero-actions">
+						<a class="btn btn-primary btn-lg" href="/contact#book">Book a demo</a>
+						<a class="btn btn-ghost light btn-lg" href="/institute_mockup">Open the live demo</a>
+					</div>
 				</div>
+			</div>
+		</section>
 
-				<div class="doc-cta">
-					<h2>See it on your own question papers</h2>
-					<p>A 30-minute walkthrough where we build your hardest paper live, using your syllabus and marking scheme.</p>
-					<a class="btn btn-primary btn-lg" href="/contact">Book a demo</a>
+		<!-- ────────────────── FAQ ──────────────────── -->
+		<section class="p-section">
+			<div class="shell faq-layout">
+				<nav class="faq-side" aria-label="FAQ sections">
+					<h2>Jump to</h2>
+					<a href="#getting-started">Getting started</a>
+					<a href="#papers">Papers &amp; question bank</a>
+					<a href="#online-tests">Online tests</a>
+					<a href="#privacy">Privacy &amp; access</a>
+					<a href="#billing">Billing</a>
+				</nav>
+
+				<div class="faq-main">
+					<div class="faq-group" id="getting-started">
+						<h2>Getting started</h2>
+						<details class="qa" open>
+							<summary>Do we have to re-type our existing question papers?</summary>
+							<div class="qa-body">
+								<p>No. Upload the PDFs, Word files or scans you already have. Our importer extracts
+									questions, options and solutions into a review pool, where your faculty approve or
+									fix them before they enter the bank.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>How long does onboarding take?</summary>
+							<div class="qa-body">
+								<p>Most institutes are running their first generated paper within a week: two days for
+									setup and branding, two to three for bank migration, and one training session for
+									faculty.</p>
+								<p>Migrating a large legacy archive runs in parallel and never blocks day-to-day use.
+								</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Who sets it up — us or you?</summary>
+							<div class="qa-body">
+								<p>We do. Branding, subjects, chapters, batches and the first question import are handled
+									by your onboarding manager, then handed over with a training session for your
+									faculty.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Can we try it before committing?</summary>
+							<div class="qa-body">
+								<p>Yes — the <a href="/institute_mockup">live institute panel demo</a> is open with sample
+									data and nothing to install. For a hands-on session with your own paper, <a
+										href="/contact#book">book a demo</a>.</p>
+							</div>
+						</details>
+					</div>
+
+					<div class="faq-group" id="papers">
+						<h2>Papers &amp; question bank</h2>
+						<details class="qa">
+							<summary>Does it handle maths, chemistry and diagrams?</summary>
+							<div class="qa-body">
+								<p>Yes. Equations are preserved as real formulas rather than flattened images, and
+									figures are cropped and attached to the question they belong to.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Can we still print papers instead of going fully online?</summary>
+							<div class="qa-body">
+								<p>Yes. Print-ready DOCX and PDF output with your letterhead is a first-class feature,
+									not an afterthought. Many institutes use Vyorra only for paper generation at first.
+								</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Can we control which chapters and difficulty appear in a paper?</summary>
+							<div class="qa-body">
+								<p>Yes. Set a blueprint — marks per chapter and per difficulty band — and the generator
+									respects it instead of picking at random. You can also swap any individual question
+									before exporting. <a href="/features">See how paper generation works →</a></p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>What if the same question gets imported twice?</summary>
+							<div class="qa-body">
+								<p>Duplicates are detected and flagged in the review pool rather than silently added, so
+									the same item does not appear twice in one paper.</p>
+							</div>
+						</details>
+					</div>
+
+					<div class="faq-group" id="online-tests">
+						<h2>Online tests</h2>
+						<details class="qa">
+							<summary>How is cheating handled?</summary>
+							<div class="qa-body">
+								<p>Attempts are bound to a device and roll number, tab-switching is logged, and repeat
+									attempts are blocked. Flags go to a teacher review queue — the system never punishes
+									a student automatically.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>What do students need to take a test?</summary>
+							<div class="qa-body">
+								<p>A phone or laptop and their roll number. They log in with an OTP, see assigned tests
+									with deadlines and marking scheme, and attempt them in a locked test window.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>When do results come out?</summary>
+							<div class="qa-body">
+								<p>Objective papers are scored the moment the window closes, with instant scorecards and
+									solutions for students and chapter-wise analytics for faculty.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Is there a mobile app?</summary>
+							<div class="qa-body">
+								<p>Yes. The institute app is available for Android on Google Play with the same
+									dashboard, question library, attendance and results as the web panel. The student
+									portal also installs as an app on any phone. <a href="/mobile-app">See the app →</a>
+								</p>
+							</div>
+						</details>
+					</div>
+
+					<div class="faq-group" id="privacy">
+						<h2>Privacy &amp; access</h2>
+						<details class="qa">
+							<summary>Is our question bank visible to other institutes?</summary>
+							<div class="qa-body">
+								<p>Never. Every institute is isolated with its own data scope, its own passcodes and its
+									own branding. Content you upload stays yours.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Can we limit what individual teachers can do?</summary>
+							<div class="qa-body">
+								<p>Yes. Sensitive staff actions sit behind a passcode layer inside the panel, and a
+									faculty activity view records who added questions and who set papers.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Can we export our data if we leave?</summary>
+							<div class="qa-body">
+								<p>Yes. Papers and keys export as DOCX and PDF, and student, result and attendance
+									records export as sheets. Your archive is never locked in.</p>
+							</div>
+						</details>
+					</div>
+
+					<div class="faq-group" id="billing">
+						<h2>Billing</h2>
+						<details class="qa">
+							<summary>What does Vyorra cost?</summary>
+							<div class="qa-body">
+								<p>₹15,000 per year for every 100 students, covering both panels, the Android app,
+									onboarding, question migration and faculty training. <a href="/pricing">See the full
+										slab table →</a></p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>What happens if our student count grows mid-year?</summary>
+							<div class="qa-body">
+								<p>You move to the next slab and pay only the difference for the remaining months.
+									Nothing stops working while you upgrade.</p>
+							</div>
+						</details>
+						<details class="qa">
+							<summary>Are papers, tests or imports billed separately?</summary>
+							<div class="qa-body">
+								<p>No. Usage is unlimited on every slab — you are billed only on student count, with no
+									setup fee on annual plans.</p>
+							</div>
+						</details>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ────────────────── CTA ──────────────────── -->
+		<section class="cta-band">
+			<div class="shell band-inner">
+				<div>
+					<h2>Still have a question?</h2>
+					<p>Call us during support hours or send your hardest question paper — we will answer with
+						the paper Vyorra generates from it.</p>
+				</div>
+				<div class="band-actions">
+					<a class="btn btn-primary btn-lg" href="/contact#book">Contact us</a>
+					<a class="btn btn-ghost light btn-lg" href="tel:+918809089608">+91 88090 89608</a>
 				</div>
 			</div>
 		</section>
@@ -375,7 +353,7 @@
 				<h4>Product</h4>
 				<a href="/features">Features</a>
 				<a href="/pricing">Pricing</a>
-				<a href="/institute-panel-demo">Live demo</a>
+				<a href="/institute_mockup">Live demo</a>
 				<a href="/mobile-app">Mobile app</a>
 			</nav>
 			<nav aria-label="Company">

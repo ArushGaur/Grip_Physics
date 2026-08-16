@@ -5,7 +5,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Features — Question Bank, Paper Generator &amp; Online Tests | Vyorra</title>
-	<meta name="description" content="Everything Vyorra does for coaching institutes: AI question import from PDFs and handwritten papers, blueprint-based paper generation, proctored online tests, attendance and analytics.">
+	<meta name="description"
+		content="Everything Vyorra does for coaching institutes: AI question import from PDFs and handwritten papers, blueprint-based paper generation, proctored online tests, attendance and student analytics.">
 	<meta name="theme-color" content="#07231d">
 	<link rel="canonical" href="https://vyorra.in/features">
 	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -15,16 +16,19 @@
 	<meta property="og:locale" content="en_IN">
 	<meta property="og:url" content="https://vyorra.in/features">
 	<meta property="og:title" content="Features — Question Bank, Paper Generator &amp; Online Tests | Vyorra">
-	<meta property="og:description" content="Everything Vyorra does for coaching institutes: AI question import from PDFs and handwritten papers, blueprint-based paper generation, proctored online tests, attendance and analytics.">
+	<meta property="og:description"
+		content="AI question import, blueprint-based paper generation, proctored online tests, attendance and analytics — built for Indian coaching institutes.">
 	<meta property="og:image" content="https://vyorra.in/assets/og-image.jpg">
 	<meta name="twitter:card" content="summary_large_image">
 	<meta name="twitter:title" content="Features — Question Bank, Paper Generator &amp; Online Tests | Vyorra">
-	<meta name="twitter:description" content="Everything Vyorra does for coaching institutes: AI question import from PDFs and handwritten papers, blueprint-based paper generation, proctored online tests, attendance and analytics.">
+	<meta name="twitter:description"
+		content="AI question import, blueprint-based paper generation, proctored online tests, attendance and analytics — built for Indian coaching institutes.">
 	<meta name="twitter:image" content="https://vyorra.in/assets/og-image.jpg">
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
+	<link
+		href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
 		rel="stylesheet">
 	<link rel="icon" href="/favicon.ico" sizes="any">
 	<link rel="icon" type="image/png" href="/assets/icon-48.png" sizes="48x48">
@@ -34,179 +38,30 @@
 	<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
 	<link rel="manifest" href="/site.webmanifest">
 	<link rel="stylesheet" href="/style.css">
-	<style>
-		.doc {
-			padding: 128px 0 88px;
-		}
-
-		.doc .crumbs {
-			font-size: .82rem;
-			color: var(--ink-3);
-			margin-bottom: 18px;
-		}
-
-		.doc .crumbs a {
-			color: var(--ink-3);
-			text-decoration: none;
-		}
-
-		.doc .crumbs a:hover {
-			color: var(--teal);
-		}
-
-		.doc h1 {
-			font-size: clamp(2rem, 4vw, 2.9rem);
-			line-height: 1.12;
-			letter-spacing: -.02em;
-			margin: 0 0 16px;
-			color: var(--ink);
-		}
-
-		.doc .lede {
-			font-size: 1.1rem;
-			color: var(--ink-2);
-			max-width: 60ch;
-			margin: 0 0 44px;
-		}
-
-		.doc h2 {
-			font-size: 1.45rem;
-			margin: 48px 0 14px;
-			color: var(--ink);
-			letter-spacing: -.01em;
-		}
-
-		.doc h3 {
-			font-size: 1.05rem;
-			margin: 0 0 8px;
-			color: var(--ink);
-		}
-
-		.doc p {
-			color: var(--ink-2);
-			line-height: 1.65;
-			max-width: 68ch;
-		}
-
-		.doc-grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-			gap: 18px;
-			margin-top: 22px;
-		}
-
-		.doc-card {
-			border: 1px solid var(--line);
-			border-radius: var(--radius);
-			padding: 22px;
-			background: var(--canvas);
-			box-shadow: var(--shadow-sm);
-		}
-
-		.doc-card p {
-			margin: 0;
-			font-size: .93rem;
-		}
-
-		.doc-list {
-			list-style: none;
-			padding: 0;
-			margin: 18px 0 0;
-			max-width: 68ch;
-		}
-
-		.doc-list li {
-			position: relative;
-			padding-left: 26px;
-			margin-bottom: 12px;
-			color: var(--ink-2);
-			line-height: 1.6;
-		}
-
-		.doc-list li::before {
-			content: "";
-			position: absolute;
-			left: 0;
-			top: .55em;
-			width: 8px;
-			height: 8px;
-			border-radius: 50%;
-			background: var(--teal);
-		}
-
-		.doc-cta {
-			margin-top: 56px;
-			padding: 34px;
-			border-radius: var(--radius-lg);
-			background: var(--deep);
-			color: #fff;
-		}
-
-		.doc-cta h2 {
-			color: #fff;
-			margin: 0 0 10px;
-		}
-
-		.doc-cta p {
-			color: rgba(255, 255, 255, .78);
-			margin: 0 0 22px;
-		}
-
-		.doc-faq details {
-			border-bottom: 1px solid var(--line);
-			padding: 18px 0;
-		}
-
-		.doc-faq summary {
-			cursor: pointer;
-			font-weight: 600;
-			color: var(--ink);
-			list-style: none;
-		}
-
-		.doc-faq summary::-webkit-details-marker {
-			display: none;
-		}
-
-		.doc-faq p {
-			margin: 12px 0 0;
-		}
-
-		.price-box {
-			border: 2px solid var(--teal);
-			border-radius: var(--radius-lg);
-			padding: 30px;
-			max-width: 460px;
-			background: var(--teal-soft);
-		}
-
-		.price-box .amount {
-			font-size: 2.4rem;
-			font-weight: 700;
-			color: var(--deep-2);
-			letter-spacing: -.02em;
-		}
-	</style>
+	<link rel="stylesheet" href="/pages.css">
+	<link rel="preload" as="image" href="/assets/institute-dashboard.webp" fetchpriority="high">
 
 	<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://vyorra.in/"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Features",
-      "item": "https://vyorra.in/features"
-    }
-  ]
-}
+	{
+	  "@context": "https://schema.org",
+	  "@graph": [
+	    {
+	      "@type": "BreadcrumbList",
+	      "itemListElement": [
+	        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://vyorra.in/" },
+	        { "@type": "ListItem", "position": 2, "name": "Features", "item": "https://vyorra.in/features" }
+	      ]
+	    },
+	    {
+	      "@type": "WebPage",
+	      "@id": "https://vyorra.in/features#webpage",
+	      "url": "https://vyorra.in/features",
+	      "name": "Features — Vyorra",
+	      "inLanguage": "en-IN",
+	      "description": "AI question import, blueprint-based paper generation, proctored online tests, attendance and analytics for coaching institutes."
+	    }
+	  ]
+	}
 	</script>
 </head>
 
@@ -221,13 +76,13 @@
 			</a>
 
 			<nav class="nav" id="primaryNav" aria-label="Primary">
-				<a href="/features">Features</a>
+				<a href="/features" class="active" aria-current="page">Features</a>
 				<a href="/mobile-app">Mobile app</a>
 				<a href="/pricing">Pricing</a>
 				<a href="/faq">FAQ</a>
-				<a href="/institute-panel-demo">Live demo</a>
+				<a href="/institute_mockup">Live demo</a>
 				<a href="/contact">Contact</a>
-				<a class="btn btn-primary nav-cta" href="/contact">Book a demo</a>
+				<a class="btn btn-primary nav-cta" href="/contact#book">Book a demo</a>
 			</nav>
 
 			<button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="primaryNav"
@@ -238,73 +93,303 @@
 	</header>
 
 	<main id="main">
-		<section class="doc">
+		<!-- ─────────────────── HERO ─────────────────── -->
+		<section class="page-hero">
+			<div class="shell hero-inner">
+				<div>
+					<nav class="crumbs" aria-label="Breadcrumb">
+						<a href="/">Home</a> › <span aria-current="page">Features</span>
+					</nav>
+					<span class="hero-chip">Product tour</span>
+					<h1>Everything your exam cell does, rebuilt <em>properly</em>.</h1>
+					<p class="hero-lede">Vyorra turns the question papers you already own into a living question
+						bank — then generates print-ready papers, runs proctored online tests and returns
+						student-level analytics the same evening.</p>
+					<div class="hero-actions">
+						<a class="btn btn-primary btn-lg" href="/contact#book">Book a demo</a>
+						<a class="btn btn-ghost light btn-lg" href="/institute_mockup">Open the live demo</a>
+					</div>
+					<dl class="hero-facts">
+						<div>
+							<dt><b>5 modules</b></dt>
+							<dd><span>Bank, papers, tests, attendance, analytics</span></dd>
+						</div>
+						<div>
+							<dt><b>1 min</b></dt>
+							<dd><span>From topic selection to a finished paper</span></dd>
+						</div>
+						<div>
+							<dt><b>Web + Android</b></dt>
+							<dd><span>Same data on every device</span></dd>
+						</div>
+					</dl>
+				</div>
+				<figure class="hero-media">
+					<img src="/assets/institute-dashboard.webp" width="1533" height="1026" loading="eager"
+						fetchpriority="high"
+						alt="Vyorra institute dashboard showing total students, question bank size, tests conducted and attendance charts">
+				</figure>
+			</div>
+		</section>
+
+		<!-- ───────────────── WORKFLOW ───────────────── -->
+		<section class="p-section">
 			<div class="shell">
-				<nav class="crumbs" aria-label="Breadcrumb">
-					<a href="/">Home</a> › <span>Features</span>
-				</nav>
-				<h1>Features</h1>
-				<p class="lede">Vyorra turns the question papers you already own into a living question bank — then generates print-ready papers, runs proctored online tests and returns student analytics the same evening.</p>
-
-				<h2>Build the question bank once</h2>
-				<p>Most institutes already own a decade of question papers — scattered across PDFs, Word files, printouts and
-					handwritten sets. Vyorra's importer reads those files and pulls out questions, options, answers, solutions and
-					diagrams into a review pool. Faculty approve or correct each item before it enters the bank, so nothing enters
-					your library unchecked.</p>
-				<ul class="doc-list">
-					<li><strong>Import from anything:</strong> PDF, DOCX, scanned images and photographed handwritten sets.</li>
-					<li><strong>Maths and diagrams survive:</strong> equations are preserved as real formulas, figures are cropped
-						and attached to the question they belong to.</li>
-					<li><strong>Tagged automatically:</strong> subject, chapter, topic, difficulty and question type, all editable.</li>
-					<li><strong>Duplicate detection:</strong> the same question imported twice is flagged instead of silently
-						duplicated.</li>
-				</ul>
-
-				<h2>Generate print-ready papers</h2>
-				<p>Pick a chapter mix, a difficulty spread and a total mark count, and Vyorra assembles the paper. Output is a
-					clean DOCX or PDF with your institute's letterhead, instructions block and marking scheme — ready for the
-					photocopier without reformatting.</p>
-				<div class="doc-grid">
-					<div class="doc-card">
-						<h3>Blueprint control</h3>
-						<p>Set how many marks come from each chapter and each difficulty band. The generator respects the blueprint
-							instead of picking at random.</p>
-					</div>
-					<div class="doc-card">
-						<h3>Multiple sets</h3>
-						<p>Generate Set A / Set B / Set C with shuffled order and equivalent difficulty to cut copying in a crowded
-							hall.</p>
-					</div>
-					<div class="doc-card">
-						<h3>Answer keys</h3>
-						<p>Every paper ships with a matching key and solution sheet, generated at the same moment.</p>
-					</div>
+				<div class="p-head center reveal">
+					<span class="p-kicker">The workflow</span>
+					<h2>Four moves, start to result sheet</h2>
+					<p>Nothing is re-typed, nothing is re-formatted, and nothing lives in a folder only one
+						teacher can find.</p>
 				</div>
 
-				<h2>Run proctored online tests</h2>
-				<p>The same bank powers online tests. Attempts are bound to a device and roll number, tab-switching is logged and
-					repeat attempts are blocked. Flags go to a teacher review queue — the system never punishes a student
-					automatically.</p>
+				<ol class="numbered">
+					<li class="reveal">
+						<span class="num">1</span>
+						<h3>Import</h3>
+						<p>Drop in PDFs, DOCX files, scans or phone photos of handwritten sets. The importer
+							reads every question on the sheet.</p>
+					</li>
+					<li class="reveal">
+						<span class="num">2</span>
+						<h3>Review</h3>
+						<p>Faculty approve or correct each item in a review pool before it enters the bank, so
+							nothing unchecked reaches a student.</p>
+					</li>
+					<li class="reveal">
+						<span class="num">3</span>
+						<h3>Generate</h3>
+						<p>Pick a blueprint and get a print-ready paper with letterhead, instructions, answer key
+							and solutions — or publish it as an online test.</p>
+					</li>
+					<li class="reveal">
+						<span class="num">4</span>
+						<h3>Analyse</h3>
+						<p>Scores, chapter-wise weakness and attendance roll up automatically, per student and
+							per batch, the same evening.</p>
+					</li>
+				</ol>
+			</div>
+		</section>
 
-				<h2>Attendance and analytics</h2>
-				<p>Attendance is recorded from the institute panel or the Android app, and results roll up into per-student,
-					per-batch and per-chapter views. You can see which chapter a batch is weakest in before the next class, not
-					after the term test.</p>
-				<ul class="doc-list">
-					<li>Student-level score history across every test taken.</li>
-					<li>Chapter-wise weakness reports for a whole batch.</li>
-					<li>Attendance registers exportable for parent communication.</li>
-					<li>Faculty activity view — who added questions, who set papers.</li>
-				</ul>
+		<!-- ───────────── DEEP DIVE SPLITS ────────────── -->
+		<section class="p-section soft">
+			<div class="shell">
+				<div class="split-row reveal">
+					<div class="split-copy">
+						<span class="step-tag">Question bank</span>
+						<h3>Build the bank once. Use it for a decade.</h3>
+						<p>Most institutes already own years of question papers scattered across PDFs, Word
+							files, printouts and handwritten sets. Vyorra pulls questions, options, answers,
+							solutions and diagrams out of those files and files them under the right subject,
+							chapter and topic.</p>
+						<ul class="tick-list">
+							<li><strong>Import from anything</strong> — PDF, DOCX, scanned images and photographed
+								handwritten sets.</li>
+							<li><strong>Maths and diagrams survive</strong> — equations stay real formulas, figures are
+								cropped and attached to their question.</li>
+							<li><strong>Tagged automatically</strong> — subject, chapter, topic, difficulty and question
+								type, all editable.</li>
+							<li><strong>Duplicate detection</strong> — the same question imported twice is flagged, not
+								silently duplicated.</li>
+						</ul>
+					</div>
+					<figure class="split-media shot">
+						<img src="/assets/question-library.webp" width="1440" height="778" loading="lazy"
+							alt="Vyorra question library browsing Chemistry, Physics, Biology and Mathematics with chapter and topic counts">
+					</figure>
+				</div>
 
-				<h2>Android app for institutes</h2>
-				<p>The institute app carries the same dashboard, question library, attendance and results as the web panel. The
-					student portal installs as an app on any phone, so students do not need the Play Store to take a test.</p>
+				<div class="split-row reverse reveal">
+					<div class="split-copy">
+						<span class="step-tag">Paper generation</span>
+						<h3>Print-ready papers, not rough drafts</h3>
+						<p>Pick a chapter mix, a difficulty spread and a total mark count, and Vyorra assembles
+							the paper. Output is a clean DOCX or PDF carrying your letterhead, instructions block
+							and marking scheme — ready for the photocopier without a single reformat.</p>
+						<ul class="tick-list">
+							<li><strong>Blueprint control</strong> — set marks per chapter and per difficulty band; the
+								generator respects it instead of picking at random.</li>
+							<li><strong>Multiple sets</strong> — Set A / B / C with shuffled order and matched difficulty
+								to cut copying in a crowded hall.</li>
+							<li><strong>Keys included</strong> — every paper ships with its answer key and solution sheet,
+								generated at the same moment.</li>
+						</ul>
+					</div>
+					<figure class="split-media shot">
+						<img src="/assets/question-detail.webp" width="1440" height="774" loading="lazy"
+							alt="Question detail view in Vyorra showing the question text, options, correct answer and full solution">
+					</figure>
+				</div>
 
-				<div class="doc-cta">
+				<div class="split-row reveal">
+					<div class="split-copy">
+						<span class="step-tag">Analytics</span>
+						<h3>Know the weak chapter before the next class</h3>
+						<p>Results roll up into per-student, per-batch and per-chapter views as soon as a test
+							window closes. You see which topic a batch is losing marks on while there is still
+							time to re-teach it — not after the term test.</p>
+						<ul class="tick-list">
+							<li>Student-level score history across every test taken.</li>
+							<li>Chapter-wise weakness reports for a whole batch.</li>
+							<li>Question-level breakdowns — spot the item everyone got wrong.</li>
+							<li>Faculty activity view: who added questions, who set papers.</li>
+						</ul>
+					</div>
+					<figure class="split-media shot">
+						<img src="/assets/test-analysis.webp" width="1440" height="768" loading="lazy"
+							alt="Vyorra test analysis screen showing score distribution and question-level performance for a batch">
+					</figure>
+				</div>
+
+				<div class="split-row reverse reveal">
+					<div class="split-copy">
+						<span class="step-tag">Attendance</span>
+						<h3>One register, visible to everyone who needs it</h3>
+						<p>Mark a batch from the web panel or the Android app in seconds. Students see their own
+							record day by day, and you can export a register for parent communication without
+							rebuilding it in a spreadsheet.</p>
+						<ul class="tick-list">
+							<li>Batch-wise marking with a running monthly percentage.</li>
+							<li>Per-student attendance profile, shared with the student portal.</li>
+							<li>Exportable registers for parent meetings and audits.</li>
+						</ul>
+					</div>
+					<figure class="split-media shot">
+						<img src="/assets/attendance-profile.webp" width="1708" height="921" loading="lazy"
+							alt="Vyorra attendance profile for a student showing present and absent days across the month">
+					</figure>
+				</div>
+			</div>
+		</section>
+
+		<!-- ───────────── CAPABILITY GRID ─────────────── -->
+		<section class="p-section">
+			<div class="shell">
+				<div class="p-head center reveal">
+					<span class="p-kicker">Capabilities</span>
+					<h2>What you get on day one</h2>
+					<p>Every module below is included in the annual plan — nothing here is an add-on.</p>
+				</div>
+
+				<div class="grid">
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<path d="M6 3h8l4 4v14H6z" />
+								<path d="M14 3v4h4" />
+								<path d="M9 13h6M9 17h4" />
+							</svg>
+						</span>
+						<h3>AI question import</h3>
+						<p>Questions, options, answers and solutions extracted from files you already own —
+							including maths and circuit diagrams.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<rect x="3" y="4" width="18" height="16" rx="2" />
+								<path d="M3 9h18M9 9v11" />
+							</svg>
+						</span>
+						<h3>Blueprint paper generator</h3>
+						<p>Chapter mix, difficulty spread and total marks in, print-ready DOCX and PDF out — in
+							about a minute.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<rect x="4" y="3" width="16" height="18" rx="2" />
+								<path d="M8 8h8M8 12h8M8 16h5" />
+							</svg>
+						</span>
+						<h3>Proctored online tests</h3>
+						<p>Device- and roll-number-bound attempts, logged tab switches, blocked retries and a
+							teacher review queue for every flag.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+							</svg>
+						</span>
+						<h3>Student analytics</h3>
+						<p>Score history, chapter weakness and batch comparisons, updated the moment a test
+							closes.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<path d="M8 2v3M16 2v3" />
+								<rect x="3" y="5" width="18" height="16" rx="2" />
+								<path d="M8 13l2.5 2.5L16 10" />
+							</svg>
+						</span>
+						<h3>Attendance &amp; batches</h3>
+						<p>Mark a batch in seconds from web or phone, with exportable registers and per-student
+							history.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<rect x="7" y="2" width="10" height="20" rx="2.5" />
+								<path d="M11 18h2" />
+							</svg>
+						</span>
+						<h3>Android app included</h3>
+						<p>The institute app carries the same dashboard, library, attendance and results as the
+							web panel. <a href="/mobile-app">See the app →</a></p>
+					</article>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────── SECURITY / TRUST ────────────── -->
+		<section class="p-section soft">
+			<div class="shell">
+				<div class="p-head reveal">
+					<span class="p-kicker">Control &amp; privacy</span>
+					<h2>Your content stays yours</h2>
+					<p>Every institute runs in its own isolated scope, with its own passcodes, branding and
+						question bank.</p>
+				</div>
+
+				<div class="stat-strip reveal">
+					<div>
+						<b>Isolated</b>
+						<span>No question bank is ever shared between institutes</span>
+					</div>
+					<div>
+						<b>Passcode layer</b>
+						<span>Staff actions sit behind a second factor inside the panel</span>
+					</div>
+					<div>
+						<b>Human review</b>
+						<span>Proctoring flags go to a teacher, never to an automatic penalty</span>
+					</div>
+					<div>
+						<b>Exportable</b>
+						<span>Papers, keys and registers download as DOCX, PDF and sheets</span>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ────────────────── CTA ──────────────────── -->
+		<section class="cta-band">
+			<div class="shell band-inner">
+				<div>
 					<h2>See it on your own question papers</h2>
-					<p>A 30-minute walkthrough where we build your hardest paper live, using your syllabus and marking scheme.</p>
-					<a class="btn btn-primary btn-lg" href="/contact">Book a demo</a>
+					<p>A 30-minute walkthrough where we import your hardest paper live and build a fresh one
+						from it, using your syllabus and marking scheme.</p>
+				</div>
+				<div class="band-actions">
+					<a class="btn btn-primary btn-lg" href="/contact#book">Book a demo</a>
+					<a class="btn btn-ghost light btn-lg" href="/pricing">See pricing</a>
 				</div>
 			</div>
 		</section>
@@ -323,7 +408,7 @@
 				<h4>Product</h4>
 				<a href="/features">Features</a>
 				<a href="/pricing">Pricing</a>
-				<a href="/institute-panel-demo">Live demo</a>
+				<a href="/institute_mockup">Live demo</a>
 				<a href="/mobile-app">Mobile app</a>
 			</nav>
 			<nav aria-label="Company">

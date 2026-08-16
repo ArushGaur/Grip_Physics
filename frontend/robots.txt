@@ -1,19 +1,42 @@
 # robots.txt — https://vyorra.in
 # Vyorra — Examination Operating System for Institutes
 
+# ── Default: everything public is crawlable ──
 User-agent: *
 Allow: /
 
 # Backend API proxy — no crawlable content
 Disallow: /api/
 
-# Service workers and app manifests — not useful search results
+# Service workers, manifests and build config — not useful search results
 Disallow: /institute-sw.js
 Disallow: /developer-sw.js
+Disallow: /institute-manifest.json
+Disallow: /developer-manifest.json
+Disallow: /site.webmanifest
+Disallow: /vercel.json
 
-# NOTE: The private panels (/institute, /developer, /test_window, /institute_mockup)
-# are intentionally NOT disallowed here. They carry <meta name="robots" content="noindex">
-# instead, because Google must be able to crawl a page to see its noindex directive.
+# Query-string duplicates of canonical pages
+Disallow: /*?*
+
+# NOTE: The private panels (/institute, /developer, /test_window) and the
+# secondary demo (/institute-panel-demo) are intentionally NOT disallowed
+# here. They carry <meta name="robots" content="noindex"> instead, because
+# Google must be able to crawl a page to see its noindex directive.
 # Blocking them here would keep them stuck in the index without a snippet.
+#
+# The public live demo is /institute_mockup — it is indexable and listed
+# in the sitemap below.
+
+# ── Asset crawling (helps image search and rich previews) ──
+User-agent: Googlebot-Image
+Allow: /assets/
+
+# ── Well-behaved crawl pacing for aggressive bots ──
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
 
 Sitemap: https://vyorra.in/sitemap.xml

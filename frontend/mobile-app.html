@@ -4,8 +4,9 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Mobile App — Vyorra Institute App for Android | Vyorra</title>
-	<meta name="description" content="Vyorra's Android app for coaching institutes: check the dashboard, open the question library, mark attendance and read results between classes — same data as the web panel, built for one thumb.">
+	<title>Mobile App — Run Your Institute From Your Phone | Vyorra</title>
+	<meta name="description"
+		content="The Vyorra Android app puts your dashboard, question bank, attendance, tests and results in your pocket. Students get the same portal as an installable app on any phone.">
 	<meta name="theme-color" content="#07231d">
 	<link rel="canonical" href="https://vyorra.in/mobile-app">
 	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -14,17 +15,20 @@
 	<meta property="og:site_name" content="Vyorra">
 	<meta property="og:locale" content="en_IN">
 	<meta property="og:url" content="https://vyorra.in/mobile-app">
-	<meta property="og:title" content="Mobile App — Vyorra Institute App for Android | Vyorra">
-	<meta property="og:description" content="Vyorra's Android app for coaching institutes: check the dashboard, open the question library, mark attendance and read results between classes — same data as the web panel.">
+	<meta property="og:title" content="Mobile App — Run Your Institute From Your Phone | Vyorra">
+	<meta property="og:description"
+		content="Dashboard, question bank, attendance, tests and results on Android — included in every Vyorra plan.">
 	<meta property="og:image" content="https://vyorra.in/assets/og-image.jpg">
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="Mobile App — Vyorra Institute App for Android | Vyorra">
-	<meta name="twitter:description" content="Vyorra's Android app for coaching institutes: check the dashboard, open the question library, mark attendance and read results between classes — same data as the web panel.">
+	<meta name="twitter:title" content="Mobile App — Run Your Institute From Your Phone | Vyorra">
+	<meta name="twitter:description"
+		content="Dashboard, question bank, attendance, tests and results on Android — included in every Vyorra plan.">
 	<meta name="twitter:image" content="https://vyorra.in/assets/og-image.jpg">
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
+	<link
+		href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
 		rel="stylesheet">
 	<link rel="icon" href="/favicon.ico" sizes="any">
 	<link rel="icon" type="image/png" href="/assets/icon-48.png" sizes="48x48">
@@ -34,180 +38,37 @@
 	<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
 	<link rel="manifest" href="/site.webmanifest">
 	<link rel="stylesheet" href="/style.css">
-	<style>
-		.doc {
-			padding: 128px 0 88px;
-		}
-
-		.doc .crumbs {
-			font-size: .82rem;
-			color: var(--ink-3);
-			margin-bottom: 18px;
-		}
-
-		.doc .crumbs a {
-			color: var(--ink-3);
-			text-decoration: none;
-		}
-
-		.doc .crumbs a:hover {
-			color: var(--teal);
-		}
-
-		.doc h1 {
-			font-size: clamp(2rem, 4vw, 2.9rem);
-			line-height: 1.12;
-			letter-spacing: -.02em;
-			margin: 0 0 16px;
-			color: var(--ink);
-		}
-
-		.doc .lede {
-			font-size: 1.1rem;
-			color: var(--ink-2);
-			max-width: 60ch;
-			margin: 0 0 44px;
-		}
-
-		.doc h2 {
-			font-size: 1.45rem;
-			margin: 48px 0 14px;
-			color: var(--ink);
-			letter-spacing: -.01em;
-		}
-
-		.doc h3 {
-			font-size: 1.05rem;
-			margin: 0 0 8px;
-			color: var(--ink);
-		}
-
-		.doc p {
-			color: var(--ink-2);
-			line-height: 1.65;
-			max-width: 68ch;
-		}
-
-		.doc-grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-			gap: 18px;
-			margin-top: 22px;
-		}
-
-		.doc-card {
-			border: 1px solid var(--line);
-			border-radius: var(--radius);
-			padding: 22px;
-			background: var(--canvas);
-			box-shadow: var(--shadow-sm);
-		}
-
-		.doc-card p {
-			margin: 0;
-			font-size: .93rem;
-		}
-
-		.doc-list {
-			list-style: none;
-			padding: 0;
-			margin: 18px 0 0;
-			max-width: 68ch;
-		}
-
-		.doc-list li {
-			position: relative;
-			padding-left: 26px;
-			margin-bottom: 12px;
-			color: var(--ink-2);
-			line-height: 1.6;
-		}
-
-		.doc-list li::before {
-			content: "";
-			position: absolute;
-			left: 0;
-			top: .55em;
-			width: 8px;
-			height: 8px;
-			border-radius: 50%;
-			background: var(--teal);
-		}
-
-		.doc-cta {
-			margin-top: 56px;
-			padding: 34px;
-			border-radius: var(--radius-lg);
-			background: var(--deep);
-			color: #fff;
-		}
-
-		.doc-cta h2 {
-			color: #fff;
-			margin: 0 0 10px;
-		}
-
-		.doc-cta p {
-			color: rgba(255, 255, 255, .78);
-			margin: 0 0 22px;
-		}
-
-		.app-screenshot {
-			margin: 32px 0;
-			text-align: center;
-		}
-
-		.app-screenshot img {
-			max-width: 320px;
-			width: 100%;
-			height: auto;
-			border-radius: var(--radius-lg);
-			box-shadow: var(--shadow-lg);
-		}
-	</style>
+	<link rel="stylesheet" href="/pages.css">
+	<link rel="preload" as="image" href="/assets/mobile-app.webp" fetchpriority="high">
 
 	<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://vyorra.in/"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Mobile App",
-      "item": "https://vyorra.in/mobile-app"
-    }
-  ]
-}
-	</script>
-	<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "MobileApplication",
-  "name": "Vyorra Institute App",
-  "operatingSystem": "Android",
-  "applicationCategory": "EducationalApplication",
-  "applicationSubCategory": "Examination and assessment management",
-  "url": "https://vyorra.in/mobile-app",
-  "description": "The Vyorra Android app for coaching institutes — dashboard, question library, attendance and results on the go.",
-  "publisher": {
-    "@type": "Organization",
-    "name": "Vyorra",
-    "url": "https://vyorra.in/"
-  },
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "INR",
-    "description": "Included with every Vyorra annual plan at no extra licence cost."
-  }
-}
+	{
+	  "@context": "https://schema.org",
+	  "@graph": [
+	    {
+	      "@type": "BreadcrumbList",
+	      "itemListElement": [
+	        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://vyorra.in/" },
+	        { "@type": "ListItem", "position": 2, "name": "Mobile app", "item": "https://vyorra.in/mobile-app" }
+	      ]
+	    },
+	    {
+	      "@type": "SoftwareApplication",
+	      "name": "Vyorra Institute",
+	      "operatingSystem": "Android",
+	      "applicationCategory": "EducationalApplication",
+	      "url": "https://vyorra.in/mobile-app",
+	      "image": "https://vyorra.in/assets/mobile-app.webp",
+	      "description": "Institute dashboard, question bank, attendance, online tests and result analytics on Android.",
+	      "offers": {
+	        "@type": "Offer",
+	        "price": "0",
+	        "priceCurrency": "INR",
+	        "description": "Included with every Vyorra annual plan at no additional licence cost."
+	      }
+	    }
+	  ]
+	}
 	</script>
 </head>
 
@@ -223,12 +84,12 @@
 
 			<nav class="nav" id="primaryNav" aria-label="Primary">
 				<a href="/features">Features</a>
-				<a href="/mobile-app">Mobile app</a>
+				<a href="/mobile-app" class="active" aria-current="page">Mobile app</a>
 				<a href="/pricing">Pricing</a>
 				<a href="/faq">FAQ</a>
-				<a href="/institute-panel-demo">Live demo</a>
+				<a href="/institute_mockup">Live demo</a>
 				<a href="/contact">Contact</a>
-				<a class="btn btn-primary nav-cta" href="/contact">Book a demo</a>
+				<a class="btn btn-primary nav-cta" href="/contact#book">Book a demo</a>
 			</nav>
 
 			<button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="primaryNav"
@@ -239,53 +100,201 @@
 	</header>
 
 	<main id="main">
-		<section class="doc">
-			<div class="shell">
-				<nav class="crumbs" aria-label="Breadcrumb">
-					<a href="/">Home</a> › <span>Mobile App</span>
-				</nav>
-				<h1>The Institute App, in Your Pocket</h1>
-				<p class="lede">Vyorra ships a dedicated Android app for institutes. Directors and faculty can check the dashboard, open the question library, mark attendance and read results between classes — same data as the web panel, built for one thumb.</p>
-
-				<figure class="app-screenshot">
-					<img src="/assets/mobile-app.webp" width="807" height="1638" loading="eager"
-						alt="Vyorra institute Android app showing total students, question bank, tests conducted and latest test results with a bottom tab bar">
+		<!-- ─────────────────── HERO ─────────────────── -->
+		<section class="page-hero">
+			<div class="shell hero-inner">
+				<div>
+					<nav class="crumbs" aria-label="Breadcrumb">
+						<a href="/">Home</a> › <span aria-current="page">Mobile app</span>
+					</nav>
+					<span class="hero-chip">Android · included in every plan</span>
+					<h1>Your whole institute, in a <em>pocket</em>.</h1>
+					<p class="hero-lede">Mark attendance between classes. Check who failed last night's test while
+						you walk to the next batch. The Vyorra Android app carries the same data as the web
+						panel — not a stripped-down companion.</p>
+					<div class="hero-actions">
+						<a class="btn btn-primary btn-lg" href="/contact#book">Book a demo</a>
+						<a class="btn btn-ghost light btn-lg" href="/features">See all features</a>
+					</div>
+					<dl class="hero-facts">
+						<div>
+							<dt><b>Android</b></dt>
+							<dd><span>Institute app on Google Play</span></dd>
+						</div>
+						<div>
+							<dt><b>₹0 extra</b></dt>
+							<dd><span>No per-device licence, any number of faculty</span></dd>
+						</div>
+						<div>
+							<dt><b>Live sync</b></dt>
+							<dd><span>Same records as the web panel, instantly</span></dd>
+						</div>
+					</dl>
+				</div>
+				<figure class="hero-media phone-frame">
+					<img src="/assets/mobile-app.webp" width="807" height="1638" loading="eager" fetchpriority="high"
+						alt="Vyorra Android app showing the institute dashboard with student counts, question bank size and recent tests">
 				</figure>
+			</div>
+		</section>
 
-				<h2>What you get on your phone</h2>
-				<ul class="doc-list">
-					<li><strong>Full dashboard:</strong> total students, question bank size, tests conducted and latest results — the same numbers your web panel shows.</li>
-					<li><strong>Question library:</strong> browse, search and review questions by subject, chapter and topic, right from your phone.</li>
-					<li><strong>Attendance:</strong> mark a batch's attendance on the go and check any student's attendance history.</li>
-					<li><strong>Test results:</strong> see live submissions, student scores and question-level breakdowns as soon as a test window closes.</li>
-					<li><strong>Bottom-tab navigation:</strong> Home, Library, Students, Attend, Results — one tap to switch.</li>
-				</ul>
-
-				<h2>For students too</h2>
-				<p>The student portal installs as an app on any phone (Android and iOS), so students do not need the Play Store to take a test. They log in with roll number and OTP, see assigned tests, attempt them in a locked test window, and track scores, streaks and attendance day by day.</p>
-
-				<div class="doc-grid">
-					<div class="doc-card">
-						<h3>Same data, everywhere</h3>
-						<p>A question added on the web is instantly visible on the app. Results from an app-taken test appear on the web panel. No syncing, no delay.</p>
-					</div>
-					<div class="doc-card">
-						<h3>No extra licence cost</h3>
-						<p>The Android app is included with every annual plan. You don't pay more for your faculty to use it on their phones.</p>
-					</div>
-					<div class="doc-card">
-						<h3>Works on any Android phone</h3>
-						<p>Lightweight and tested on devices from budget phones to flagships. No special hardware required.</p>
-					</div>
+		<!-- ──────────────── WHAT IT DOES ──────────────── -->
+		<section class="p-section">
+			<div class="shell">
+				<div class="p-head center reveal">
+					<span class="p-kicker">For faculty and owners</span>
+					<h2>The things you actually do between classes</h2>
+					<p>Built for the ten free minutes in a corridor, not for a desk session.</p>
 				</div>
 
-				<h2>Available on Google Play</h2>
-				<p>The Vyorra institute app is available on Google Play. During onboarding, your institute gets set up on the app alongside the web panel — same branding, same passcodes, same data scope.</p>
+				<div class="grid">
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<path d="M8 2v3M16 2v3" />
+								<rect x="3" y="5" width="18" height="16" rx="2" />
+								<path d="m8 13 2.5 2.5L16 10" />
+							</svg>
+						</span>
+						<h3>Attendance in seconds</h3>
+						<p>Open the batch, tap through the roll, done — and the monthly percentage updates for
+							parents and the office at the same moment.</p>
+					</article>
 
-				<div class="doc-cta">
-					<h2>See the app in action</h2>
-					<p>Book a 30-minute walkthrough and we'll show you the app alongside the web panel, using your own syllabus and marking scheme.</p>
-					<a class="btn btn-primary btn-lg" href="/contact">Book a demo</a>
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+							</svg>
+						</span>
+						<h3>Results the moment they land</h3>
+						<p>Batch averages, toppers and the chapter everyone lost marks on, ready before you reach
+							the classroom.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<path d="M4 5h16M4 12h16M4 19h10" />
+							</svg>
+						</span>
+						<h3>Browse the question bank</h3>
+						<p>Search by chapter, topic or difficulty and read the full solution — useful when a
+							student asks mid-corridor.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<circle cx="12" cy="8" r="3.5" />
+								<path d="M5 20a7 7 0 0 1 14 0" />
+							</svg>
+						</span>
+						<h3>Student profiles</h3>
+						<p>Score history, attendance and weak chapters on one screen — exactly what a parent asks
+							about at the gate.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<path d="M12 3v13" />
+								<path d="m7 11 5 5 5-5" />
+								<path d="M4 20h16" />
+							</svg>
+						</span>
+						<h3>Share papers instantly</h3>
+						<p>Download a generated paper or key as PDF and forward it to a colleague without opening
+							a laptop.</p>
+					</article>
+
+					<article class="card reveal">
+						<span class="tile" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<rect x="4" y="10" width="16" height="10" rx="2" />
+								<path d="M8 10V7a4 4 0 0 1 8 0v3" />
+							</svg>
+						</span>
+						<h3>Same security model</h3>
+						<p>Sensitive actions stay behind your passcode layer, and every faculty action is logged
+							just as it is on the web.</p>
+					</article>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─────────────── STUDENT SIDE ───────────────── -->
+		<section class="p-section soft">
+			<div class="shell">
+				<div class="split-row reveal">
+					<div class="split-copy">
+						<span class="step-tag">For students</span>
+						<h3>Nothing to download, if they'd rather not</h3>
+						<p>The student portal installs straight from the browser as an app on any phone — Android
+							or iPhone — so no student is blocked by storage space or a slow connection on test
+							day.</p>
+						<ul class="tick-list">
+							<li><strong>OTP login</strong> with their roll number — no passwords to forget.</li>
+							<li><strong>Assigned tests</strong> with deadlines, duration and marking scheme up front.
+							</li>
+							<li><strong>Instant scorecards</strong> and full solutions when the window closes.</li>
+							<li><strong>Their own attendance</strong> record, day by day, visible any time.</li>
+						</ul>
+						<p style="margin-top:8px"><a href="/features">See the full platform →</a></p>
+					</div>
+					<figure class="split-media shot">
+						<img src="/assets/student-dashboard.webp" width="1440" height="775" loading="lazy"
+							alt="Vyorra student dashboard showing assigned tests, recent scores and attendance summary">
+					</figure>
+				</div>
+			</div>
+		</section>
+
+		<!-- ──────────────── GET THE APP ───────────────── -->
+		<section class="p-section">
+			<div class="shell">
+				<div class="p-head center reveal">
+					<span class="p-kicker">Getting it installed</span>
+					<h2>Three steps, on the day you onboard</h2>
+				</div>
+
+				<ol class="numbered">
+					<li class="reveal">
+						<span class="num">1</span>
+						<h3>Install</h3>
+						<p>Get the Vyorra Institute app from Google Play on any Android phone or tablet.</p>
+					</li>
+					<li class="reveal">
+						<span class="num">2</span>
+						<h3>Sign in</h3>
+						<p>Use the institute credentials issued during onboarding — your data is already there.
+						</p>
+					</li>
+					<li class="reveal">
+						<span class="num">3</span>
+						<h3>Add your faculty</h3>
+						<p>Invite as many teachers as you like. There is no per-device or per-seat charge.</p>
+					</li>
+				</ol>
+
+				<div class="badge-row reveal">
+					<a class="btn btn-primary btn-lg" href="/contact#book">Get the app with your demo</a>
+					<a class="btn btn-ghost btn-lg" href="/pricing">See pricing</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- ────────────────── CTA ──────────────────── -->
+		<section class="cta-band">
+			<div class="shell band-inner">
+				<div>
+					<h2>Try the panel before the app</h2>
+					<p>The live institute demo runs in any browser with sample data loaded — the app mirrors
+						exactly what you see there.</p>
+				</div>
+				<div class="band-actions">
+					<a class="btn btn-primary btn-lg" href="/institute_mockup">Open the live demo</a>
+					<a class="btn btn-ghost light btn-lg" href="/contact#book">Book a demo</a>
 				</div>
 			</div>
 		</section>
@@ -304,7 +313,7 @@
 				<h4>Product</h4>
 				<a href="/features">Features</a>
 				<a href="/pricing">Pricing</a>
-				<a href="/institute-panel-demo">Live demo</a>
+				<a href="/institute_mockup">Live demo</a>
 				<a href="/mobile-app">Mobile app</a>
 			</nav>
 			<nav aria-label="Company">
