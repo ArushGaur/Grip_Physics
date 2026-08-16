@@ -47,7 +47,7 @@
 	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap"
 		rel="stylesheet">
 	<!-- ── Favicons: absolute paths so Google's favicon crawler can always resolve them ── -->
-	<link rel="icon" href="/assets/favicon.ico" sizes="any">
+	<link rel="icon" href="/favicon.ico" sizes="any">
 	<link rel="icon" type="image/png" href="/assets/icon-48.png" sizes="48x48">
 	<link rel="icon" type="image/png" href="/assets/icon-96.png" sizes="96x96">
 	<link rel="icon" type="image/png" href="/assets/icon-192.png" sizes="192x192">
@@ -84,8 +84,46 @@
 	      "@id": "https://vyorra.in/#website",
 	      "url": "https://vyorra.in/",
 	      "name": "Vyorra",
+	      "alternateName": ["Vyorra.in", "Vyorra Exam Software"],
 	      "inLanguage": "en-IN",
 	      "publisher": { "@id": "https://vyorra.in/#organization" }
+	    },
+	    {
+	      "@type": "SiteNavigationElement",
+	      "@id": "https://vyorra.in/#navigation",
+	      "name": "Main Navigation",
+	      "hasPart": [
+	        {
+	          "@type": "WebPage",
+	          "name": "Features",
+	          "url": "https://vyorra.in/features"
+	        },
+	        {
+	          "@type": "WebPage",
+	          "name": "Mobile App",
+	          "url": "https://vyorra.in/mobile-app"
+	        },
+	        {
+	          "@type": "WebPage",
+	          "name": "Pricing",
+	          "url": "https://vyorra.in/pricing"
+	        },
+	        {
+	          "@type": "WebPage",
+	          "name": "Live Demo",
+	          "url": "https://vyorra.in/institute-panel-demo"
+	        },
+	        {
+	          "@type": "WebPage",
+	          "name": "FAQ",
+	          "url": "https://vyorra.in/faq"
+	        },
+	        {
+	          "@type": "WebPage",
+	          "name": "Contact",
+	          "url": "https://vyorra.in/contact"
+	        }
+	      ]
 	    },
 	    {
 	      "@type": "SoftwareApplication",
@@ -111,7 +149,7 @@
 	        "price": "15000",
 	        "priceCurrency": "INR",
 	        "description": "₹15,000 per year for every 100 students. Includes both panels, the Android app, onboarding, question migration and faculty training.",
-	        "url": "https://vyorra.in/#pricing",
+	        "url": "https://vyorra.in/pricing",
 	        "availability": "https://schema.org/InStock"
 	      }
 	    },
@@ -187,9 +225,9 @@
 
 			<nav class="nav" id="primaryNav" aria-label="Primary">
 				<a href="#platform">Platform</a>
-				<a href="#features">Features</a>
-				<a href="#app">Mobile app</a>
-				<a href="#pricing">Pricing</a>
+				<a href="/features">Features</a>
+				<a href="/mobile-app">Mobile app</a>
+				<a href="/pricing">Pricing</a>
 				<a href="#faq">FAQ</a>
 				<a href="/institute-panel-demo">Live demo</a>
 				<a href="/contact">Contact</a>
@@ -717,13 +755,13 @@
 				<a href="/features">Features</a>
 				<a href="/pricing">Pricing</a>
 				<a href="/institute-panel-demo">Live demo</a>
-				<a href="#app">Mobile app</a>
+				<a href="/mobile-app">Mobile app</a>
 			</nav>
 			<nav aria-label="Company">
 				<h4>Company</h4>
 				<a href="/faq">FAQ</a>
 				<a href="/contact">Contact us</a>
-				<a href="institute.html">Institute login</a>
+				<a href="/institute">Institute login</a>
 			</nav>
 			<div class="footer-contact">
 				<h4>Talk to us</h4>
