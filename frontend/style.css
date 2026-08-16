@@ -1649,3 +1649,106 @@ ul, ol {
 		animation: none;
 	}
 }
+
+/* ══════════════════════════════════════════════════════════════
+   HOMEPAGE HERO — deep green band
+   Matches the sub-page heroes in pages.css so the whole site
+   opens on the same colour.
+   ══════════════════════════════════════════════════════════════ */
+.hero {
+	padding: 108px 0 40px;
+	background:
+		radial-gradient(900px 480px at 88% -10%, rgba(0, 210, 180, .22), transparent 62%),
+		linear-gradient(158deg, #07231d 0%, #0a3a2f 52%, #0d4c3e 100%);
+	color: #fff;
+}
+
+.hero::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	background-image:
+		linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, .045) 1px, transparent 1px);
+	background-size: 64px 64px;
+	-webkit-mask-image: radial-gradient(720px 420px at 20% 0%, #000, transparent 78%);
+	mask-image: radial-gradient(720px 420px at 20% 0%, #000, transparent 78%);
+}
+
+.hero .shell {
+	position: relative;
+	z-index: 1;
+}
+
+.hero-glow {
+	display: none;
+}
+
+.hero .eyebrow {
+	background: rgba(255, 255, 255, .07);
+	border-color: rgba(255, 255, 255, .18);
+	color: rgba(255, 255, 255, .88);
+}
+
+.hero h1 {
+	color: #fff;
+}
+
+.hero h1 em {
+	color: var(--teal-bright);
+}
+
+.hero .lede {
+	color: rgba(255, 255, 255, .76);
+}
+
+.hero .btn-ghost {
+	color: #fff;
+	border-color: rgba(255, 255, 255, .28);
+	background: transparent;
+}
+
+.hero .btn-ghost:hover {
+	color: var(--deep);
+	background: #fff;
+	border-color: #fff;
+}
+
+/* White cards sitting on the dark hero must not inherit white text. */
+.hero .float-card {
+	color: var(--ink);
+}
+
+.hero-stats {
+	border-top-color: rgba(255, 255, 255, .14);
+}
+
+.hero-stats dt {
+	color: #fff;
+}
+
+.hero-stats dd {
+	color: rgba(255, 255, 255, .62);
+}
+
+.marquee-wrap {
+	margin-top: 64px;
+	border-top-color: rgba(255, 255, 255, .14);
+}
+
+.marquee-label {
+	color: rgba(255, 255, 255, .55);
+}
+
+.marquee li {
+	color: rgba(255, 255, 255, .82);
+	opacity: .9;
+}
+
+@media (max-width: 900px) {
+	.hero {
+		padding: 92px 0 32px;
+	}
+}
