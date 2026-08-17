@@ -156,6 +156,13 @@
 	height: auto;
 }
 
+/* ── NEW: SVG hero illustrations ───────────────────────────── */
+.hero-media svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
 /* ── Sections ──────────────────────────────────────────────── */
 .p-section {
 	padding: 92px 0;
@@ -762,8 +769,6 @@ table.slabs tbody tr:last-child td {
 	align-items: center;
 }
 
-/* The phone render already ships with a transparent background and its own
-   device bezel, so it needs no frame of ours — just a soft drop shadow. */
 .phone-frame {
 	justify-self: center;
 	width: min(300px, 100%);
@@ -824,6 +829,31 @@ table.slabs tbody tr:last-child td {
 	flex-wrap: wrap;
 	gap: 14px;
 	justify-content: flex-end;
+}
+
+/* ── Hero appear animation ─────────────────────────────────── */
+@keyframes heroFadeUp {
+	from { opacity: 0; transform: translateY(32px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-hero .crumbs       { animation: heroFadeUp .50s cubic-bezier(.22,.61,.36,1) .05s both; }
+.page-hero .hero-chip    { animation: heroFadeUp .50s cubic-bezier(.22,.61,.36,1) .12s both; }
+.page-hero h1            { animation: heroFadeUp .60s cubic-bezier(.22,.61,.36,1) .20s both; }
+.page-hero .hero-lede    { animation: heroFadeUp .60s cubic-bezier(.22,.61,.36,1) .30s both; }
+.page-hero .hero-actions { animation: heroFadeUp .60s cubic-bezier(.22,.61,.36,1) .40s both; }
+.page-hero .hero-facts   { animation: heroFadeUp .60s cubic-bezier(.22,.61,.36,1) .50s both; }
+.page-hero .hero-media   { animation: heroFadeUp .70s cubic-bezier(.22,.61,.36,1) .25s both; }
+
+/* ── Features page: much larger hero image ─────────────────── */
+/* Add class="features-page" to <body> in features.html        */
+.features-page .page-hero .hero-inner {
+	grid-template-columns: 1fr 1.8fr;
+	gap: 40px;
+}
+
+.features-page .page-hero .hero-media {
+	max-height: none;
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
@@ -915,5 +945,16 @@ table.slabs tbody tr:last-child td {
 
 	.card:hover {
 		transform: none;
+	}
+
+	/* Disable hero animations for users who prefer reduced motion */
+	.page-hero .crumbs,
+	.page-hero .hero-chip,
+	.page-hero h1,
+	.page-hero .hero-lede,
+	.page-hero .hero-actions,
+	.page-hero .hero-facts,
+	.page-hero .hero-media {
+		animation: none;
 	}
 }
