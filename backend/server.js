@@ -221,7 +221,10 @@ function startServer() {
 			})
 		);
 	} catch (_) {
-		logger.warn("`compression` not installed — run `npm install compression`");
+		// Optional: responses simply go out uncompressed without it. To enable,
+		// run `npm install compression` locally so package-lock.json is updated
+		// too - adding it to package.json alone breaks `npm ci` during deploys.
+		logger.info("`compression` not installed - serving uncompressed responses");
 	}
 
 	/* ── Body parsing: small by default, large only where needed ───────────── */
