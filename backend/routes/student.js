@@ -9,6 +9,29 @@ const cache = require("../config/cache");
 const { isCorrect, normalizeQuestionRow } = helpers;
 const crypto = require("crypto");
 const { sendOtpEmail, activeProvider } = require("../utils/mailer");
+// Per-institute feature flags (set from the developer panel). An institute that
+// only bought the offline question library has onlineTests / studentManagement
+// switched off, so the student portal must refuse those routes too — not just
+// hide the buttons.
+const { getInstitutePermissions, hasFeature } = require("../utils/permissions");
+
+/**
+ * Is `feature` enabled for this student's institute?
+ * Unknown institute ⇒ allowed (keeps legacy/no-institute flows working).
+ */
+async function studentFeatureAllowed(instituteId, feature) {
+	if (!instituteId) return true;
+	try {
+		const perms = await getInstitutePermissions(instituteId);
+		return hasFeature(perms, feature);
+	} catch (_) {
+		return true;
+	}
+}
+
+function featureBlocked(res, message) {
+	return res.status(403).json({ error: message, blocked: true });
+}
 function genToken() {
     return crypto.randomBytes(32).toString("hex");
 }
@@ -873,6 +896,7 @@ router.get("/api/student/online-tests", async (req, res) => {
 	try {
 		const row = await getStudentFromToken(req);
 		if (!row) return res.status(401).json({ error: "Not authenticated" });
+		if (!(await studentFeatureAllowed(row.institute_id, "onlineTests"))) return res.json([]);
 		const roll = row.roll_number;
 		const now = Date.now();
 		// Fetch metadata only — skip the heavy questions_json column for the list
@@ -944,6 +968,9 @@ router.get("/api/student/online-tests/:id/questions", async (req, res) => {
 	try {
 		const row = await getStudentFromToken(req);
 		if (!row) return res.status(401).json({ error: "Not authenticated" });
+		if (!(await studentFeatureAllowed(row.institute_id, "onlineTests"))) {
+			return featureBlocked(res, "Online tests are not enabled for your institute.");
+		}
 		const roll = row.roll_number;
 		const testId = Number(req.params.id);
 		if (!Number.isFinite(testId)) return res.status(400).json({ error: "Invalid test id" });
@@ -1156,6 +1183,9 @@ router.post("/api/student/submit-request", rateLimit(60 * 1000, 5), async (req, 
 		const ir = await db.execute({ sql: "SELECT id FROM institutes WHERE code = ? LIMIT 1", args: [codeStr] });
 		if (!ir.rows.length) return res.status(404).json({ error: "Institute not found" });
 		const instId = ir.rows[0].id;
+		if (!(await studentFeatureAllowed(instId, "studentManagement"))) {
+			return featureBlocked(res, "This institute is not accepting student registrations.");
+		}
 
 		// If already registered in this institute, reject (should use normal save-profile)
 		const existing = await db.execute({
@@ -1370,6 +1400,7 @@ router.get("/api/student/assigned-tests", async (req, res) => {
 	try {
 		const row = await getStudentFromToken(req);
 		if (!row) return res.status(401).json({ error: "Not authenticated" });
+		if (!(await studentFeatureAllowed(row.institute_id, "starQuiz"))) return res.json([]);
 		const attemptsResult = await db.execute({
 			sql: "SELECT chapter, lecture FROM test_history WHERE mobile = ?",
 			args: [row.roll_number]

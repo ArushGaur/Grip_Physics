@@ -1658,6 +1658,31 @@
                         Generator</label>
                     <label class="inst-perm-item"><input type="checkbox" id="permQuestionBank" checked> Question
                         Bank</label>
+                    <label class="inst-perm-item"><input type="checkbox" id="permStudentMgmt" checked> Students
+                        &amp; Registrations</label>
+                </div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;line-height:1.6">
+                    Library-only institute? Untick <b>Online Tests</b>, <b>STAR Quiz</b> and
+                    <b>Students &amp; Registrations</b> &mdash; they keep the question library and
+                    offline paper generator only. Blocked features disappear from the institute
+                    panel and are refused by the server.
+                    <button type="button" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;margin-left:6px"
+                        onclick="applyLibraryOnlyPreset()">Apply library-only preset</button>
+                </div>
+            </div>
+            <div class="inst-form-row">
+                <label>Allowed subjects
+                    <span style="font-size:0.72rem;color:var(--text-muted)">Tick only the subjects this institute
+                        may see. Leave all unticked = every subject.</span>
+                </label>
+                <div id="instSubjectsBox" class="inst-perms-grid"
+                    style="max-height:150px;overflow:auto;padding:6px;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:8px">
+                    <span style="font-size:0.78rem;color:var(--text-muted)">Loading subjects...</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:6px">
+                    <button type="button" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem"
+                        onclick="setAllSubjects(false)">Clear (all subjects)</button>
+                    <span id="instSubjectsHint" style="font-size:0.72rem;color:var(--text-muted)"></span>
                 </div>
             </div>
             <div id="instModalError" style="color:var(--error);font-size:0.82rem;margin-bottom:8px;display:none"></div>

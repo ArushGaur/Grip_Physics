@@ -536,6 +536,86 @@
         ══════════════════════════════════════════════════════════════ */
         let _instDeleteId = null;
 
+        /* ==================================================================
+           Feature + subject control for an institute
+           ------------------------------------------------------------------
+           An institute that only bought the offline question library gets
+           Online Tests / STAR Quiz / Students switched off here, and can be
+           restricted to a few subjects (e.g. Physics + Maths). The institute
+           panel hides those features and the API refuses them server-side.
+           ================================================================== */
+        let SUBJECT_CATALOGUE = null;   // [{ subject, canonical, count }]
+
+        function prettySubject(s) {
+            const str = String(s || "").trim();
+            if (!str) return "";
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        async function loadSubjectCatalogue() {
+            if (SUBJECT_CATALOGUE) return SUBJECT_CATALOGUE;
+            try {
+                const r = await fetch(`${API_BASE}/api/owner/subjects`, { credentials: "include", cache: "no-store" });
+                SUBJECT_CATALOGUE = r.ok ? await r.json() : [];
+            } catch (_) { SUBJECT_CATALOGUE = []; }
+            if (!Array.isArray(SUBJECT_CATALOGUE)) SUBJECT_CATALOGUE = [];
+            return SUBJECT_CATALOGUE;
+        }
+
+        // Render the subject checkboxes, ticking the ones already allowed.
+        async function renderSubjectPicker(selected) {
+            const box = document.getElementById("instSubjectsBox");
+            if (!box) return;
+            const list = await loadSubjectCatalogue();
+            const sel = new Set((selected || []).map(x => String(x || "").trim().toLowerCase()));
+            if (!list.length) {
+                box.innerHTML = `<span style="font-size:0.78rem;color:var(--text-muted)">No subjects found in the question library yet.</span>`;
+                updateSubjectHint();
+                return;
+            }
+            box.innerHTML = list.map((row) => {
+                const canon = String(row.canonical || row.subject || "").toLowerCase();
+                const isOn = sel.has(canon) || sel.has(String(row.subject || "").toLowerCase());
+                return `<label class="inst-perm-item">
+                    <input type="checkbox" class="inst-subject-cb" value="${escHtml(canon)}" ${isOn ? "checked" : ""}
+                        onchange="updateSubjectHint()">
+                    ${escHtml(prettySubject(row.subject))}
+                    <span style="color:var(--text-muted);font-size:0.68rem">(${Number(row.count || 0)})</span>
+                </label>`;
+            }).join("");
+            updateSubjectHint();
+        }
+
+        function selectedSubjects() {
+            return [...document.querySelectorAll(".inst-subject-cb")]
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+        }
+
+        function updateSubjectHint() {
+            const hint = document.getElementById("instSubjectsHint");
+            if (!hint) return;
+            const picked = selectedSubjects();
+            hint.textContent = picked.length
+                ? `Only ${picked.map(prettySubject).join(", ")} will be visible to this institute.`
+                : "No restriction - every subject in the library is visible.";
+        }
+
+        function setAllSubjects(on) {
+            document.querySelectorAll(".inst-subject-cb").forEach(cb => { cb.checked = !!on; });
+            updateSubjectHint();
+        }
+
+        // One click: question library + offline paper generator only.
+        function applyLibraryOnlyPreset() {
+            document.getElementById("permOnlineTests").checked = false;
+            document.getElementById("permStarQuiz").checked = false;
+            document.getElementById("permStudentMgmt").checked = false;
+            document.getElementById("permPaperGen").checked = true;
+            document.getElementById("permQuestionBank").checked = true;
+            updateSubjectHint();
+        }
+
         async function loadInstitutes() {
             const grid = document.getElementById("institutesGrid");
             if (!grid) return;
@@ -571,7 +651,11 @@
                     perms.starQuiz !== false ? '✅ STAR Quiz' : '❌ STAR Quiz',
                     perms.paperGenerator !== false ? '✅ Paper Gen' : '❌ Paper Gen',
                     perms.questionBank !== false ? '✅ Q Bank' : '❌ Q Bank',
+                    perms.studentManagement !== false ? '✅ Students' : '❌ Students',
                 ].join(' &nbsp;|&nbsp; ');
+                // Subject whitelist summary (an empty list means every subject is allowed)
+                const subjList = Array.isArray(perms.allowedSubjects) ? perms.allowedSubjects.filter(Boolean) : [];
+                const subjLine = `<div style="font-size:0.72rem;color:var(--text-muted);line-height:1.8">Subjects: <b>${subjList.length ? escHtml(subjList.map(prettySubject).join(", ")) : "All"}</b></div>`;
                 return `<div class="inst-card">
                     <div class="inst-card-header">
                         ${logoHtml}
@@ -586,6 +670,7 @@
                         ${expiry}
                     </div>
                     <div style="font-size:0.72rem;color:var(--text-muted);line-height:1.8">${permsList}</div>
+                    ${subjLine}
                     <div class="inst-actions">
                         <button class="btn btn-ghost" onclick="openEditInstituteModal(${inst.id})">✏️ Edit</button>
                         ${!isDefault ? `<button class="btn btn-ghost" style="color:var(--warn)" onclick="toggleSuspendInstitute(${inst.id}, '${inst.status}')">${inst.status === 'suspended' ? '▶️ Activate' : '⏸ Suspend'}</button>` : ''}
@@ -617,6 +702,8 @@
             document.getElementById("permStarQuiz").checked = true;
             document.getElementById("permPaperGen").checked = true;
             document.getElementById("permQuestionBank").checked = true;
+            document.getElementById("permStudentMgmt").checked = true;
+            renderSubjectPicker([]);
             document.getElementById("instModalError").style.display = "none";
             openModal("instituteModal");
         }
@@ -653,6 +740,8 @@
                 document.getElementById("permStarQuiz").checked = perms.starQuiz !== false;
                 document.getElementById("permPaperGen").checked = perms.paperGenerator !== false;
                 document.getElementById("permQuestionBank").checked = perms.questionBank !== false;
+                document.getElementById("permStudentMgmt").checked = perms.studentManagement !== false;
+                await renderSubjectPicker(Array.isArray(perms.allowedSubjects) ? perms.allowedSubjects : []);
                 document.getElementById("instModalError").style.display = "none";
                 openModal("instituteModal");
             } catch (e) { alert("Error: " + e.message); }
@@ -690,6 +779,9 @@
                 starQuiz: document.getElementById("permStarQuiz").checked,
                 paperGenerator: document.getElementById("permPaperGen").checked,
                 questionBank: document.getElementById("permQuestionBank").checked,
+                studentManagement: document.getElementById("permStudentMgmt").checked,
+                // [] = no restriction; otherwise only these subjects are visible.
+                allowedSubjects: selectedSubjects(),
             };
 
             let plan_expires_at = 0;
@@ -707,6 +799,7 @@
                 if (passcode) fd.append("passcode", passcode);
                 if (teacherPasscode) fd.append("teacherPasscode", teacherPasscode);
                 fd.append("permissions", JSON.stringify(perms));
+                fd.append("allowedSubjects", JSON.stringify(perms.allowedSubjects));
                 fd.append("plan_expires_at", String(plan_expires_at));
                 fd.append("status", status);
                 if (logoFile) fd.append("logo", logoFile);

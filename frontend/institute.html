@@ -7758,7 +7758,7 @@
                     </div>
                     <div class="topbar-actions">
                         <button class="icon-btn" title="Toggle theme" onclick="toggleTheme()">🌙</button>
-                        <button class="icon-btn" title="Notifications">🔔</button>
+                        <button class="icon-btn" title="Paper templates" onclick="window.instOpenTemplateManager()">📄</button>
                     </div>
                 </header>
 
@@ -9625,7 +9625,17 @@
         }
 
         /* Step 4 — test type */
-        function wizGoTestType() { wizGoStep(4); }
+        function wizGoTestType() {
+            // Offline-only institutes never see the test-type step.
+            const allowOnline = typeof window.instOnlineAllowed === 'function' ? window.instOnlineAllowed() : true;
+            if (!allowOnline) {
+                wiz.testType = 'offline';
+                if (typeof window.wizFinish === 'function') window.wizFinish();
+                else wizFinish();
+                return;
+            }
+            wizGoStep(4);
+        }
 
         function wizSelectTestType(type) {
             wiz.testType = type;
@@ -9851,6 +9861,13 @@
         const pageTitles = { dashboard: 'Dashboard', questions: 'Question Library', combine: 'Combine & Create Test', students: 'Students', attendance: 'Attendance', results: 'Test Results' };
 
         function navigateTo(page) {
+            // Guard: a blocked feature must not be reachable, even by deep link.
+            if (page === 'students' && typeof window.permOn === 'function' && !window.permOn('studentManagement')) {
+                page = 'dashboard';
+            }
+            if ((page === 'attendance' || page === 'results') && typeof window.permOn === 'function' && !window.permOn('onlineTests')) {
+                page = 'dashboard';
+            }
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
             document.querySelectorAll('.tab-item').forEach(n => n.classList.remove('active'));
@@ -11405,6 +11422,94 @@
                 } catch (e) { return null; }
             }
 
+            /* ==================================================================
+               PER-INSTITUTE PERMISSIONS
+               ------------------------------------------------------------------
+               The developer panel decides what this institute has paid for:
+                 onlineTests        - online test creation / results
+                 starQuiz           - STAR quiz
+                 studentManagement  - adding students & approving requests
+                 paperGenerator     - offline Word/PDF paper generation
+                 questionBank       - the question library
+                 allowedSubjects    - [] = all, else only these subjects
+               A library-only institute therefore sees just the Question Library
+               and Combine & Create (offline paper) sections. The server refuses
+               the blocked APIs too, so hiding here is only cosmetic safety.
+               ================================================================== */
+            function institutePerms() {
+                return (State.institute && State.institute.permissions) || {};
+            }
+            function permOn(key) {
+                return institutePerms()[key] !== false;
+            }
+            window.permOn = permOn;
+
+            function allowedSubjects() {
+                const a = institutePerms().allowedSubjects;
+                return Array.isArray(a) ? a.filter(Boolean).map(x => String(x).toLowerCase()) : [];
+            }
+            window.allowedSubjects = allowedSubjects;
+
+            // Filter any list of subject names down to what this institute may see.
+            function filterAllowedSubjects(list) {
+                const allow = allowedSubjects();
+                if (!allow.length) return list || [];
+                const norm = (v) => String(v || '').trim().toLowerCase()
+                    .replace(/^maths?$/, 'mathematics').replace(/^mathematic$/, 'mathematics')
+                    .replace(/^phy(sic)?$/, 'physics').replace(/^chem$/, 'chemistry').replace(/^bio$/, 'biology');
+                const allowNorm = new Set(allow.map(norm));
+                return (list || []).filter(x => allowNorm.has(norm(typeof x === 'string' ? x : (x && (x.subject || x.name)))));
+            }
+            window.filterAllowedSubjects = filterAllowedSubjects;
+
+            function hideEl(el) { if (el) el.style.display = 'none'; }
+
+            function applyPermissions() {
+                const students = permOn('studentManagement');
+                const online = permOn('onlineTests');
+                const paper = permOn('paperGenerator');
+
+                document.body.classList.toggle('no-student-mgmt', !students);
+                document.body.classList.toggle('no-online-tests', !online);
+                document.body.classList.toggle('no-paper-gen', !paper);
+
+                if (!students) {
+                    // Whole Students section + every "Add Student" entry point
+                    document.querySelectorAll('.nav-item[data-page="students"], .tab-item[data-page="students"], .drawer-item[data-page="students"]').forEach(hideEl);
+                    document.querySelectorAll('button, .primary-btn, .side-action, a').forEach(el => {
+                        const oc = el.getAttribute && (el.getAttribute('onclick') || '');
+                        if (oc && /openAddStudent|addStudent\(|openStudentRequests/.test(oc)) hideEl(el);
+                    });
+                }
+
+                if (!online) {
+                    // Anything that creates or lists online tests
+                    document.querySelectorAll('.nav-item, .tab-item, .drawer-item, button, .primary-btn').forEach(el => {
+                        const txt = (el.textContent || '').trim();
+                        if (/online\s*test/i.test(txt)) hideEl(el);
+                    });
+                    // Attendance + Test Analysis live off the online-test flow, so they go too
+                    ['attendance', 'results'].forEach(pg => {
+                        document.querySelectorAll('.nav-item[data-page="' + pg + '"], .tab-item[data-page="' + pg + '"], .drawer-item[data-page="' + pg + '"]').forEach(hideEl);
+                    });
+                    // "Online Test" destination in the auto-generate wizard and the question basket
+                    document.querySelectorAll('[onclick*="wizSelectTestType(\'online\')"], [onclick*="instChooseType(\'online\')"]').forEach(hideEl);
+                    const offCard = document.querySelector('[onclick*="instChooseType(\'offline\')"]');
+                    if (offCard && offCard.parentElement) offCard.parentElement.style.gridTemplateColumns = '1fr';
+                    const wizOff = document.querySelector('[onclick*="wizSelectTestType(\'offline\')"]');
+                    if (wizOff && wizOff.parentElement) wizOff.parentElement.style.gridTemplateColumns = '1fr';
+                }
+
+                // If the visible page just got hidden, fall back to the dashboard
+                const active = document.querySelector('.page.active');
+                const activeId = active ? active.id.replace('page-', '') : '';
+                if (typeof navigateTo === 'function') {
+                    if (!students && activeId === 'students') navigateTo('dashboard');
+                    else if (!online && (activeId === 'attendance' || activeId === 'results')) navigateTo('dashboard');
+                }
+            }
+            window.applyPermissions = applyPermissions;
+
             function applyBranding() {
                 const me = State.institute; if (!me) return;
                 const name = me.name || 'Institute';
@@ -11516,6 +11621,7 @@
                 document.body.classList.remove('auth-locked');
                 clearMockupCounts();
                 applyBranding();
+                applyPermissions();   // hide whatever this institute did not buy
                 // Kick off all data loads in parallel
                 const results = await Promise.allSettled([
                     loadClasses(),
@@ -13829,10 +13935,17 @@
             window.wizFinish = async function () {
                 const type = wiz.testType || 'online';
                 const name = `Auto Test — ${new Date().toLocaleDateString()}`;
+                // Start fetching immediately, but don't make the teacher stare at a
+                // spinner: for offline papers the form opens right away and the
+                // questions keep loading in the background while it is filled in.
+                const gathering = wizGatherQuestions();
+                gathering.catch(() => {});
+                if (type === 'offline') _wizOpenOfflineFormEarly(name);
                 try {
-                    toast('Gathering questions…');
-                    const picked = await wizGatherQuestions();
-                    if (!picked.length) { toast('No questions found for the selected topics'); return; }
+                    if (type !== 'offline') toast('Gathering questions…');
+                    const picked = await gathering;
+                    if (!picked.length) { toast('No questions found for the selected topics'); _wizFormLoading(false, 'No questions found for the selected topics'); return; }
+                    _wizFormLoading(false);
 
                     // Detect multiple subjects from selectedChapters keys
                     const activeSubjects = Object.keys(wiz.selectedChapters).filter(s => wiz.selectedChapters[s] && wiz.selectedChapters[s].size > 0);
@@ -13865,8 +13978,47 @@
                         });
                     }
                     await _wizDoFinish(type, name, picked, pickedBySubj);
-                } catch (e) { toast(e.message || 'Failed to create test'); }
+                } catch (e) {
+                    _wizFormLoading(false, e.message || 'Could not load questions');
+                    toast(e.message || 'Failed to create test');
+                }
             };
+
+            // Shows the offline paper form before the questions have arrived.
+            function _wizOpenOfflineFormEarly(name) {
+                try {
+                    const wo = document.getElementById('wiz-overlay'); if (wo) wo.classList.remove('open');
+                    const m = instGenModalEl(); m.classList.add('open');
+                    window._wizOfflineQuestions = null;
+                    window._wizPickedBySubj = null;
+                    const scOld = document.getElementById('ipb-subj-counts'); if (scOld) scOld.remove();
+                    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+                    set('inst-paper-title', name);
+                    set('inst-paper-testtype', 'Chapter Test');
+                    set('inst-paper-numq', '');
+                    const firstKey = (typeof wizSelKeys === 'function' ? wizSelKeys()[0] : '') || '';
+                    const parts = firstKey && typeof wizSplit === 'function' ? wizSplit(firstKey) : null;
+                    set('inst-paper-subject', parts ? (parts.subject || '') : '');
+                    set('inst-paper-chapter', parts ? (parts.chapter || '') : '');
+                    const nqWrap = document.getElementById('inst-paper-numq')?.closest('.ipb-field');
+                    if (nqWrap) nqWrap.style.display = '';
+                    instShowScreen('ipb-screen-offline');
+                    _wizFormLoading(true);
+                } catch (_) {}
+            }
+
+            // Keeps Generate disabled (with a status line) until questions land.
+            function _wizFormLoading(loading, errText) {
+                const sub = document.getElementById('ipb-off-sub');
+                const btn = document.getElementById('ipb-gen-btn');
+                if (sub && loading) sub.textContent = 'Loading questions in the background… you can fill the details now';
+                if (sub && !loading && errText) sub.textContent = errText;
+                if (btn) {
+                    btn.disabled = !!loading;
+                    btn.style.opacity = loading ? '.55' : '';
+                    btn.style.cursor = loading ? 'not-allowed' : '';
+                }
+            }
 
             async function _wizDoFinish(type, name, picked, pickedBySubj) {
                     if (type === 'offline') {
@@ -13911,6 +14063,7 @@
                         // Hide/show numq AFTER the screen is visible (DOM is fully ready)
                         const _numqWrap = document.getElementById('inst-paper-numq')?.closest('.ipb-field');
                         if (_numqWrap) _numqWrap.style.display = _isMultiSubj ? 'none' : '';
+                        _wizFormLoading(false);
                     } else {
                         const questionKeys = picked.map(p => ({ chapter: p.chapter, lecture: p.lecture, questionIndex: p.questionIndex }));
                         IOT.open({
@@ -14010,14 +14163,111 @@
             document.addEventListener('click', function (e) { if (!_ipbOpen) return; const el = document.getElementById('inst-paper-basket'); if (el && !el.contains(e.target)) window.instToggleBasketPanel(); });
             /* ---- Generate flow: offline/online chooser -> form -> progress -> Word/PDF result ---- */
             let _instGen = { docx: null, pdf: null, format: 'docx', meta: {}, questions: [] };
-            let _instTplId = undefined;
+            let _instTplCache = null;
             function instVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
-            async function instFetchTemplateId() {
-                if (_instTplId !== undefined) return _instTplId;
-                try { const rows = await api('/api/admin/paper-templates'); _instTplId = (Array.isArray(rows) && rows.length) ? rows[0].id : null; }
-                catch (e) { _instTplId = null; }
-                return _instTplId;
+            function instApiBase() { return (typeof API_BASE !== 'undefined' ? API_BASE : (window.API_BASE || '')); }
+
+            async function instLoadTemplates(force) {
+                if (!force && Array.isArray(_instTplCache)) return _instTplCache;
+                try { const rows = await api('/api/admin/paper-templates'); _instTplCache = Array.isArray(rows) ? rows : []; }
+                catch (e) { _instTplCache = []; }
+                return _instTplCache;
             }
+
+            // Uses the template chosen in the dropdown when there is one, else the newest.
+            async function instFetchTemplateId() {
+                const sel = document.getElementById('inst-paper-template');
+                if (sel && sel.value) return Number(sel.value);
+                const rows = await instLoadTemplates();
+                return rows.length ? rows[0].id : null;
+            }
+
+            // Fills the Paper Template dropdown; only shown when there is a choice to make.
+            async function instSyncTemplateField() {
+                const field = document.getElementById('ipb-tpl-field');
+                const sel = document.getElementById('inst-paper-template');
+                if (!field || !sel) return;
+                const rows = await instLoadTemplates(true);
+                const keep = sel.value;
+                sel.innerHTML = rows.map(r => `<option value="${r.id}">${esc(r.name || ('Template ' + r.id))}</option>`).join('');
+                if (keep && rows.some(r => String(r.id) === String(keep))) sel.value = keep;
+                field.style.display = rows.length > 1 ? '' : 'none';
+            }
+
+            window.instOpenTemplateManager = async function () {
+                let ov = document.getElementById('inst-tpl-modal');
+                if (!ov) {
+                    ov = document.createElement('div');
+                    ov.id = 'inst-tpl-modal';
+                    ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+                    ov.innerHTML = `<div style="background:var(--card,#fff);border-radius:14px;max-width:520px;width:100%;max-height:82vh;overflow:auto;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.28)">
+                        <h3 style="margin:0 0 4px">Paper Templates</h3>
+                        <p style="margin:0 0 16px;font-size:.85rem;opacity:.7">Upload the Word (.docx) file your question papers should be built on. The newest template is the default; with more than one you can pick which to use while generating a paper.</p>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+                            <input type="file" id="inst-tpl-file" accept=".docx" style="flex:1;min-width:200px">
+                            <button id="inst-tpl-upload" style="padding:9px 16px;border:0;border-radius:9px;background:#2f7d63;color:#fff;font-weight:600;cursor:pointer">Upload</button>
+                        </div>
+                        <div id="inst-tpl-msg" style="font-size:.82rem;min-height:18px;margin-bottom:10px"></div>
+                        <div id="inst-tpl-list" style="display:flex;flex-direction:column;gap:8px"></div>
+                        <div style="text-align:right;margin-top:18px"><button id="inst-tpl-close" style="padding:9px 16px;border:1px solid rgba(0,0,0,.15);border-radius:9px;background:transparent;cursor:pointer">Close</button></div>
+                    </div>`;
+                    document.body.appendChild(ov);
+                    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+                    ov.querySelector('#inst-tpl-close').onclick = () => ov.remove();
+                    ov.querySelector('#inst-tpl-upload').onclick = async () => {
+                        const inp = document.getElementById('inst-tpl-file');
+                        const msg = document.getElementById('inst-tpl-msg');
+                        const file = inp && inp.files && inp.files[0];
+                        if (!file) { msg.textContent = 'Choose a .docx file first.'; msg.style.color = '#d95f5f'; return; }
+                        if (!/\.docx$/i.test(file.name)) { msg.textContent = 'Only .docx templates are supported.'; msg.style.color = '#d95f5f'; return; }
+                        msg.textContent = 'Uploading...'; msg.style.color = '';
+                        try {
+                            const fd = new FormData();
+                            fd.append('template', file);
+                            fd.append('name', file.name.replace(/\.docx$/i, ''));
+                            const r = await fetch(instApiBase() + '/api/admin/paper-templates', { method: 'POST', credentials: 'include', body: fd });
+                            let d = null; try { d = await r.json(); } catch (_) { }
+                            if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+                            msg.textContent = 'Template uploaded.'; msg.style.color = '#2f7d63';
+                            if (inp) inp.value = '';
+                            _instTplCache = null;
+                            await window.instRenderTemplateList();
+                            await instSyncTemplateField();
+                        } catch (e) { msg.textContent = e.message || 'Upload failed'; msg.style.color = '#d95f5f'; }
+                    };
+                }
+                await window.instRenderTemplateList();
+            };
+
+            window.instRenderTemplateList = async function () {
+                const box = document.getElementById('inst-tpl-list');
+                if (!box) return;
+                box.innerHTML = '<div style="opacity:.6;font-size:.85rem">Loading...</div>';
+                const rows = await instLoadTemplates(true);
+                if (!rows.length) { box.innerHTML = '<div style="opacity:.6;font-size:.85rem">No templates yet.</div>'; return; }
+                box.innerHTML = rows.map((r, i) => `<div style="display:flex;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:10px 12px">
+                    <span style="flex:1;font-weight:600">${esc(r.name || ('Template ' + r.id))}${i === 0 ? ' <span style="font-weight:400;opacity:.6;font-size:.78rem">(default)</span>' : ''}</span>
+                    <button onclick="window.instDeleteTemplate(${r.id})" style="border:0;background:transparent;cursor:pointer;color:#d95f5f;font-weight:600">Delete</button>
+                </div>`).join('');
+            };
+
+            window.instDeleteTemplate = async function (id) {
+                if (!confirm('Delete this template?')) return;
+                try {
+                    await api('/api/admin/paper-templates/' + id, { method: 'DELETE' });
+                    _instTplCache = null;
+                    await window.instRenderTemplateList();
+                    await instSyncTemplateField();
+                } catch (e) { toast(e.message || 'Could not delete template'); }
+            };
+            // Online tests can be switched off per institute; then there is no
+            // "test type" question at all - everything goes straight to offline.
+            function instOnlineAllowed() {
+                try { return typeof window.permOn !== 'function' || window.permOn('onlineTests') !== false; }
+                catch (e) { return true; }
+            }
+            window.instOnlineAllowed = instOnlineAllowed;
+
             function instGenModalEl() {
                 let m = document.getElementById('ipb-modal');
                 if (!m) {
@@ -14027,8 +14277,8 @@
                         <h3>Generate Question Paper</h3>
                         <p class="sub" id="ipb-modal-sub">0 questions selected</p>
                         <div class="ipb-type-grid">
-                            <button class="ipb-type-card" onclick="window.instChooseType('offline')"><div class="ipb-type-ico">📄</div><b>Offline Paper</b><span>Word &amp; PDF download</span></button>
-                            <button class="ipb-type-card" onclick="window.instChooseType('online')"><div class="ipb-type-ico">💻</div><b>Online Test</b><span>Live on student portal</span></button>
+                            <button class="ipb-type-card" onclick="window.instChooseType('offline')"><div class="ipb-type-ico">📄</div><b>Offline Paper</b><span>Word document download</span></button>
+                            ${instOnlineAllowed() ? '<button class="ipb-type-card" onclick="window.instChooseType(\'online\')"><div class="ipb-type-ico">💻</div><b>Online Test</b><span>Live on student portal</span></button>' : ''}
                         </div>
                         <div class="ipb-modal-actions"><button class="ipb-cancel" onclick="window.instCloseGenerate()">Cancel</button></div>
                     </div>
@@ -14040,6 +14290,7 @@
                         <div class="ipb-field"><label>Class</label><input id="inst-paper-class" placeholder="e.g. 12"></div>
                         <div class="ipb-field"><label>Chapter</label><input id="inst-paper-chapter" placeholder="e.g. Kinematics"></div>
                         <div class="ipb-field"><label>Test Type</label><input id="inst-paper-testtype" placeholder="e.g. Chapter Test" value="Chapter Test"></div>
+                        <div class="ipb-field" id="ipb-tpl-field" style="display:none"><label>Paper Template</label><select id="inst-paper-template"></select></div>
                         <div class="ipb-field"><label>Number of Questions</label><input id="inst-paper-numq" type="number" min="1" placeholder="All available"></div>
                         <div class="ipb-modal-actions"><button class="ipb-gen2" id="ipb-gen-btn" onclick="window.instRunOffline()">✨ Generate</button><button class="ipb-cancel" onclick="window.instBackToChooser()">Back</button></div>
                     </div>
@@ -14056,10 +14307,9 @@
                         <div class="ipb-prog-row"><span id="ipb-prog-step">Starting…</span><span id="ipb-prog-pct">0%</span></div>
                     </div>
                     <div class="ipb-screen" id="ipb-screen-result" style="display:none">
-                        <div class="ipb-result-head">✅ Files ready — choose download format:</div>
+                        <div class="ipb-result-head">✅ Files ready — Word documents:</div>
                         <div class="ipb-fmt-grid">
                             <button class="ipb-fmt-card selected" id="ipb-fmt-docx" onclick="window.instSetFormat('docx')"><div class="ipb-fmt-ico">📘</div><b>Word (DOCX)</b><span>Editable document</span></button>
-                            <button class="ipb-fmt-card" id="ipb-fmt-pdf" onclick="window.instSetFormat('pdf')"><div class="ipb-fmt-ico">📕</div><b>PDF Document</b><span>Print-ready layout</span></button>
                         </div>
                         <button class="ipb-dl-all" id="ipb-dl-all" onclick="window.instDownloadAll()">⚡ Download All (3 Files)</button>
                         <div class="ipb-dl-list" id="ipb-dl-list"></div>
@@ -14076,6 +14326,7 @@
                 const m = document.getElementById('ipb-modal'); if (!m) return;
                 m.querySelectorAll('.ipb-screen').forEach(s => s.style.display = 'none');
                 const el = document.getElementById(id); if (el) el.style.display = 'block';
+                if (id === 'ipb-screen-offline') { try { instSyncTemplateField(); } catch (_) { } }
             }
             window.instOpenGenerate = function () {
                 if (!InstPaper.items.size) { toast('No questions selected'); return; }
@@ -14083,10 +14334,11 @@
                 const n = InstPaper.items.size;
                 const label = n + ' question' + (n !== 1 ? 's' : '') + ' selected';
                 const sub = document.getElementById('ipb-modal-sub'); if (sub) sub.textContent = label;
+                if (!instOnlineAllowed()) { window.instChooseType('offline'); return; }
                 instShowScreen('ipb-screen-choose');
             };
             window.instCloseGenerate = function () { const m = document.getElementById('ipb-modal'); if (m) m.classList.remove('open'); };
-            window.instBackToChooser = function () { instShowScreen('ipb-screen-choose'); };
+            window.instBackToChooser = function () { if (!instOnlineAllowed()) { window.instCloseGenerate(); return; } instShowScreen('ipb-screen-choose'); };
             window.instChooseType = function (type) {
                 const n = InstPaper.items.size;
                 const label = n + ' question' + (n !== 1 ? 's' : '') + ' selected';
@@ -14096,7 +14348,13 @@
                     const os = document.getElementById('ipb-off-sub'); if (os) os.textContent = label;
                     const cin = document.getElementById('inst-paper-chapter'); if (cin && !cin.value && first) cin.value = first.chapter || '';
                     const sin = document.getElementById('inst-paper-subject'); if (sin && !sin.value && State.qlib) sin.value = State.qlib.subject || '';
-                    const nqi = document.getElementById('inst-paper-numq'); if (nqi) { nqi.value = n; nqi.max = n; }
+                    // Coming from the basket the teacher already hand-picked the questions,
+                    // so there is nothing to trim - the count field is auto-generate only.
+                    const nqi = document.getElementById('inst-paper-numq');
+                    if (nqi) { nqi.value = ''; nqi.max = n; }
+                    const nqWrap = nqi && nqi.closest('.ipb-field');
+                    if (nqWrap) nqWrap.style.display = 'none';
+                    const scOld = document.getElementById('ipb-subj-counts'); if (scOld) scOld.remove();
                     instShowScreen('ipb-screen-offline');
                 } else {
                     // Route to the full Configure Online Test modal (owner-parity)
@@ -14384,19 +14642,31 @@
             const PDF_STEP = { build: 'Building document structure…', latex: 'Converting equations…', template: 'Applying institute template…', finalise: 'Finalising…', pdf_questions: 'Rendering question paper PDF…', pdf_solutions: 'Rendering solutions PDF…' };
             function instPoll(progressId, onStep) {
                 return new Promise((resolve, reject) => {
+                    let misses = 0;
                     const t = setInterval(async () => {
                         try {
                             const d = await api('/api/admin/generate-paper/progress/' + progressId);
                             const p = (d && d.progress) || {};
+                            misses = 0;
                             onStep(p.pct || 0, p.currentStep || '');
                             if (p.status === 'completed') { clearInterval(t); resolve(p.files); }
                             else if (p.status === 'failed') { clearInterval(t); reject(new Error(p.error || 'Generation failed')); }
-                        } catch (e) { clearInterval(t); reject(e); }
+                        } catch (e) {
+                            // A missing session is usually just a not-yet-registered job or a
+                            // poll that landed on another server - retry before giving up.
+                            const gone = /not found|expired|404/i.test(e && e.message || '');
+                            if (gone && ++misses < 15) return;
+                            clearInterval(t);
+                            reject(new Error(gone
+                                ? 'The server stopped working on this file. Try again with fewer questions at a time.'
+                                : (e && e.message) || 'Generation failed'));
+                        }
                     }, 350);
                 });
             }
             window.instRunOffline = async function () {
                 const wizQs = Array.isArray(window._wizOfflineQuestions) ? window._wizOfflineQuestions : null;
+                if (!wizQs && !InstPaper.items.size) { toast('Still loading questions… one moment'); return; }
                 const fromWizard = !!(wizQs && wizQs.length);
                 let source = fromWizard ? wizQs.slice() : [...InstPaper.items.values()].map(it => it.q);
                 if (!source.length) { toast('No questions selected'); return; }
@@ -14479,6 +14749,8 @@
                 list.innerHTML = rows.map(r => `<div class="ipb-dl-row" onclick="window.instDownloadOne('${r[0]}')"><span class="ipb-dl-ico">${r[1]}</span><span class="ipb-dl-name">${r[2]}</span><span class="ipb-dl-file">${names[r[0]].replace(/</g, '&lt;')}</span></div>`).join('');
             }
             window.instSetFormat = async function (fmt) {
+                // PDF conversion has been removed - Word is the only output format.
+                if (fmt === 'pdf') return;
                 _instGen.format = fmt;
                 const dx = document.getElementById('ipb-fmt-docx'), pf = document.getElementById('ipb-fmt-pdf');
                 if (dx) dx.classList.toggle('selected', fmt === 'docx');

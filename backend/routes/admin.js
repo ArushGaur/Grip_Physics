@@ -17,11 +17,37 @@ const {
 } = require("../utils/questionTables");
 const { normalizeQuestionRow, normalizeQuestion, normalizeStudentRow, parseCorrectIndexesFromQuestion, validateImageRegion } = helpers;
 const { uploadQuestionImages } = require("../services/cloudinary");
+// Per-institute feature flags + subject whitelist (set from the developer panel).
+const {
+	requireFeature, permissionsForRequest, allowedSubjectsFor, hasSubjectLimit,
+	subjectSqlFilter, filterRowsBySubject, isSubjectAllowed,
+} = require("../utils/permissions");
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } });
+
+/**
+ * Does this chapter contain any question from a subject the institute is
+ * allowed to see? Used to hide whole chapters of blocked subjects.
+ */
+async function chapterAllowed(perms, chapter) {
+	try {
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
+		if (!subjFilter.clause) return true;
+		const ch = decodeURIComponent(chapter || "");
+		const isNone = ch === "_none_" || ch === "";
+		const r = await db.execute({
+			sql: `SELECT 1 FROM ${ALL_Q} WHERE ${isNone ? "(chapter IS NULL OR chapter = '')" : "chapter = ?"}
+			      AND (${subjFilter.clause}) LIMIT 1`,
+			args: isNone ? subjFilter.args : [ch, ...subjFilter.args],
+		});
+		return r.rows.length > 0;
+	} catch (_) {
+		return true;
+	}
+}
 
 function extractYearFromQuestions(questions) {
 	for (const q of (questions || [])) {
@@ -33,6 +59,17 @@ function extractYearFromQuestions(questions) {
 
 router.get("/api/chapters", async (req, res) => {
 	try {
+		// Chapters of blocked subjects must not even be listed.
+		const perms = await permissionsForRequest(req);
+		if (hasSubjectLimit(perms)) {
+			const subjFilter = subjectSqlFilter(perms, "q.subject");
+			const r = await db.execute({
+				sql: `SELECT DISTINCT chapter FROM ${ALL_Q} WHERE ${subjFilter.clause} ORDER BY chapter`,
+				args: subjFilter.args,
+			});
+			const allowed = new Set(r.rows.map((x) => x.chapter || ""));
+			return res.json(getChapterList().filter((c) => allowed.has(c === null ? "" : c)));
+		}
 		res.json(getChapterList());
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
@@ -42,6 +79,8 @@ router.get("/api/chapters", async (req, res) => {
 router.get("/api/lectures/:chapter", async (req, res) => {
 	try {
 		const chapter = req.params.chapter;
+		const perms = await permissionsForRequest(req);
+		if (hasSubjectLimit(perms) && !(await chapterAllowed(perms, chapter))) return res.json([]);
 		const topics = getTopicsForChapter(chapter);
 		res.json(topics);
 	} catch (e) {
@@ -52,6 +91,8 @@ router.get("/api/lectures/:chapter", async (req, res) => {
 // Same data under its real name — prefer this in any new frontend code.
 router.get("/api/topics/:chapter", async (req, res) => {
 	try {
+		const perms = await permissionsForRequest(req);
+		if (hasSubjectLimit(perms) && !(await chapterAllowed(perms, req.params.chapter))) return res.json([]);
 		res.json(getTopicsForChapter(req.params.chapter));
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
@@ -64,7 +105,11 @@ router.get("/api/subjects", requireAdmin, async (req, res) => {
 		const result = await db.execute(
 			`SELECT DISTINCT subject FROM ${ALL_Q} WHERE subject IS NOT NULL AND subject != '' ORDER BY subject`
 		);
-		res.json(result.rows.map((r) => r.subject));
+		// If the developer panel limited this institute to e.g. Physics + Maths,
+		// every other subject disappears from the whole institute panel.
+		const perms = await permissionsForRequest(req);
+		const visible = filterRowsBySubject(perms, result.rows, (r) => r.subject);
+		res.json(visible.map((r) => r.subject));
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
 	}
@@ -171,7 +216,14 @@ router.post("/api/admin/student/:id/mark-cheater", requireAdmin, async (req, res
 
 router.get("/api/admin/questions", requireAdmin, async (req, res) => {
 	try {
-		const result = await db.execute(`SELECT id, chapter, topic, raw_json, updated_at FROM ${ALL_Q} ORDER BY chapter, topic, question_number, id`);
+		const perms = await permissionsForRequest(req);
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
+		const result = await db.execute({
+			sql: `SELECT id, chapter, topic, raw_json, updated_at FROM ${ALL_Q}
+			      ${subjFilter.clause ? "WHERE " + subjFilter.clause : ""}
+			      ORDER BY chapter, topic, question_number, id`,
+			args: subjFilter.args,
+		});
 		const groups = {}; // key: chapter::topic
 		for (const row of result.rows) {
 			const key = `${row.chapter || ""}::${row.topic || ""}`;
@@ -201,12 +253,16 @@ router.get("/api/admin/questions", requireAdmin, async (req, res) => {
 // year-index table, no json_extract guesswork to find subject.
 router.get("/api/admin/questions-meta", requireAdmin, async (req, res) => {
 	try {
-		const result = await db.execute(
-			`SELECT chapter, topic, MAX(subject) as subject, MAX(updated_at) as updated_at, COUNT(*) as qcount
+		const perms = await permissionsForRequest(req);
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
+		const result = await db.execute({
+			sql: `SELECT chapter, topic, MAX(subject) as subject, MAX(updated_at) as updated_at, COUNT(*) as qcount
 			 FROM ${ALL_Q}
+			 ${subjFilter.clause ? "WHERE " + subjFilter.clause : ""}
 			 GROUP BY chapter, topic
-			 ORDER BY chapter, topic`
-		);
+			 ORDER BY chapter, topic`,
+			args: subjFilter.args,
+		});
 		const rows = result.rows.map((row) => ({
 			// CHANGED: was `_id: null` for every row. Since all metadata rows shared
 			// the same null id, the frontend's ensureChapterLoaded() merge (which
@@ -334,11 +390,20 @@ router.delete("/api/admin/question-row/:id", requireAdmin, async (req, res) => {
 router.get("/api/admin/questions-for-chapter/:chapter", requireAdmin, async (req, res) => {
 	try {
 		const chapter = decodeURIComponent(req.params.chapter || "");
+		const perms = await permissionsForRequest(req);
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
+		const extra = subjFilter.clause ? ` AND (${subjFilter.clause})` : "";
 		let result;
 		if (chapter === "_none_" || chapter === "") {
-			result = await db.execute(`SELECT id, chapter, topic, raw_json, updated_at FROM ${ALL_Q} WHERE chapter IS NULL OR chapter = '' ORDER BY topic, question_number, id`);
+			result = await db.execute({
+				sql: `SELECT id, chapter, topic, raw_json, updated_at FROM ${ALL_Q} WHERE (chapter IS NULL OR chapter = '')${extra} ORDER BY topic, question_number, id`,
+				args: subjFilter.args,
+			});
 		} else {
-			result = await db.execute({ sql: `SELECT id, chapter, topic, raw_json, updated_at FROM ${ALL_Q} WHERE chapter = ? ORDER BY topic, question_number, id`, args: [chapter] });
+			result = await db.execute({
+				sql: `SELECT id, chapter, topic, raw_json, updated_at FROM ${ALL_Q} WHERE chapter = ?${extra} ORDER BY topic, question_number, id`,
+				args: [chapter, ...subjFilter.args],
+			});
 		}
 		const groups = {};
 		for (const row of result.rows) {
@@ -514,9 +579,14 @@ router.post("/api/admin/rename-topic", requireAdmin, async (req, res) => {
 // question_years table to keep in sync.
 router.get("/api/admin/year-counts", requireAdmin, async (req, res) => {
 	try {
-		const result = await db.execute(
-			`SELECT year, COUNT(*) as count FROM ${PYQ_TABLE} WHERE year IS NOT NULL AND year != '' GROUP BY year ORDER BY year DESC`
-		);
+		const perms = await permissionsForRequest(req);
+		const subjFilter = subjectSqlFilter(perms, "subject");
+		const result = await db.execute({
+			sql: `SELECT year, COUNT(*) as count FROM ${PYQ_TABLE}
+			      WHERE year IS NOT NULL AND year != ''${subjFilter.clause ? " AND (" + subjFilter.clause + ")" : ""}
+			      GROUP BY year ORDER BY year DESC`,
+			args: subjFilter.args,
+		});
 		res.json(result.rows.map(r => ({ year: r.year, count: Number(r.count) })));
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
@@ -533,12 +603,14 @@ router.get("/api/admin/questions-by-year/:year", requireAdmin, async (req, res) 
 		const year = decodeURIComponent(req.params.year || "").trim();
 		if (!year) return res.status(400).json({ error: "Year required" });
 
+		const perms = await permissionsForRequest(req);
+		const subjFilter = subjectSqlFilter(perms, "subject");
 		const result = await db.execute({
 			sql: `SELECT id, chapter, topic, raw_json
 			      FROM ${PYQ_TABLE}
-			      WHERE year = ?
+			      WHERE year = ?${subjFilter.clause ? " AND (" + subjFilter.clause + ")" : ""}
 			      ORDER BY chapter, topic, question_number, id`,
-			args: [year],
+			args: [year, ...subjFilter.args],
 		});
 
 		const questions = result.rows.map((row) => {
@@ -566,8 +638,13 @@ router.get("/api/admin/questions-by-year/:year", requireAdmin, async (req, res) 
 router.get("/api/admin/questions-by-paper", requireAdmin, async (req, res) => {
 	try {
 		const { subject, year, chapter, month, day, shift } = req.query;
+		const perms = await permissionsForRequest(req);
+		if (subject && !isSubjectAllowed(perms, subject)) {
+			return res.json({ count: 0, questions: [] });
+		}
 		const results = await findQuestionsByPaper({ subject, year, chapter, month, day, shift });
-		res.json({ count: results.length, questions: results });
+		const visible = filterRowsBySubject(perms, results, (q) => q.subject || (q.question && q.question.subject));
+		res.json({ count: visible.length, questions: visible });
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
 	}
@@ -1107,7 +1184,7 @@ router.patch("/api/admin/paper-templates/:id", requireAdmin, async (req, res) =>
 });
 
 
-router.get("/api/admin/star-quiz/questions", requireAdmin, async (req, res) => {
+router.get("/api/admin/star-quiz/questions", requireAdmin, requireFeature("starQuiz"), async (req, res) => {
 	try {
 		const result = await db.execute("SELECT * FROM star_quiz_questions ORDER BY chapter, CAST(lecture AS INTEGER)");
 		res.json(result.rows.map(normalizeQuestionRow));
@@ -1117,7 +1194,7 @@ router.get("/api/admin/star-quiz/questions", requireAdmin, async (req, res) => {
 });
 
 // GET chapters for STAR Quiz
-router.get("/api/admin/star-quiz/chapters", requireAdmin, async (req, res) => {
+router.get("/api/admin/star-quiz/chapters", requireAdmin, requireFeature("starQuiz"), async (req, res) => {
 	try {
 		const result = await db.execute("SELECT DISTINCT chapter FROM star_quiz_questions WHERE chapter IS NOT NULL AND chapter != '' ORDER BY chapter");
 		res.json(result.rows.map(r => r.chapter));
@@ -1127,7 +1204,7 @@ router.get("/api/admin/star-quiz/chapters", requireAdmin, async (req, res) => {
 });
 
 // POST add STAR Quiz questions
-router.post("/api/admin/star-quiz/add-question", requireAdmin, async (req, res) => {
+router.post("/api/admin/star-quiz/add-question", requireAdmin, requireFeature("starQuiz"), async (req, res) => {
 	try {
 		let { chapter, lecture, topic, questions, replace } = req.body || {};
 		if (!chapter || !lecture || !Array.isArray(questions) || !questions.length) {
@@ -1158,7 +1235,7 @@ router.post("/api/admin/star-quiz/add-question", requireAdmin, async (req, res) 
 });
 
 // DELETE a STAR Quiz question set
-router.delete("/api/admin/star-quiz/question/:chapter/:lecture", requireAdmin, async (req, res) => {
+router.delete("/api/admin/star-quiz/question/:chapter/:lecture", requireAdmin, requireFeature("starQuiz"), async (req, res) => {
 	try {
 		const chapter = decodeURIComponent(req.params.chapter || "");
 		const lecture = decodeURIComponent(req.params.lecture || "");
@@ -1170,7 +1247,7 @@ router.delete("/api/admin/star-quiz/question/:chapter/:lecture", requireAdmin, a
 });
 
 // PUT update a STAR Quiz question set
-router.put("/api/admin/star-quiz/question/:chapter/:lecture", requireAdmin, async (req, res) => {
+router.put("/api/admin/star-quiz/question/:chapter/:lecture", requireAdmin, requireFeature("starQuiz"), async (req, res) => {
 	try {
 		const chapter = decodeURIComponent(req.params.chapter || "");
 		const lecture = decodeURIComponent(req.params.lecture || "");
@@ -1188,7 +1265,7 @@ router.put("/api/admin/star-quiz/question/:chapter/:lecture", requireAdmin, asyn
 });
 
 // ── ADMIN: Set access code for a star quiz lecture ───────────────────────────
-router.post("/api/admin/star-quiz/set-code/:chapter/:lecture", requireAdmin, async (req, res) => {
+router.post("/api/admin/star-quiz/set-code/:chapter/:lecture", requireAdmin, requireFeature("starQuiz"), async (req, res) => {
 	try {
 		const chapter = decodeURIComponent(req.params.chapter || "");
 		const lecture = decodeURIComponent(req.params.lecture || "");
@@ -1215,7 +1292,7 @@ router.post("/api/admin/star-quiz/set-code/:chapter/:lecture", requireAdmin, asy
 
 
 // ── ADMIN: create / assign an online test ────────────────────────────────────
-router.post("/api/admin/online-tests", requireAdmin, async (req, res) => {
+router.post("/api/admin/online-tests", requireAdmin, requireFeature("onlineTests"), async (req, res) => {
 	try {
 		const { testName, questionKeys, questions, marksCorrect, marksWrong, liveAt, endsAt, durationMinutes, assignedRolls, maxAttempts, isStrict } = req.body || {};
 
@@ -1258,7 +1335,7 @@ router.post("/api/admin/online-tests", requireAdmin, async (req, res) => {
 });
 
 // ── ADMIN: list all online tests ─────────────────────────────────────────────
-router.get("/api/admin/online-tests", requireAdmin, async (req, res) => {
+router.get("/api/admin/online-tests", requireAdmin, requireFeature("onlineTests"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		const result = await db.execute({
@@ -1284,7 +1361,7 @@ router.get("/api/admin/online-tests", requireAdmin, async (req, res) => {
 });
 
 // ── ADMIN: update an online test ─────────────────────────────────────────────
-router.put("/api/admin/online-tests/:id", requireAdmin, async (req, res) => {
+router.put("/api/admin/online-tests/:id", requireAdmin, requireFeature("onlineTests"), async (req, res) => {
 	try {
 		const testId = Number(req.params.id);
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
@@ -1338,7 +1415,7 @@ router.put("/api/admin/online-tests/:id", requireAdmin, async (req, res) => {
 });
 
 // ── ADMIN: delete an online test ─────────────────────────────────────────────
-router.delete("/api/admin/online-tests/:id", requireAdmin, async (req, res) => {
+router.delete("/api/admin/online-tests/:id", requireAdmin, requireFeature("onlineTests"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		await db.execute({ sql: "DELETE FROM online_tests WHERE id = ? AND institute_id = ?", args: [Number(req.params.id), instId] });
@@ -1350,7 +1427,7 @@ router.delete("/api/admin/online-tests/:id", requireAdmin, async (req, res) => {
 
 
 // ── ADMIN: fetch questions for a specific online test ─────────────────────────
-router.get("/api/admin/online-tests/:id/questions", requireAdmin, async (req, res) => {
+router.get("/api/admin/online-tests/:id/questions", requireAdmin, requireFeature("onlineTests"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		const testId = Number(req.params.id);
@@ -1471,7 +1548,7 @@ async function addStudentsToInstitute(students, instId, now = Date.now()) {
 // email address IS the login identity and must be unique inside the institute.
 // roll_number is still minted automatically because attendance, notifications
 // and sessions all join on it.
-router.post("/api/admin/registered-students/add", requireAdmin, async (req, res) => {
+router.post("/api/admin/registered-students/add", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const { students } = req.body || {};
 		if (!Array.isArray(students) || !students.length) {
@@ -1487,7 +1564,7 @@ router.post("/api/admin/registered-students/add", requireAdmin, async (req, res)
 });
 
 // ── ADMIN: list all registered students ─────────────────────────────────────
-router.get("/api/admin/registered-students", requireAdmin, async (req, res) => {
+router.get("/api/admin/registered-students", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		// Explicit column list, not SELECT * — keeps the payload small and stops
@@ -1645,7 +1722,7 @@ router.post("/api/admin/test-history/:id/unlock", requireAdmin, async (req, res)
 	}
 });
 
-router.delete("/api/admin/registered-students/:id", requireAdmin, async (req, res) => {
+router.delete("/api/admin/registered-students/:id", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		await db.execute({ sql: "DELETE FROM registered_students WHERE id = ? AND institute_id = ?", args: [Number(req.params.id), instId] });
@@ -1657,7 +1734,7 @@ router.delete("/api/admin/registered-students/:id", requireAdmin, async (req, re
 
 
 // ── ADMIN: list all pending student requests ─────────────────────────────────
-router.get("/api/admin/student-requests", requireAdmin, async (req, res) => {
+router.get("/api/admin/student-requests", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		const result = await db.execute({
@@ -1680,7 +1757,7 @@ router.get("/api/admin/student-requests", requireAdmin, async (req, res) => {
 });
 
 // ── ADMIN: approve a student request (move to registered_students) ───────────
-router.post("/api/admin/student-requests/:id/approve", requireAdmin, async (req, res) => {
+router.post("/api/admin/student-requests/:id/approve", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const id = Number(req.params.id);
 		// Passwords were removed in favour of email OTP login, so approval no
@@ -1714,7 +1791,7 @@ router.post("/api/admin/student-requests/:id/approve", requireAdmin, async (req,
 });
 
 // ── ADMIN: reject a student request (delete from requests) ───────────────────
-router.delete("/api/admin/student-requests/:id", requireAdmin, async (req, res) => {
+router.delete("/api/admin/student-requests/:id", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		await db.execute({ sql: "DELETE FROM student_requests WHERE id = ? AND institute_id = ?", args: [Number(req.params.id), instId] });
@@ -1726,7 +1803,7 @@ router.delete("/api/admin/student-requests/:id", requireAdmin, async (req, res) 
 
 
 // ── ADMIN: reset student password ─────────────────────────────────────────
-router.post("/api/admin/registered-students/:id/reset-password", requireAdmin, async (req, res) => {
+router.post("/api/admin/registered-students/:id/reset-password", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const id = Number(req.params.id);
 		const { password } = req.body || {};

@@ -26,8 +26,22 @@ process.on("unhandledRejection", (err) => {
 });
 process.on("uncaughtException", (err) => {
 	logger.fatal({ err: err?.message || err, stack: err?.stack }, "Uncaught Exception");
+	// Mark in-flight paper/PDF jobs as failed before we go down, so the browser
+	// gets a real error instead of "Progress session not found or expired".
+	try {
+		const jobs = global.paperGenProgress;
+		if (jobs) {
+			for (const id of Object.keys(jobs)) {
+				const job = jobs[id];
+				if (job && job.status !== "completed" && job.status !== "failed") {
+					job.status = "failed";
+					job.error = "The server stopped while building this file: " + (err?.message || "unknown error");
+				}
+			}
+		}
+	} catch (_) {}
 	// Let the orchestrator restart us rather than run in an unknown state.
-	process.exit(1);
+	setTimeout(() => process.exit(1), 250).unref?.();
 });
 
 const DEFAULT_WORKERS = Math.min(os.cpus().length || 1, 4);
@@ -39,6 +53,14 @@ const WORKERS = Number(process.env.WEB_CONCURRENCY || DEFAULT_WORKERS);
    Without this the whole container was using a single CPU core.
 ══════════════════════════════════════════════════════════════════════════ */
 if (cluster.isPrimary && WORKERS > 1) {
+	// The primary brokers paper-generation progress between workers, otherwise a
+	// progress poll that lands on a sibling worker cannot see the running job.
+	try {
+		const progressStore = require("./utils/progressStore");
+		progressStore.installClusterBroker?.();
+	} catch (e) {
+		logger.warn({ err: e?.message || e }, "progress broker unavailable in primary");
+	}
 	const { initDB } = require("./config/db");
 	const { hashPasscode } = require("./utils/helpers");
 	const TEACHER_PASSCODE =

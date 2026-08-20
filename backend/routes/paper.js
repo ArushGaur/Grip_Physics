@@ -11,6 +11,8 @@ const helpers = require("../utils/helpers");
 const { requireAdmin, sessionInstituteId } = require("../middleware/auth");
 const { loadQuestions, refreshCache, findQuestion } = require("../utils/questions");
 const { sanitizeSvg, dataUriToSvg, isSvgDataUri, rasterizeSvgToPng } = require("../utils/svg");
+const { docxToPdf } = require("../utils/docxToPdf");
+const { requireFeature } = require("../utils/permissions");
 
 const {
 	Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell,
@@ -2210,17 +2212,32 @@ async function generatePaperPdfBackground(progressId, body, instId) {
 		const solBuf = await postProcessDocx(solBufRaw, tplBase64, { ...headerMeta, mode: "solution" });
 		await new Promise(resolve => setImmediate(resolve));
 
-		// Step 7: Convert Question Paper DOCX → PDF
+		// Steps 7-8: render each DOCX to PDF one at a time. Each buffer is turned
+		// into base64 and released immediately - holding three DOCX buffers plus
+		// three PDF buffers plus their base64 copies at once is what used to push
+		// the process over its heap limit (the job then vanished and the browser
+		// saw "Progress session not found or expired").
+		const renderOne = async (buf, label) => {
+			try {
+				const pdf = await docxToPdf(buf);
+				if (!pdf || !pdf.length) throw new Error("empty PDF");
+				const b64 = pdf.toString("base64");
+				return b64;
+			} catch (err) {
+				throw new Error(`Could not render the ${label} PDF: ${err && err.message ? err.message : err}`);
+			}
+		};
+
 		update(50, "pdf_questions");
-		const qPdf = await docxToPdf(qBuf);
+		const qPdf64 = await renderOne(qBuf, "question paper");
 		await new Promise(resolve => setImmediate(resolve));
 
-		// Answer key mock (empty/simple) PDF
-		const akPdf = Buffer.from("JVBERi0xLjEKMSAwIG9iagogIDw8IC9UeXBlIC9DYXRhbG9nCiAgICAgL1BhZ2VzIDIgMCBSCiAgPj4KZW5kb2JqCjIgMCBvYmoKICA8PCAvVHlwZSAvUGFnZXMKICAgICAvS2lkcyBbMyAwIFJdCiAgICAgL0NvdW50IDEKICA+PgplbmRvYmoKMyAwIG9iaagogIDw8IC9UeXBlIC9QYWdlCiAgICAgL1BhcmVudCAyIDAgUgogICAgIC9SZXNvdXJjZXMgPDw+PgogICAgIC9NZWRpYUJveCBbMCAwIDU5NSA4NDJdCiAgPj4KZW5kb2JqCnRyYWlsZXIKICA8PCAvUm9vdCAxIDAgUgogID4+CiUlRU9G", "base64");
+		update(65, "pdf_questions");
+		const akPdf64 = await renderOne(akBuf, "answer key");
+		await new Promise(resolve => setImmediate(resolve));
 
-		// Step 8: Convert Solutions DOCX → PDF
 		update(75, "pdf_solutions");
-		const solPdf = await docxToPdf(solBuf);
+		const solPdf64 = await renderOne(solBuf, "solutions");
 		await new Promise(resolve => setImmediate(resolve));
 
 		update(100, "finalise");
@@ -2228,9 +2245,9 @@ async function generatePaperPdfBackground(progressId, body, instId) {
 		if (global.paperGenProgress[progressId]) {
 			global.paperGenProgress[progressId].status = "completed";
 			global.paperGenProgress[progressId].files = {
-				questionPaper: qPdf.toString("base64"),
-				answerKey: akPdf.toString("base64"),
-				solutions: solPdf.toString("base64"),
+				questionPaper: qPdf64,
+				answerKey: akPdf64,
+				solutions: solPdf64,
 			};
 		}
 	} catch (e) {
@@ -2246,7 +2263,7 @@ async function generatePaperPdfBackground(progressId, body, instId) {
 // Paper generation blocks the event loop for SECONDS (docx build + image work).
 // If a worker tier is available we hand the job off so the API pod stays free to
 // serve students; otherwise we run it in-process exactly as before.
-router.post("/api/admin/generate-paper/start", requireAdmin, async (req, res) => {
+router.post("/api/admin/generate-paper/start", requireAdmin, requireFeature("paperGenerator"), async (req, res) => {
 	const progressId = "docx_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 	const instId = sessionInstituteId(req);
 	global.paperGenProgress[progressId] = {
@@ -2263,7 +2280,7 @@ router.post("/api/admin/generate-paper/start", requireAdmin, async (req, res) =>
 });
 
 // POST /api/admin/generate-paper-pdf/start
-router.post("/api/admin/generate-paper-pdf/start", requireAdmin, async (req, res) => {
+router.post("/api/admin/generate-paper-pdf/start", requireAdmin, requireFeature("paperGenerator"), async (req, res) => {
 	const progressId = "pdf_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 	const instId = sessionInstituteId(req);
 	global.paperGenProgress[progressId] = {
@@ -2286,7 +2303,11 @@ router.get("/api/admin/generate-paper/progress/:progressId", requireAdmin, async
 	const progressId = req.params.progressId;
 	const job = await getProgress(progressId);
 	if (!job) {
-		return res.status(404).json({ success: false, error: "Progress session not found or expired" });
+		return res.status(404).json({
+			success: false,
+			error: "Progress session not found or expired",
+			hint: "The generation job is no longer on this server. It either finished more than an hour ago or the server restarted mid-render (usually memory pressure on a very large paper).",
+		});
 	}
 
 	if (job.status === "completed" || job.status === "failed") {
@@ -2302,7 +2323,7 @@ router.get("/api/admin/generate-paper/progress/:progressId", requireAdmin, async
 // POST /api/admin/generate-paper
 // Body: { questions: [...], paperTitle, paperSubject, paperChapter, paperTestType, paperClass, templateId? }
 // Returns: JSON with base64-encoded buffers for question, answerkey, solution docx
-router.post("/api/admin/generate-paper", requireAdmin, async (req, res) => {
+router.post("/api/admin/generate-paper", requireAdmin, requireFeature("paperGenerator"), async (req, res) => {
 	try {
 		const { questions, paperTitle, paperSubject, paperChapter, paperTestType, paperClass, templateId } = req.body || {};
 		if (!Array.isArray(questions) || !questions.length) {
@@ -2365,198 +2386,18 @@ router.post("/api/admin/generate-paper", requireAdmin, async (req, res) => {
 	}
 });
 
-// ══════════════════════════════════════════════════════════════════════════
-//  PDF GENERATION — convert DOCX → PDF via LibreOffice headless
-// ══════════════════════════════════════════════════════════════════════════
-/**
- * Resolve the LibreOffice binary. Tries PATH names and common absolute
- * install locations so it works on Ubuntu/Debian, macOS, and custom installs.
- */
-function resolveLibreOfficeBin() {
-	const isWin = process.platform === "win32";
-	// Absolute install locations (Linux, macOS, Windows). Checked FIRST so we
-	// never return a bare command name that isn't actually on PATH — returning
-	// the bare "libreoffice" was the cause of "spawn libreoffice ENOENT" on
-	// Windows, where the binary is soffice.exe under Program Files.
-	const absoluteCandidates = [
-		"/usr/bin/libreoffice",
-		"/usr/bin/soffice",
-		"/usr/lib/libreoffice/program/soffice",
-		"/opt/libreoffice/program/soffice",
-		"/opt/libreoffice7.6/program/soffice",
-		"/opt/libreoffice24.2/program/soffice",
-		"/snap/bin/libreoffice",
-		"/Applications/LibreOffice.app/Contents/MacOS/soffice",
-		"C:\\Program Files\\LibreOffice\\program\\soffice.exe",
-		"C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
-	];
-	for (const bin of absoluteCandidates) {
-		try { if (fs.existsSync(bin)) return bin; } catch (_) { /* skip */ }
-	}
-	// Fall back to a PATH-resolved bare command, but VALIDATE it resolves first
-	// (via which/where) so execFile doesn't blow up with ENOENT.
-	const bareNames = isWin ? ["soffice.exe", "soffice.com", "soffice"] : ["libreoffice", "soffice"];
-	const locator = isWin ? "where" : "which";
-	for (const name of bareNames) {
-		try {
-			execFileSync(locator, [name], { stdio: "ignore" });
-			return name;
-		} catch (_) { /* not on PATH */ }
-	}
-	return null;
-}
+// ════════════════════════════════════════════════════════════════════════
+//  PDF GENERATION — built from scratch, in-process (no LibreOffice, no iLovePDF)
+// ════════════════════════════════════════════════════════════════════════
+// The DOCX → PDF conversion now lives in utils/docxToPdf.js: it parses the
+// generated .docx (page setup, headers/footers, paragraphs, runs, tables,
+// images and OMML equations) and re-draws it with pdfkit, so the PDF matches
+// the Word document without any external binary or third-party API key.
 
-/**
- * Convert a DOCX Buffer to a PDF Buffer using LibreOffice headless.
- * This preserves equations (OMML), template styles, images, and layout
- * exactly as they appear in the Word document.
- * @param {Buffer} docxBuffer - The DOCX file contents
- * @returns {Promise<Buffer>} - The PDF file contents
- */
-async function docxToPdf(docxBuffer) {
-	const publicKey = process.env.ILOVEPDF_PUBLIC_KEY;
-	if (publicKey) {
-		console.log("[docxToPdf] Attempting conversion via iLovePDF API...");
-		try {
-			// 1. Authenticate
-			const authResp = await fetch("https://api.ilovepdf.com/v1/auth", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ public_key: publicKey })
-			});
-			if (!authResp.ok) {
-				const errText = await authResp.text();
-				throw new Error(`iLovePDF auth failed: ${authResp.status} ${errText}`);
-			}
-			const { token } = await authResp.json();
-
-			// 2. Start Task
-			const startResp = await fetch("https://api.ilovepdf.com/v1/start/officepdf", {
-				method: "GET",
-				headers: { "Authorization": `Bearer ${token}` }
-			});
-			if (!startResp.ok) {
-				const errText = await startResp.text();
-				throw new Error(`iLovePDF start task failed: ${startResp.status} ${errText}`);
-			}
-			const { server, task } = await startResp.json();
-
-			// 3. Upload File
-			const formData = new FormData();
-			formData.append("task", task);
-			formData.append("file", new Blob([docxBuffer]), "paper.docx");
-
-			const uploadResp = await fetch(`https://${server}/v1/upload`, {
-				method: "POST",
-				headers: { "Authorization": `Bearer ${token}` },
-				body: formData
-			});
-			if (!uploadResp.ok) {
-				const errText = await uploadResp.text();
-				throw new Error(`iLovePDF upload failed: ${uploadResp.status} ${errText}`);
-			}
-			const { server_filename } = await uploadResp.json();
-
-			// 4. Process Task
-			const processResp = await fetch(`https://${server}/v1/process`, {
-				method: "POST",
-				headers: {
-					"Authorization": `Bearer ${token}`,
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({
-					task: task,
-					tool: "officepdf",
-					files: [{ server_filename, filename: "paper.docx" }]
-				})
-			});
-			if (!processResp.ok) {
-				const errText = await processResp.text();
-				throw new Error(`iLovePDF process failed: ${processResp.status} ${errText}`);
-			}
-
-			// 5. Download Result
-			const downloadResp = await fetch(`https://${server}/v1/download/${task}`, {
-				method: "GET",
-				headers: { "Authorization": `Bearer ${token}` }
-			});
-			if (!downloadResp.ok) {
-				const errText = await downloadResp.text();
-				throw new Error(`iLovePDF download failed: ${downloadResp.status} ${errText}`);
-			}
-			const pdfBuffer = Buffer.from(await downloadResp.arrayBuffer());
-			console.log("[docxToPdf] iLovePDF conversion completed successfully.");
-			return pdfBuffer;
-
-		} catch (apiErr) {
-			console.warn("[docxToPdf] iLovePDF API error, falling back to local LibreOffice:", apiErr.message);
-		}
-	}
-
-	return new Promise((resolve, reject) => {
-		const bin = resolveLibreOfficeBin();
-		if (!bin) {
-			return reject(new Error(
-				"LibreOffice is not installed on this server and iLovePDF API is unconfigured/failed. " +
-				"Please configure ILOVEPDF_PUBLIC_KEY or install LibreOffice."
-			));
-		}
-
-		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lo-paper-"));
-		const docxPath = path.join(tmpDir, "paper.docx");
-		const pdfPath = path.join(tmpDir, "paper.pdf");
-
-		try {
-			fs.writeFileSync(docxPath, docxBuffer);
-		} catch (writeErr) {
-			try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) { }
-			return reject(new Error("Failed to write temporary DOCX: " + writeErr.message));
-		}
-
-		// Each LibreOffice instance needs a fully isolated user profile directory.
-		// Without this, parallel instances share the same profile and lock each other
-		// out, causing "source file could not be loaded" errors on the 2nd and 3rd call.
-		// -env:UserInstallation gives each run its own profile; HOME is also set as a
-		// fallback for the javaldx warning in containers.
-		const loProfile = fs.mkdtempSync(path.join(os.tmpdir(), "lo-profile-"));
-
-		execFile(
-			bin,
-			[
-				"--headless", "--norestore", "--nofirststartwizard",
-				`-env:UserInstallation=file://${loProfile}`,
-				"--convert-to", "pdf", "--outdir", tmpDir, docxPath,
-			],
-			{ timeout: 60000, env: { ...process.env, HOME: loProfile } },
-			(err, stdout, stderr) => {
-				// Clean up isolated profile dir
-				try { fs.rmSync(loProfile, { recursive: true, force: true }); } catch (_) { }
-
-				// LibreOffice writes harmless warnings to stderr (e.g. "failed to launch
-				// javaldx") which cause execFile to set err even on success.
-				// Check whether the PDF was actually produced — that is the real signal.
-				const pdfExists = fs.existsSync(pdfPath);
-				if (!pdfExists) {
-					try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) { }
-					const reason = (err && err.message) || stderr || stdout || "unknown reason";
-					return reject(new Error("LibreOffice conversion failed: " + reason));
-				}
-				try {
-					const pdfBuffer = fs.readFileSync(pdfPath);
-					fs.rmSync(tmpDir, { recursive: true, force: true });
-					resolve(pdfBuffer);
-				} catch (readErr) {
-					try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) { }
-					reject(readErr);
-				}
-			}
-		);
-	});
-}
 // Strategy: build the same high-quality DOCX files (with OMML equations and
 // template applied) that the Word download uses, then convert each one to PDF
-// via LibreOffice headless — so the PDF looks identical to the Word document.
-router.post("/api/admin/generate-paper-pdf", requireAdmin, async (req, res) => {
+// with the built-in renderer — so the PDF looks identical to the Word document.
+router.post("/api/admin/generate-paper-pdf", requireAdmin, requireFeature("paperGenerator"), async (req, res) => {
 	try {
 		const { questions, paperTitle, paperSubject, paperChapter, paperTestType, paperClass, templateId } = req.body || {};
 		console.log("[generate-paper-pdf] req.body:", {
@@ -2610,13 +2451,10 @@ router.post("/api/admin/generate-paper-pdf", requireAdmin, async (req, res) => {
 			postProcessDocx(solBuf, tplBase64, { ...headerMeta, mode: "solution" }),
 		]);
 
-		// Step 3: Convert each DOCX → PDF using LibreOffice headless.
-		// Run sequentially — parallel LibreOffice instances can still conflict on
-		// shared system resources even with isolated profiles, causing "source file
-		// could not be loaded" on containers.
+		// Step 3: Convert each DOCX → PDF with the built-in renderer.
+		// Sequential so a big paper never spikes memory on small pods.
 		const qPdf = await docxToPdf(qBuf);
-		// Do not convert answer key PDF via iLovePDF (saves credits)
-		const akPdf = Buffer.from("JVBERi0xLjEKMSAwIG9iagogIDw8IC9UeXBlIC9DYXRhbG9nCiAgICAgL1BhZ2VzIDIgMCBSCiAgPj4KZW5kb2JqCjIgMCBvYmoKICA8PCAvVHlwZSAvUGFnZXMKICAgICAvS2lkcyBbMyAwIFJdCiAgICAgL0NvdW50IDEKICA+PgplbmRvYmoKMyAwIG9iaagogIDw8IC9UeXBlIC9QYWdlCiAgICAgL1BhcmVudCAyIDAgUgogICAgIC9SZXNvdXJjZXMgPDw+PgogICAgIC9NZWRpYUJveCBbMCAwIDU5NSA4NDJdCiAgPj4KZW5kb2JqCnRyYWlsZXIKICA8PCAvUm9vdCAxIDAgUgogID4+CiUlRU9G", "base64");
+		const akPdf = await docxToPdf(akBuf);
 		const solPdf = await docxToPdf(solBuf);
 
 		res.json({

@@ -515,7 +515,7 @@
             '</div></label>' +
             '<label><span>Mode of test</span><div class="qp-seg" id="qpc-mode">' +
             '<button type="button" data-v="offline" class="' + (CTX.mode !== 'online' ? 'on' : '') + '">\uD83D\uDCC4 Offline</button>' +
-            '<button type="button" data-v="online" class="' + (CTX.mode === 'online' ? 'on' : '') + '">\uD83C\uDF10 Online</button>' +
+            (otEnabled() ? '<button type="button" data-v="online" class="' + (CTX.mode === 'online' ? 'on' : '') + '">\uD83C\uDF10 Online</button>' : '') +
             '</div></label>' +
             '</div>' +
             '<div class="qp-ctx-foot">' +
@@ -671,6 +671,8 @@
             return String(a).localeCompare(String(b), undefined, { numeric: true });
         });
 
+        if (lv === 4 && !otEnabled()) keys = keys.filter(function (k) { return k !== 'online'; });
+
         var meta = [
             { icon: '\uD83C\uDFEB', label: 'Class ', title: 'Pick a class' },
             { icon: '\uD83D\uDCC1', label: 'Section ', title: 'Pick a section' },
@@ -776,6 +778,12 @@
         typeset(el);
     }
 
+    // Online tests can be switched off per institute from the developer panel.
+    function otEnabled() {
+        try { return typeof window.permOn !== 'function' || window.permOn('onlineTests') !== false; }
+        catch (e) { return true; }
+    }
+
     function renderFoot() {
         var foot = footEl();
         if (!foot) return;
@@ -789,9 +797,11 @@
             (QP.undo.length ? btn('\u21A9 Undo remove', 'QPool.undoRemove()') : '') +
             btn('Clear this test', 'QPool.clearBucket()', 'danger') +
             '<span style="flex:1"></span>' +
-            (online
-                ? btn('\uD83D\uDCC4 Offline paper', 'QPool.goOffline()', '', dis) + btn('\uD83C\uDF10 Create online test', 'QPool.goOnline()', 'primary', dis)
-                : btn('\uD83C\uDF10 Online test', 'QPool.goOnline()', '', dis) + btn('\uD83D\uDCC4 Generate paper', 'QPool.goOffline()', 'primary', dis));
+            (!otEnabled()
+                ? btn('\uD83D\uDCC4 Generate paper', 'QPool.goOffline()', 'primary', dis)
+                : online
+                    ? btn('\uD83D\uDCC4 Offline paper', 'QPool.goOffline()', '', dis) + btn('\uD83C\uDF10 Create online test', 'QPool.goOnline()', 'primary', dis)
+                    : btn('\uD83C\uDF10 Online test', 'QPool.goOnline()', '', dis) + btn('\uD83D\uDCC4 Generate paper', 'QPool.goOffline()', 'primary', dis));
     }
 
     /* ── Offline Word paper ──────────────────────────────────────────── */

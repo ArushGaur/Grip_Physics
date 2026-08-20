@@ -8,6 +8,10 @@ const helpers = require("../utils/helpers");
 const { requireOwner, loginRateLimit, recordLoginFailure, loginFailMap } = require("../middleware/auth");
 const { safeCompare, verifyPasscode, hashPasscode, normalizeStudentRow, normalizeQuestionRow } = helpers;
 const { cloudinary } = require("../services/cloudinary");
+const {
+	normalizePermissions, invalidatePermissions, FEATURE_KEYS, FEATURE_LABELS,
+	canonicalSubject,
+} = require("../utils/permissions");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || "dev-admin-passcode-please-change";
@@ -169,6 +173,36 @@ router.post("/api/owner/institutes/:id/suspend", requireOwner, async (req, res) 
 		res.json({ ok: true, status: newStatus });
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
+	}
+});
+
+// GET /api/owner/features — the feature flags the developer panel can toggle
+router.get("/api/owner/features", requireOwner, (req, res) => {
+	res.json({
+		features: FEATURE_KEYS.map((key) => ({ key, label: FEATURE_LABELS[key] || key })),
+	});
+});
+
+// GET /api/owner/subjects — every subject present in the question library, so
+// the developer can tick exactly which ones an institute is allowed to see.
+router.get("/api/owner/subjects", requireOwner, async (req, res) => {
+	try {
+		const r = await db.execute(
+			`SELECT q.subject AS subject, COUNT(*) AS cnt FROM ${ALL_Q}
+			  WHERE q.subject IS NOT NULL AND TRIM(q.subject) <> ''
+			  GROUP BY q.subject ORDER BY cnt DESC`
+		);
+		const seen = new Map();
+		for (const row of r.rows) {
+			const name = String(row.subject || "").trim();
+			if (!name) continue;
+			const key = canonicalSubject(name);
+			if (!seen.has(key)) seen.set(key, { subject: name, canonical: key, count: 0 });
+			seen.get(key).count += Number(row.cnt || 0);
+		}
+		res.json([...seen.values()]);
+	} catch (e) {
+		res.status(500).json({ error: e.message || "Failed to list subjects" });
 	}
 });
 
