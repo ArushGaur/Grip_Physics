@@ -479,7 +479,21 @@ async function initDB(TEACHER_PASSCODE, hashPasscode) {
 			"students", "attempts", "test_history", "student_stats",
 			"registered_students", "student_requests", "student_sessions", "online_tests",
 		];
-		for (const tbl of instituteScopedTables) {
+		// Some of these tables (e.g. student_stats) are keyed by mobile only and
+		// have no institute_id column, so ask Postgres which ones actually do
+		// instead of running an UPDATE that is guaranteed to fail and log noise.
+		let scopedWithColumn = instituteScopedTables;
+		try {
+			const cols = await raw(
+				`SELECT table_name FROM information_schema.columns
+				 WHERE table_schema = 'public' AND column_name = 'institute_id'`
+			);
+			const rows = (cols && (cols.rows || cols)) || [];
+			const have = new Set(rows.map(r => String(r.table_name || r.tableName || "").toLowerCase()));
+			if (have.size) scopedWithColumn = instituteScopedTables.filter(t => have.has(t));
+		} catch (_) {}
+
+		for (const tbl of scopedWithColumn) {
 			try {
 				await execute({
 					sql: `UPDATE ${tbl} SET institute_id = ? WHERE institute_id IS NULL OR institute_id = 0`,
@@ -491,7 +505,9 @@ async function initDB(TEACHER_PASSCODE, hashPasscode) {
 		}
 		// Repair student institute_id maps using registered_students.
 		try {
-			for (const tbl of ["students", "attempts", "test_history", "student_stats", "student_sessions"]) {
+			const repairTables = ["students", "attempts", "test_history", "student_stats", "student_sessions"]
+				.filter(t => scopedWithColumn.includes(t));
+			for (const tbl of repairTables) {
 				const mobileCol = tbl === "student_sessions" ? "roll_number" : "mobile";
 				await raw(`
 					UPDATE ${tbl} AS t

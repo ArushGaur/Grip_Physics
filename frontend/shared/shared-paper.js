@@ -937,14 +937,20 @@ async function generatePaper() {
         // Build format chooser UI
         let formatHtml = `
                 <div style="font-size:0.85rem;font-weight:700;color:var(--success);margin-bottom:14px;display:flex;align-items:center;gap:8px">
-                    <span style="font-size:1.1rem">&#10004;</span> Files ready &mdash; Word documents:
+                    <span style="font-size:1.1rem">&#10004;</span> Files ready &mdash; choose download format:
                 </div>
-                <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
                     <button id="fmt-docx-btn" onclick="selectDownloadFormat('docx')"
                         style="padding:16px 12px;background:var(--bg-card);border:2px solid var(--border);border-radius:12px;cursor:pointer;color:var(--text);font-family:inherit;text-align:center;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px">
                         <div style="font-size:1.8rem">&#128212;</div>
                         <div style="font-weight:800;font-size:0.9rem">Word (DOCX)</div>
                         <div style="font-size:0.7rem;color:var(--text-muted);line-height:1.3">Editable docx templates</div>
+                    </button>
+                    <button id="fmt-pdf-btn" onclick="selectDownloadFormat('pdf')"
+                        style="padding:16px 12px;background:var(--bg-card);border:2px solid var(--border);border-radius:12px;cursor:pointer;color:var(--text);font-family:inherit;text-align:center;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px">
+                        <div style="font-size:1.8rem">&#128213;</div>
+                        <div style="font-weight:800;font-size:0.9rem">PDF Document</div>
+                        <div style="font-size:0.7rem;color:var(--text-muted);line-height:1.3">Print-ready PDF layout</div>
                     </button>
                 </div>
                 <div id="fmt-download-status" style="display:none;font-size:0.82rem;padding:10px 14px;border-radius:10px;margin-bottom:12px"></div>

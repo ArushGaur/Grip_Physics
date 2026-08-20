@@ -44,8 +44,43 @@ process.on("uncaughtException", (err) => {
 	setTimeout(() => process.exit(1), 250).unref?.();
 });
 
-const DEFAULT_WORKERS = Math.min(os.cpus().length || 1, 4);
-const WORKERS = Number(process.env.WEB_CONCURRENCY || DEFAULT_WORKERS);
+/* ── How many web workers? ──────────────────────────────────────────────────
+   Forking one worker per CPU is wrong on small PaaS containers (Sevalla,
+   Render, Railway...): the host may report 8 cores while the container is
+   capped at 512 MB-1 GB of RAM. Each Node worker needs ~150-250 MB once the
+   docx/pdf libraries are loaded, so the container gets OOM-killed and the log
+   fills with `signal: 'SIGKILL' } worker died, respawning`.
+
+   So budget by memory first (one worker per ~450 MB, honouring the cgroup
+   limit when it is readable), then cap by CPU count.
+───────────────────────────────────────────────────────────────────────────── */
+function containerMemoryMB() {
+	// cgroup v2, then v1 - these reflect the real container limit, os.totalmem() does not.
+	const files = [
+		"/sys/fs/cgroup/memory.max",
+		"/sys/fs/cgroup/memory/memory.limit_in_bytes",
+	];
+	for (const f of files) {
+		try {
+			const raw = require("fs").readFileSync(f, "utf8").trim();
+			if (raw && raw !== "max") {
+				const bytes = Number(raw);
+				// Ignore the "no limit" sentinel some kernels report.
+				if (bytes > 0 && bytes < Number.MAX_SAFE_INTEGER / 2) return Math.floor(bytes / 1048576);
+			}
+		} catch (_) {}
+	}
+	return Math.floor(os.totalmem() / 1048576);
+}
+
+const MEM_MB = containerMemoryMB();
+const MB_PER_WORKER = Number(process.env.MB_PER_WORKER || 450);
+const memBudgetWorkers = Math.max(1, Math.floor(MEM_MB / MB_PER_WORKER));
+const DEFAULT_WORKERS = Math.max(1, Math.min(os.cpus().length || 1, memBudgetWorkers, 4));
+const WORKERS = Math.max(1, Number(process.env.WEB_CONCURRENCY || DEFAULT_WORKERS));
+if (cluster.isPrimary) {
+	logger.info({ memMB: MEM_MB, cpus: os.cpus().length, workers: WORKERS }, "sizing web workers");
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    CLUSTER PRIMARY
