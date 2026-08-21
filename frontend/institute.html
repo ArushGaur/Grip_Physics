@@ -162,12 +162,19 @@
             box-sizing: border-box;
         }
 
+        html {
+            overflow-x: hidden;
+        }
+
         body {
             font-family: 'Outfit', sans-serif;
             background: var(--canvas);
             color: var(--ink);
             min-height: 100vh;
             padding: 0;
+            /* nothing may spill sideways and cut the panel off on smaller screens */
+            overflow-x: hidden;
+            max-width: 100%;
         }
 
         .deco-dot {
@@ -223,8 +230,33 @@
             box-shadow: none;
             display: grid;
             grid-template-columns: 260px 1fr;
-            overflow: visible;
+            overflow-x: clip;
             min-height: 100vh;
+        }
+
+        /* Tablets & small laptops (sidebar still visible): keep everything inside the viewport */
+        @media (min-width:901px) and (max-width:1100px) {
+            .app-frame {
+                grid-template-columns: 200px 1fr;
+            }
+
+            #sidebar {
+                margin: 12px 0 12px 12px;
+                border-radius: 24px;
+            }
+
+            main {
+                padding: 22px 18px 32px 16px;
+            }
+
+            .topbar {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            #theme-fab {
+                display: none;
+            }
         }
 
         /* ── SIDEBAR ───────────────────────────────────────────── */
@@ -232,15 +264,83 @@
             background: linear-gradient(168deg, var(--sidebar-a) 0%, var(--sidebar-b) 78%);
             border-radius: 32px;
             margin: 18px;
-            padding: 34px 0 0;
+            padding: 26px 0 0;
             display: flex;
             flex-direction: column;
             position: sticky;
             top: 18px;
             align-self: start;
             height: calc(100vh - 36px);
+            max-height: calc(100vh - 36px);
+            min-height: 0;
             overflow: hidden;
             color: #eafff8;
+        }
+
+        /* Short laptop / scaled displays: shrink the profile block so nav + actions all fit */
+        @media (min-width:901px) and (max-height:820px) {
+            #sidebar {
+                padding-top: 18px;
+                border-radius: 26px;
+                margin: 12px;
+                top: 12px;
+                height: calc(100vh - 24px);
+                max-height: calc(100vh - 24px);
+            }
+
+            .side-profile {
+                padding: 0 18px 16px;
+            }
+
+            .side-avatar {
+                width: 58px;
+                height: 58px;
+                font-size: 1.4rem;
+                margin-bottom: 8px;
+            }
+
+            .side-name {
+                font-size: .95rem;
+            }
+
+            .nav-item {
+                padding: 10px 18px;
+                margin: 2px 0;
+            }
+
+            .nav-ico {
+                width: 30px;
+                height: 30px;
+                border-radius: 10px;
+            }
+
+            .side-action {
+                padding: 9px 12px;
+                font-size: .85rem;
+            }
+
+            .side-bottom {
+                padding: 10px 16px 14px;
+                gap: 8px;
+            }
+        }
+
+        /* Very short viewports: collapse the actions into one compact row */
+        @media (min-width:901px) and (max-height:640px) {
+            .side-profile {
+                display: none;
+            }
+
+            .side-bottom {
+                flex-direction: row;
+            }
+
+            .side-action {
+                justify-content: center;
+                gap: 6px;
+                font-size: .78rem;
+                padding: 8px 6px;
+            }
         }
 
         #sidebar::after {
@@ -289,10 +389,30 @@
         }
 
         .side-nav {
-            flex: 1;
+            flex: 1 1 auto;
+            min-height: 0;
+            /* the nav itself scrolls, so the bottom actions can never be pushed out of view */
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
             padding: 8px 0 8px 18px;
             position: relative;
             z-index: 2;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, .28) transparent;
+        }
+
+        .side-nav::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .side-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .24);
+            border-radius: 8px;
+        }
+
+        .side-nav::-webkit-scrollbar-track {
+            background: transparent;
         }
 
         .nav-item {
@@ -363,11 +483,15 @@
 
         .side-bottom {
             position: relative;
-            z-index: 2;
-            padding: 18px 24px 28px;
+            z-index: 3;
+            flex: 0 0 auto;
+            /* pinned to the bottom of the sidebar, always visible */
+            padding: 14px 20px calc(18px + env(safe-area-inset-bottom));
             display: flex;
             flex-direction: column;
             gap: 10px;
+            background: linear-gradient(to top, rgba(4, 32, 26, .62), rgba(4, 32, 26, 0));
+            border-top: 1px solid rgba(255, 255, 255, .1);
         }
 
         .side-action {
@@ -4588,7 +4712,7 @@
             }
         }
 
-        /* ── EDIT TEST MODAL EXTRAS ────────────────────────────── */
+        /* ── EDIT TEST MODAL EXTRAS ─────────────��──────────────── */
         .switch {
             position: relative;
             display: inline-block;
@@ -5237,7 +5361,390 @@
             transform: rotate(18deg) scale(1.07);
         }
 
-        /* ── TOAST ─────────────────────────────────────────────── */
+        /* ── PAPER TEMPLATE MANAGER MODAL ──────────────────────── */
+        .tplm-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(6, 33, 27, .55);
+            backdrop-filter: blur(6px);
+            animation: tplmFade .22s ease;
+        }
+
+        @keyframes tplmFade {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
+        @keyframes tplmPop {
+            from {
+                opacity: 0;
+                transform: translateY(14px) scale(.97)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        .tplm-card {
+            width: 100%;
+            max-width: 540px;
+            max-height: min(86vh, 720px);
+            display: flex;
+            flex-direction: column;
+            background: var(--card, #fff);
+            color: var(--ink, #14231f);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(6, 33, 27, .38);
+            animation: tplmPop .26s cubic-bezier(.2, .9, .3, 1.1);
+        }
+
+        .tplm-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px 22px;
+            color: #eafff8;
+            background: linear-gradient(135deg, var(--sidebar-a, #0d4c3e), var(--sidebar-b, #082f26));
+        }
+
+        .tplm-head-ico {
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            background: rgba(255, 255, 255, .16);
+        }
+
+        .tplm-head-txt {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tplm-head-txt h3 {
+            margin: 0;
+            font-size: 1.08rem;
+            font-weight: 700;
+        }
+
+        .tplm-head-txt p {
+            margin: 3px 0 0;
+            font-size: .78rem;
+            opacity: .72;
+            line-height: 1.4;
+        }
+
+        .tplm-x {
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+            border: 0;
+            border-radius: 11px;
+            background: rgba(255, 255, 255, .14);
+            color: #eafff8;
+            font-size: .85rem;
+            cursor: pointer;
+            transition: background .18s;
+        }
+
+        .tplm-x:hover {
+            background: rgba(255, 255, 255, .28);
+        }
+
+        .tplm-body {
+            padding: 20px 22px 6px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .tplm-drop {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-align: center;
+            padding: 26px 18px;
+            border-radius: 18px;
+            border: 2px dashed rgba(15, 85, 70, .3);
+            background: rgba(0, 210, 180, .06);
+            cursor: pointer;
+            transition: border-color .2s, background .2s, transform .2s;
+        }
+
+        body.dark .tplm-drop {
+            border-color: rgba(0, 210, 180, .32);
+            background: rgba(0, 210, 180, .08);
+        }
+
+        .tplm-drop:hover,
+        .tplm-drop.dragging {
+            border-color: var(--teal, #00d2b4);
+            background: rgba(0, 210, 180, .14);
+            transform: translateY(-1px);
+        }
+
+        .tplm-drop-ico {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, var(--teal, #00d2b4), var(--teal-deep, #0e8f78));
+            color: #05332a;
+            margin-bottom: 4px;
+        }
+
+        .tplm-drop b {
+            font-size: .92rem;
+        }
+
+        .tplm-drop-sub {
+            font-size: .76rem;
+            color: var(--ink-dim, #5c6f69);
+        }
+
+        .tplm-file {
+            margin-top: 10px;
+            max-width: 100%;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 13px;
+            border-radius: 30px;
+            font-size: .78rem;
+            font-weight: 600;
+            background: rgba(15, 85, 70, .1);
+            color: var(--teal-deep, #0e8f78);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tplm-file[hidden] {
+            display: none;
+        }
+
+        body.dark .tplm-file {
+            background: rgba(0, 210, 180, .16);
+            color: #8ff0e0;
+        }
+
+        .tplm-actions-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 16px 0 4px;
+        }
+
+        .tplm-btn {
+            font-family: inherit;
+            font-size: .86rem;
+            font-weight: 600;
+            padding: 11px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: transform .15s, box-shadow .18s, background .18s;
+        }
+
+        .tplm-btn:active {
+            transform: scale(.97);
+        }
+
+        .tplm-btn-primary {
+            background: linear-gradient(135deg, var(--teal-deep, #0e8f78), var(--sidebar-a, #0d4c3e));
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(14, 143, 120, .28);
+        }
+
+        .tplm-btn-primary[disabled] {
+            opacity: .6;
+            cursor: default;
+            box-shadow: none;
+        }
+
+        .tplm-btn-ghost {
+            background: transparent;
+            color: var(--ink, #14231f);
+            border-color: rgba(120, 140, 134, .34);
+        }
+
+        .tplm-btn-ghost:hover {
+            background: rgba(120, 140, 134, .12);
+        }
+
+        .tplm-msg {
+            font-size: .8rem;
+            font-weight: 600;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .tplm-msg.ok {
+            color: #1f9d78;
+        }
+
+        .tplm-msg.err {
+            color: #d95f5f;
+        }
+
+        .tplm-msg.busy {
+            color: var(--ink-dim, #5c6f69);
+        }
+
+        .tplm-list-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0 10px;
+            font-size: .68rem;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: var(--ink-dim, #5c6f69);
+        }
+
+        .tplm-hint {
+            letter-spacing: 0;
+            text-transform: none;
+            font-weight: 500;
+            font-size: .74rem;
+            opacity: .8;
+        }
+
+        .tplm-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tplm-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(120, 140, 134, .09);
+            border: 1px solid rgba(120, 140, 134, .16);
+        }
+
+        .tplm-row-ico {
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .95rem;
+            background: rgba(46, 110, 220, .14);
+        }
+
+        .tplm-row-txt {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tplm-row-name {
+            font-weight: 600;
+            font-size: .88rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tplm-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: .64rem;
+            font-weight: 800;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            background: rgba(0, 210, 180, .18);
+            color: var(--teal-deep, #0e8f78);
+        }
+
+        body.dark .tplm-badge {
+            color: #8ff0e0;
+        }
+
+        .tplm-del {
+            border: 0;
+            background: rgba(217, 95, 95, .12);
+            color: #d95f5f;
+            font-family: inherit;
+            font-size: .78rem;
+            font-weight: 700;
+            padding: 8px 13px;
+            border-radius: 10px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background .18s;
+        }
+
+        .tplm-del:hover {
+            background: rgba(217, 95, 95, .24);
+        }
+
+        .tplm-empty {
+            padding: 18px;
+            text-align: center;
+            font-size: .84rem;
+            border-radius: 14px;
+            border: 1px dashed rgba(120, 140, 134, .3);
+            color: var(--ink-dim, #5c6f69);
+        }
+
+        .tplm-foot {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 14px 22px calc(16px + env(safe-area-inset-bottom));
+            border-top: 1px solid rgba(120, 140, 134, .18);
+        }
+
+        @media (max-width:560px) {
+            .tplm-overlay {
+                padding: 0;
+                align-items: flex-end;
+            }
+
+            .tplm-card {
+                max-width: none;
+                max-height: 92vh;
+                border-radius: 22px 22px 0 0;
+            }
+
+            .tplm-actions-row .tplm-btn-primary {
+                width: 100%;
+            }
+        }
+
+        /* ── TOAST ──────────────────────────────────────────���──── */
         #toast {
             position: fixed;
             left: 50%;
@@ -14199,28 +14706,75 @@
                 if (!ov) {
                     ov = document.createElement('div');
                     ov.id = 'inst-tpl-modal';
-                    ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
-                    ov.innerHTML = `<div style="background:var(--card,#fff);border-radius:14px;max-width:520px;width:100%;max-height:82vh;overflow:auto;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.28)">
-                        <h3 style="margin:0 0 4px">Paper Templates</h3>
-                        <p style="margin:0 0 16px;font-size:.85rem;opacity:.7">Upload the Word (.docx) file your question papers should be built on. The newest template is the default; with more than one you can pick which to use while generating a paper.</p>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-                            <input type="file" id="inst-tpl-file" accept=".docx" style="flex:1;min-width:200px">
-                            <button id="inst-tpl-upload" style="padding:9px 16px;border:0;border-radius:9px;background:#2f7d63;color:#fff;font-weight:600;cursor:pointer">Upload</button>
+                    ov.className = 'tplm-overlay';
+                    ov.innerHTML = `<div class="tplm-card" role="dialog" aria-modal="true" aria-labelledby="tplm-title">
+                        <div class="tplm-head">
+                            <div class="tplm-head-ico">📄</div>
+                            <div class="tplm-head-txt">
+                                <h3 id="tplm-title">Paper Templates</h3>
+                                <p>The Word layout your question papers are built on</p>
+                            </div>
+                            <button class="tplm-x" id="inst-tpl-close" type="button" aria-label="Close">✕</button>
                         </div>
-                        <div id="inst-tpl-msg" style="font-size:.82rem;min-height:18px;margin-bottom:10px"></div>
-                        <div id="inst-tpl-list" style="display:flex;flex-direction:column;gap:8px"></div>
-                        <div style="text-align:right;margin-top:18px"><button id="inst-tpl-close" style="padding:9px 16px;border:1px solid rgba(0,0,0,.15);border-radius:9px;background:transparent;cursor:pointer">Close</button></div>
+                        <div class="tplm-body">
+                            <label class="tplm-drop" id="inst-tpl-drop" for="inst-tpl-file">
+                                <input type="file" id="inst-tpl-file" accept=".docx" hidden>
+                                <span class="tplm-drop-ico">⬆️</span>
+                                <b>Drop your .docx template here</b>
+                                <span class="tplm-drop-sub">or click to browse — Word documents only</span>
+                                <span class="tplm-file" id="inst-tpl-name" hidden></span>
+                            </label>
+                            <div class="tplm-actions-row">
+                                <button class="tplm-btn tplm-btn-primary" id="inst-tpl-upload" type="button">Upload template</button>
+                                <span class="tplm-msg" id="inst-tpl-msg"></span>
+                            </div>
+                            <div class="tplm-list-head">Saved templates<span class="tplm-hint">Newest one is used by default</span></div>
+                            <div class="tplm-list" id="inst-tpl-list"></div>
+                        </div>
+                        <div class="tplm-foot"><button class="tplm-btn tplm-btn-ghost" id="inst-tpl-done" type="button">Done</button></div>
                     </div>`;
                     document.body.appendChild(ov);
-                    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
-                    ov.querySelector('#inst-tpl-close').onclick = () => ov.remove();
-                    ov.querySelector('#inst-tpl-upload').onclick = async () => {
+
+                    const closeModal = () => {
+                        document.removeEventListener('keydown', onEsc);
+                        ov.remove();
+                    };
+                    function onEsc(e) { if (e.key === 'Escape') closeModal(); }
+                    document.addEventListener('keydown', onEsc);
+                    ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
+                    ov.querySelector('#inst-tpl-close').onclick = closeModal;
+                    ov.querySelector('#inst-tpl-done').onclick = closeModal;
+
+                    const drop = ov.querySelector('#inst-tpl-drop');
+                    const nameChip = ov.querySelector('#inst-tpl-name');
+                    const fileInput = ov.querySelector('#inst-tpl-file');
+                    const showPicked = () => {
+                        const f = fileInput.files && fileInput.files[0];
+                        if (f) { nameChip.hidden = false; nameChip.textContent = '📎 ' + f.name; }
+                        else { nameChip.hidden = true; nameChip.textContent = ''; }
+                    };
+                    fileInput.addEventListener('change', showPicked);
+                    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragging'); }));
+                    ['dragleave', 'dragend'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('dragging')));
+                    drop.addEventListener('drop', e => {
+                        e.preventDefault();
+                        drop.classList.remove('dragging');
+                        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                        if (!f) return;
+                        try { const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files; } catch (_) { }
+                        showPicked();
+                    });
+
+                    ov.querySelector('#inst-tpl-upload').onclick = async (e) => {
+                        const btn = e.currentTarget;
                         const inp = document.getElementById('inst-tpl-file');
                         const msg = document.getElementById('inst-tpl-msg');
+                        const setMsg = (t, cls) => { msg.textContent = t; msg.className = 'tplm-msg ' + (cls || ''); };
                         const file = inp && inp.files && inp.files[0];
-                        if (!file) { msg.textContent = 'Choose a .docx file first.'; msg.style.color = '#d95f5f'; return; }
-                        if (!/\.docx$/i.test(file.name)) { msg.textContent = 'Only .docx templates are supported.'; msg.style.color = '#d95f5f'; return; }
-                        msg.textContent = 'Uploading...'; msg.style.color = '';
+                        if (!file) { setMsg('Choose a .docx file first.', 'err'); return; }
+                        if (!/\.docx$/i.test(file.name)) { setMsg('Only .docx templates are supported.', 'err'); return; }
+                        btn.disabled = true;
+                        setMsg('Uploading…', 'busy');
                         try {
                             const fd = new FormData();
                             fd.append('template', file);
@@ -14228,12 +14782,14 @@
                             const r = await fetch(instApiBase() + '/api/admin/paper-templates', { method: 'POST', credentials: 'include', body: fd });
                             let d = null; try { d = await r.json(); } catch (_) { }
                             if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
-                            msg.textContent = 'Template uploaded.'; msg.style.color = '#2f7d63';
+                            setMsg('Template uploaded.', 'ok');
                             if (inp) inp.value = '';
+                            showPicked();
                             _instTplCache = null;
                             await window.instRenderTemplateList();
                             await instSyncTemplateField();
-                        } catch (e) { msg.textContent = e.message || 'Upload failed'; msg.style.color = '#d95f5f'; }
+                        } catch (err) { setMsg(err.message || 'Upload failed', 'err'); }
+                        finally { btn.disabled = false; }
                     };
                 }
                 await window.instRenderTemplateList();
@@ -14242,12 +14798,15 @@
             window.instRenderTemplateList = async function () {
                 const box = document.getElementById('inst-tpl-list');
                 if (!box) return;
-                box.innerHTML = '<div style="opacity:.6;font-size:.85rem">Loading...</div>';
+                box.innerHTML = '<div class="tplm-empty">Loading…</div>';
                 const rows = await instLoadTemplates(true);
-                if (!rows.length) { box.innerHTML = '<div style="opacity:.6;font-size:.85rem">No templates yet.</div>'; return; }
-                box.innerHTML = rows.map((r, i) => `<div style="display:flex;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:10px 12px">
-                    <span style="flex:1;font-weight:600">${esc(r.name || ('Template ' + r.id))}${i === 0 ? ' <span style="font-weight:400;opacity:.6;font-size:.78rem">(default)</span>' : ''}</span>
-                    <button onclick="window.instDeleteTemplate(${r.id})" style="border:0;background:transparent;cursor:pointer;color:#d95f5f;font-weight:600">Delete</button>
+                if (!rows.length) { box.innerHTML = '<div class="tplm-empty">No templates yet — upload a .docx above to get started.</div>'; return; }
+                box.innerHTML = rows.map((r, i) => `<div class="tplm-row">
+                    <span class="tplm-row-ico">📘</span>
+                    <div class="tplm-row-txt">
+                        <div class="tplm-row-name">${esc(r.name || ('Template ' + r.id))}${i === 0 ? '<span class="tplm-badge">Default</span>' : ''}</div>
+                    </div>
+                    <button class="tplm-del" type="button" onclick="window.instDeleteTemplate(${r.id})">Delete</button>
                 </div>`).join('');
             };
 

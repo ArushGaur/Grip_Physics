@@ -37,6 +37,11 @@ html {
 	-webkit-text-size-adjust: 100%;
 }
 
+html {
+	overflow-x: hidden;
+	max-width: 100%;
+}
+
 body {
 	margin: 0;
 	font-family: var(--sans);
@@ -46,6 +51,7 @@ body {
 	background: var(--canvas);
 	-webkit-font-smoothing: antialiased;
 	overflow-x: hidden;
+	max-width: 100%;
 }
 
 h1, h2, h3, h4 {
@@ -333,6 +339,11 @@ ul, ol {
 	grid-template-columns: .86fr 1.14fr;
 	gap: 48px;
 	align-items: center;
+	min-width: 0;
+}
+
+.hero-grid>* {
+	min-width: 0;
 }
 
 .eyebrow {
@@ -1294,6 +1305,43 @@ ul, ol {
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
+/* Laptops & small desktops: the hero visual used to bleed past the right edge
+   (negative margin + scaled tilt), which clipped the floating cards. */
+@media (max-width: 1400px) {
+	.hero-visual {
+		margin-right: -48px;
+	}
+
+	.hero-visual .window.tilt {
+		transform: perspective(1800px) rotateY(-6deg) rotateX(1.2deg) scale(1.02);
+	}
+}
+
+@media (max-width: 1240px) {
+	.hero-grid {
+		grid-template-columns: .92fr 1.08fr;
+		gap: 36px;
+	}
+
+	.hero-visual {
+		margin-right: 0;
+	}
+
+	.hero-visual .window.tilt {
+		transform: none;
+	}
+
+	.float-b {
+		right: 8px;
+		top: -34px;
+	}
+
+	.float-a {
+		left: 8px;
+		bottom: -14px;
+	}
+}
+
 @media (max-width: 1000px) {
 
 	.hero-grid,
