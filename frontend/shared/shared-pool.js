@@ -282,7 +282,90 @@
             '  .qp-ctx-head,.qp-ctx-body,.qp-ctx-foot{padding-left:16px;padding-right:16px}',
             '  .qp-ctx-foot .qp-btn{flex:1 1 100%}',
             '}',
-            '@keyframes qpoolspin{to{transform:rotate(360deg)}}'
+            '@keyframes qpoolspin{to{transform:rotate(360deg)}}',
+
+            /* ══════════════════════════════════════════════════════════════
+               PREMIUM SKIN  —  loaded last so it refines everything above.
+               Gradient masthead, glass chips, floating cards, glow buttons.
+               ══════════════════════════════════════════════════════════ */
+            '.qp-wrap{--qp-glow:rgba(14,126,101,.20);--qp-ring:rgba(0,210,180,.26)}',
+            '@keyframes qpRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}',
+            '@keyframes qpSheen{from{transform:translateX(-130%)}to{transform:translateX(260%)}}',
+
+            /* ── masthead: the first hero becomes a deep-teal gradient banner ── */
+            '#qpool-body>.qp-hero:first-child{padding:26px 28px;border:none;border-radius:26px;gap:18px;color:#fff;background:linear-gradient(135deg,#0d4c3e 0%,#0b5f4c 46%,#07362b 100%);box-shadow:0 24px 52px -24px rgba(7,54,43,.7);animation:qpRise .45s ease both}',
+            '#qpool-body>.qp-hero:first-child::before{inset:auto;left:-8%;top:-85%;width:55%;height:250%;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(0,210,180,.32),transparent 70%)}',
+            '#qpool-body>.qp-hero:first-child::after{content:\"\";position:absolute;right:-46px;bottom:-76px;width:215px;height:215px;border-radius:50%;background:radial-gradient(circle,rgba(0,210,180,.20),transparent 68%)}',
+            '#qpool-body>.qp-hero:first-child .ic{position:relative;width:54px;height:54px;margin-left:0;border-radius:18px;font-size:1.48rem;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.26);backdrop-filter:blur(6px)}',
+            '#qpool-body>.qp-hero:first-child h4{position:relative;color:#fff;font-size:1.22rem;letter-spacing:-.02em}',
+            '#qpool-body>.qp-hero:first-child p{position:relative;color:rgba(232,255,248,.78);font-size:.8rem;max-width:62ch}',
+            '#qpool-body>.qp-hero:first-child .n{position:relative;color:#eafff8;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);padding:9px 16px;font-size:.76rem;backdrop-filter:blur(6px)}',
+
+            /* ── the bucket sub-hero stays a card, just softer ── */
+            '.qp-hero{border-radius:22px}',
+            '.qp-news{border-radius:16px;background:linear-gradient(135deg,rgba(0,210,180,.12),var(--qp-soft));border-color:rgba(0,210,180,.26)}',
+
+            /* ── breadcrumb as pills ── */
+            '.qp-crumb{gap:4px;padding:8px 12px;border-radius:99px;box-shadow:0 8px 20px -16px rgba(8,56,45,.55)}',
+            '.qp-crumb button{padding:6px 12px;border-radius:99px;transition:background .18s,color .18s}',
+            '.qp-crumb button:hover{background:var(--qp-soft);text-decoration:none}',
+            '.qp-crumb .cur{padding:6px 13px;border-radius:99px;font-size:.76rem;color:#fff;background:linear-gradient(135deg,var(--qp-teal),var(--qp-deep))}',
+
+            /* ── drill cards float, accent moves to a top hairline ── */
+            '.qp-grid{gap:15px}',
+            '.qp-card{padding:17px 18px;border-radius:22px;background:linear-gradient(165deg,var(--qp-card) 12%,var(--qp-soft) 220%);animation:qpRise .4s ease both}',
+            '.qp-card::before{left:0;right:0;top:0;bottom:auto;width:auto;height:3px;opacity:0;background:linear-gradient(90deg,var(--qp-teal),var(--teal,#00d2b4));transition:opacity .25s}',
+            '.qp-card:hover::before{opacity:1}',
+            '.qp-card:hover{transform:translateY(-5px);box-shadow:0 26px 46px -26px var(--qp-glow),0 0 0 1px var(--qp-teal)}',
+            '.qp-card .ic{width:46px;height:46px;border-radius:16px;font-size:1.18rem;border:1px solid var(--qp-line);background:linear-gradient(135deg,rgba(0,210,180,.18),rgba(14,126,101,.10));transition:transform .25s}',
+            '.qp-card:hover .ic{transform:scale(1.07) rotate(-3deg)}',
+            '.qp-card .tt{font-size:.96rem;letter-spacing:-.01em}',
+            '.qp-card .ar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;background:var(--qp-soft);color:var(--qp-teal);transition:transform .25s,background .25s,color .25s}',
+            '.qp-card:hover .ar{transform:translateX(3px);background:var(--qp-teal);color:#fff}',
+
+            /* ── question groups ── */
+            '.qp-group{border-radius:22px;box-shadow:0 18px 36px -28px rgba(8,56,45,.55);animation:qpRise .4s ease both}',
+            '.qp-ghead{padding:14px 18px;background:linear-gradient(135deg,var(--qp-soft),transparent)}',
+            '.qp-ghead b{font-size:.92rem;letter-spacing:-.01em}',
+            '.qp-gcount{padding:4px 11px;border-radius:99px;background:var(--qp-card);border:1px solid var(--qp-line)}',
+            '.qp-row{padding:14px 18px;transition:background .18s}',
+            '.qp-row:hover{background:var(--qp-soft)}',
+            '.qp-row.on{background:linear-gradient(90deg,rgba(0,210,180,.11),transparent)}',
+            '.qp-tag{border-radius:9px;background:var(--qp-card);font-weight:700}',
+
+            /* ── inputs, buttons, sticky bar ── */
+            '.qp-search input{padding:12px 14px 12px 38px;border-radius:14px;transition:border-color .2s,box-shadow .2s,background .2s}',
+            '.qp-search input:focus{box-shadow:0 0 0 4px var(--qp-ring)}',
+            '.qp-btn{padding:11px 18px;border-radius:14px;transition:transform .18s,box-shadow .18s,border-color .18s,color .18s}',
+            '.qp-btn:hover{transform:translateY(-2px);box-shadow:0 14px 26px -18px var(--qp-glow)}',
+            '.qp-btn.primary{position:relative;overflow:hidden;background:linear-gradient(135deg,#12a184,#0a5545);box-shadow:0 16px 30px -14px rgba(10,85,69,.8)}',
+            '.qp-btn.primary::after{content:\"\";position:absolute;top:0;bottom:0;width:38%;transform:translateX(-130%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent)}',
+            '.qp-btn.primary:hover::after{animation:qpSheen .8s ease}',
+            '.qp-foot{bottom:12px;margin-top:20px;padding:13px 16px;border-radius:20px;background:var(--qp-card);border:1px solid var(--qp-line);box-shadow:0 -4px 30px -18px rgba(8,56,45,.5),0 18px 40px -30px rgba(8,56,45,.6);backdrop-filter:blur(10px)}',
+
+            /* ── panels + empty state ── */
+            '.qp-sec{border-radius:22px;box-shadow:0 16px 34px -28px rgba(8,56,45,.5)}',
+            '.qp-empty{border-radius:24px;border-style:dashed;border-width:1.5px}',
+            '.qp-obadge{border-radius:18px;box-shadow:0 14px 28px -14px rgba(14,126,101,.5)}',
+            '.qp-pick{border-radius:18px}',
+            '.qp-ctx-card{border-radius:24px}',
+
+            /* ── dark mode ── */
+            'body.dark .qp-card{background:linear-gradient(165deg,var(--qp-card),rgba(255,255,255,.035))}',
+            'body.dark .qp-card:hover{box-shadow:0 26px 46px -26px rgba(0,0,0,.75),0 0 0 1px var(--qp-teal)}',
+            'body.dark #qpool-body>.qp-hero:first-child{box-shadow:0 24px 52px -28px rgba(0,0,0,.85)}',
+            'body.dark .qp-btn.primary{box-shadow:0 16px 30px -16px rgba(0,210,180,.45)}',
+            'body.dark .qp-group,body.dark .qp-sec{box-shadow:0 18px 36px -30px rgba(0,0,0,.8)}',
+
+            /* ── phones ── */
+            '@media (max-width:640px){',
+            '  #qpool-body>.qp-hero:first-child{padding:20px;border-radius:20px}',
+            '  #qpool-body>.qp-hero:first-child h4{font-size:1.08rem}',
+            '  #qpool-body>.qp-hero:first-child .ic{width:46px;height:46px;border-radius:15px;font-size:1.25rem}',
+            '  .qp-card{border-radius:18px;padding:15px 16px}',
+            '  .qp-group,.qp-sec{border-radius:18px}',
+            '  .qp-foot{bottom:0;border-radius:16px;padding:11px 12px}',
+            '}'
         ].join('\n');
         document.head.appendChild(s);
     }
@@ -833,7 +916,7 @@
         return scopedItems(5).filter(function (i) { return QP.selected.has(i.id); });
     }
 
-    /* ── Progress screen with a real bar ──────────────────────────────── */
+    /* ── Progress screen with a real bar ─────────────────��────────────── */
     function renderProgress(title, step) {
         ensureShell();
         bodyEl().innerHTML =
@@ -862,14 +945,45 @@
         pdf_solutions: 'Rendering solutions\u2026'
     };
 
-    function download(b64, name) {
+    /* Mobile browsers rename a download to match the blob's MIME type, so the
+       type must always follow the file's real extension — otherwise a .docx
+       saved as application/pdf becomes "Paper.docx.pdf" on Android. */
+    var MIME_BY_EXT = {
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        doc: 'application/msword',
+        pdf: 'application/pdf',
+        csv: 'text/csv;charset=utf-8',
+        zip: 'application/zip'
+    };
+
+    function mimeForFile(name) {
+        var m = /\.([a-z0-9]+)\s*$/i.exec(String(name || ''));
+        return (m && MIME_BY_EXT[m[1].toLowerCase()]) || 'application/octet-stream';
+    }
+
+    function safeFileName(name) {
+        return String(name || 'download')
+            .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
+            .replace(/\s+/g, ' ')
+            .trim() || 'download';
+    }
+
+    function download(b64, name, mime) {
+        var fname = safeFileName(name);
+        var type = mime || mimeForFile(fname);
         var bin = atob(b64);
-        var bytes = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        var CHUNK = 8192, parts = [];
+        for (var i = 0; i < bin.length; i += CHUNK) {
+            var slice = bin.slice(i, i + CHUNK);
+            var bytes = new Uint8Array(slice.length);
+            for (var j = 0; j < slice.length; j++) bytes[j] = slice.charCodeAt(j);
+            parts.push(bytes);
+        }
+        var blob = new Blob(parts, { type: type });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = name;
+        a.download = fname;
+        a.setAttribute('type', type);
         document.body.appendChild(a);
         a.click();
         setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
