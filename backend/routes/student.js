@@ -539,13 +539,41 @@ router.get("/api/test-history/:mobile", async (req, res) => {
 			};
 		});
 
-		// Light mode stops here: no online_tests lookup, no resolveQuestionKeys.
+		// Light mode stops here: no resolveQuestionKeys, no question payloads.
+		// It still needs each test's ends_at, though: the Test Analysis list and the
+		// attempt-summary screen are built from these rows, and without the gate
+		// flags the client cannot tell that a test is still running and would open
+		// an empty question viewer instead of the "unlocks at …" notice.
 		if (light) {
+			const lightTestIds = [...new Set(
+				history.map(h => h.online_test_id).filter(id => id && Number.isFinite(Number(id)))
+			)].map(Number);
+			const lightEndsAt = new Map(); // test id → ends_at (ms)
+			if (lightTestIds.length) {
+				try {
+					const placeholders = lightTestIds.map(() => "?").join(", ");
+					const endsRes = await db.execute({
+						sql: `SELECT id, ends_at FROM online_tests WHERE id IN (${placeholders})`,
+						args: lightTestIds,
+					});
+					for (const r of endsRes.rows) lightEndsAt.set(Number(r.id), Number(r.ends_at) || 0);
+				} catch (e) {
+					console.warn("light ends_at lookup failed:", e.message);
+				}
+			}
+			const lightNow = Date.now();
 			const lightList = history.map(item => {
 				delete item._raw_row;
 				delete item.questions;
 				delete item.answers;
 				delete item.timeSpentJson;
+				delete item.questionOrder;
+				const endsAt = lightEndsAt.get(Number(item.online_test_id)) || 0;
+				const gate = computeAnalysisGate(item.online_test_id, endsAt, item.is_locked, lightNow);
+				item.testEndsAt = endsAt || null;
+				item.analysisAvailable = gate.analysisAvailable;
+				item.analysisAvailableAt = gate.analysisAvailableAt;
+				item.analysisLockedReason = gate.analysisLockedReason;
 				item.light = true;
 				return item;
 			});
@@ -632,6 +660,8 @@ router.get("/api/test-history/:mobile", async (req, res) => {
 		for (const item of historyWithQuestions) {
 			const testRow = testQuestionsCache.get(Number(item.online_test_id));
 			const gate = computeAnalysisGate(item.online_test_id, testRow?.ends_at, item.is_locked, nowTs);
+			// Exposed so the client can double-check the lock itself.
+			item.testEndsAt = Number(testRow?.ends_at) || null;
 			if (!gate.analysisAvailable) {
 				hideAttemptAnalysis(item, gate);
 				delete item.questionOrder;

@@ -1117,6 +1117,9 @@ async function jeeDoSubmit() {
     const _analysisStillLocked = _isOnlineAttempt && (
         window._jeeStrictLocked ? true : (_jeeTestEndsAt ? Date.now() < _jeeTestEndsAt : false)
     );
+    // Always stamp the end time, locked or not: if this cached record is opened
+    // later, _taAnalysisLock() can re-check the clock on its own.
+    if (_isOnlineAttempt) attemptRecord.testEndsAt = _jeeTestEndsAt || null;
     if (_analysisStillLocked) {
         attemptRecord.questions = [];
         attemptRecord.answers = [];
@@ -2934,6 +2937,33 @@ async function openTestDetail(idx, doPushHistory = true) {
     // Pie chart
     renderTsPie(correct, wrong, skipped, total, pct);
 
+    /* ══ "View Questions & Solutions" button state ══════════════════════════
+       While the test window is open (or the attempt is locked) the detailed
+       analysis is withheld, so the button says so up front instead of opening
+       an empty question viewer. */
+    {
+        const viewBtn = document.getElementById('tsViewQuestionsBtn');
+        if (viewBtn) {
+            const lock = _taAnalysisLock(test);
+            const when = _taUnlockLabel(lock.unlockAt);
+            if (lock.locked) {
+                viewBtn.innerHTML = when
+                    ? `🔒 Analysis unlocks on ${escHtml(when)}`
+                    : '🔒 Analysis unlocks when the test time is over';
+                viewBtn.style.opacity = '0.65';
+                viewBtn.style.cursor = 'not-allowed';
+                viewBtn.title = lock.reason === 'attempt_locked'
+                    ? 'This attempt was locked, so only your marks are shown for now.'
+                    : 'You submitted before the test window closed, so only your marks are shown for now.';
+            } else {
+                viewBtn.innerHTML = 'View Questions &amp; Solutions';
+                viewBtn.style.opacity = '';
+                viewBtn.style.cursor = '';
+                viewBtn.title = '';
+            }
+        }
+    }
+
     // Legend values
     const safeDiv = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
     document.getElementById('tsLegCorrect').textContent = correct;
@@ -3034,10 +3064,67 @@ function renderTsPie(correct, wrong, skipped, total, pct) {
     pctEl.setAttribute('fill', accentColor);
 }
 
+/* ══ ANALYSIS LOCK ══════════════════════════════════════════════════════════
+   Single source of truth for "may this student see the question-by-question
+   analysis yet?". The server decides (it owns online_tests.ends_at and sends
+   analysisAvailable / analysisAvailableAt / testEndsAt), but we re-check the
+   end time here too, because:
+     • the student may sit on the screen until the test ends (or opened it from a
+       cached/locally-stored record that predates the flags), and
+     • an attempt with no questions must never fall through to the empty
+       question viewer — it has to show the "unlocks at …" notice instead.
+   Returns { locked, unlockAt, reason }.                                      */
+function _taAnalysisLock(test) {
+    if (!test) return { locked: false, unlockAt: 0, reason: null };
+    // Self-practice / star-quiz attempts are never gated.
+    const isOnline = !!(test.online_test_id && Number.isFinite(Number(test.online_test_id)));
+    if (!isOnline) return { locked: false, unlockAt: 0, reason: null };
+
+    const unlockAt = Number(test.analysisAvailableAt) || Number(test.testEndsAt) || 0;
+    const stillRunning = unlockAt ? Date.now() < unlockAt : false;
+    const attemptLocked = (Number(test.is_locked) || 0) !== 0;
+
+    // Explicit server verdict wins, but only while the end time is still ahead:
+    // once it passes, a stale "false" must not keep the analysis hidden.
+    if (test.analysisAvailable === false && (stillRunning || attemptLocked || !unlockAt)) {
+        return {
+            locked: true,
+            unlockAt,
+            reason: test.analysisLockedReason || (attemptLocked ? 'attempt_locked' : 'test_in_progress'),
+        };
+    }
+    // No verdict (light row, cached record) — fall back to the clock.
+    if (stillRunning) {
+        return { locked: true, unlockAt, reason: attemptLocked ? 'attempt_locked' : 'test_in_progress' };
+    }
+    return { locked: false, unlockAt, reason: null };
+}
+
+/* "29 Aug 2026, 01:50 am" — the moment the analysis opens up. */
+function _taUnlockLabel(unlockAt) {
+    const at = Number(unlockAt) || 0;
+    if (!at) return '';
+    return new Date(at).toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+}
+
 /* Opens the full question viewer from the summary screen */
 async function openTestDetailFromSummary() {
     const idx = window._tdCurrentTestIdx;
     if (idx === undefined) return;
+    // The button already says "locked" in this case; keep the student on the
+    // summary screen and just remind them when it opens up.
+    const test = window._testAnalysisData?.[idx];
+    const lock = _taAnalysisLock(test);
+    if (lock.locked) {
+        const when = _taUnlockLabel(lock.unlockAt);
+        showToast(lock.reason === 'attempt_locked'
+            ? (when ? `🔒 This attempt was locked. Full analysis unlocks on ${when}.` : '🔒 This attempt was locked — only your marks are available.')
+            : (when ? `🔒 Full analysis unlocks on ${when}, once the test time is over.` : '🔒 Full analysis unlocks once the test time is over.'));
+        return;
+    }
     await _openTestDetailInner(idx);
 }
 
@@ -3098,12 +3185,11 @@ async function _openTestDetailInner(idx) {
        has passed — so a student who submits early, or whose attempt got locked
        by strict mode, cannot leak the answer key to classmates who are still
        writing. The score above is always shown. */
-    if (test.analysisAvailable === false) {
-        const unlockAt = Number(test.analysisAvailableAt) || 0;
-        const unlockStr = unlockAt
-            ? new Date(unlockAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-            : '';
-        const wasLocked = test.analysisLockedReason === 'attempt_locked';
+    const _gateLock = _taAnalysisLock(test);
+    if (_gateLock.locked) {
+        const unlockAt = _gateLock.unlockAt;
+        const unlockStr = _taUnlockLabel(unlockAt);
+        const wasLocked = _gateLock.reason === 'attempt_locked';
         const heading = wasLocked ? 'Attempt locked' : 'Analysis not available yet';
         const detail = wasLocked
             ? 'This attempt was locked, so only your marks are shown for now.'
