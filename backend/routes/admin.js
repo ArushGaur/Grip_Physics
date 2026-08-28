@@ -15,7 +15,13 @@ const {
 	ALL_Q, PYQ_TABLE, insertQuestion, findQuestionRowById, updateQuestionRowById,
 	deleteQuestionRowById, deleteQuestionsWhere, updateQuestionsWhere,
 } = require("../utils/questionTables");
-const { normalizeQuestionRow, normalizeQuestion, normalizeStudentRow, parseCorrectIndexesFromQuestion, validateImageRegion } = helpers;
+const {
+	normalizeQuestionRow, normalizeQuestion, normalizeStudentRow,
+	parseCorrectIndexesFromQuestion, validateImageRegion,
+	// Online tests are shuffled per student, so a teacher reviewing an attempt
+	// must see the paper in the order that student saw it.
+	applyQuestionOrder, parseQuestionOrder,
+} = helpers;
 const { uploadQuestionImages } = require("../services/cloudinary");
 // Per-institute feature flags + subject whitelist (set from the developer panel).
 const {
@@ -367,7 +373,7 @@ router.put("/api/admin/question-row/:id", requireAdmin, async (req, res) => {
 	}
 });
 
-// Delete ONE question row by its id — siblings in the
+// Delete ONE question row by its id �� siblings in the
 // same chapter+topic are untouched.
 router.delete("/api/admin/question-row/:id", requireAdmin, async (req, res) => {
 	try {
@@ -881,7 +887,7 @@ router.post("/api/admin/migrate", requireAdmin, async (req, res) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    NEW POWERFUL EXTRACT ROUTE  v2
-   ─────────────────────────────────────────────────────────────────────────────
+   ──────────────────────────────────────────────────────────────────────��──────
    Architecture:
    1. PARALLEL primary extraction  – every image sent to Groq simultaneously
    2. COUNT VERIFICATION           – AI counts visible question numbers per image
@@ -1292,6 +1298,17 @@ router.post("/api/admin/star-quiz/set-code/:chapter/:lecture", requireAdmin, req
 
 
 // ── ADMIN: create / assign an online test ────────────────────────────────────
+/**
+ * Number(x) || fallback silently turns a deliberate 0 into the fallback, which
+ * is why choosing "0 marks for a wrong answer" kept saving as -1. Only fall
+ * back when the value is genuinely missing or not a number.
+ */
+function numOr(value, fallback) {
+	if (value === null || value === undefined || value === "") return fallback;
+	const n = Number(value);
+	return Number.isFinite(n) ? n : fallback;
+}
+
 router.post("/api/admin/online-tests", requireAdmin, requireFeature("onlineTests"), async (req, res) => {
 	try {
 		const { testName, questionKeys, questions, marksCorrect, marksWrong, liveAt, endsAt, durationMinutes, assignedRolls, maxAttempts, isStrict } = req.body || {};
@@ -1316,8 +1333,8 @@ router.post("/api/admin/online-tests", requireAdmin, requireFeature("onlineTests
 				JSON.stringify(keys || []),
 				// questions_json kept for backward-compat — empty if keys provided, else legacy data
 				keys ? "[]" : JSON.stringify(legacyQuestions),
-				Number(marksCorrect) || 4,
-				Number(marksWrong) || -1,
+				numOr(marksCorrect, 4),
+				numOr(marksWrong, -1),
 				Number(liveAt) || now,
 				Number(endsAt) || (now + 7 * 24 * 60 * 60 * 1000),
 				JSON.stringify(Array.isArray(assignedRolls) ? assignedRolls : []),
@@ -1345,8 +1362,8 @@ router.get("/api/admin/online-tests", requireAdmin, requireFeature("onlineTests"
 		res.json(result.rows.map(r => ({
 			id: r.id,
 			testName: r.test_name,
-			marksCorrect: r.marks_correct,
-			marksWrong: r.marks_wrong,
+			marksCorrect: numOr(r.marks_correct, 4),
+			marksWrong: numOr(r.marks_wrong, -1),
 			liveAt: r.live_at,
 			endsAt: r.ends_at,
 			assignedRolls: (() => { try { return JSON.parse(r.assigned_rolls || "[]"); } catch { return []; } })(),
@@ -1382,8 +1399,8 @@ router.put("/api/admin/online-tests/:id", requireAdmin, requireFeature("onlineTe
 		               is_strict = ?`;
 		const args = [
 			String(testName || "Online Test").trim(),
-			Number(marksCorrect) || 4,
-			Number(marksWrong) || -1,
+			numOr(marksCorrect, 4),
+			numOr(marksWrong, -1),
 			Number(liveAt) || Date.now(),
 			Number(endsAt) || (Date.now() + 7 * 24 * 60 * 60 * 1000),
 			JSON.stringify(Array.isArray(assignedRolls) ? assignedRolls : []),
@@ -1620,7 +1637,7 @@ router.get("/api/admin/test-attempt-details/:attemptId", requireAdmin, async (re
 
 		// Fetch test attempt
 		const attemptResult = await db.execute({
-			sql: "SELECT id, mobile, chapter, lecture, topic, correct_count, wrong_count, skipped_count, total_questions, marks_score, max_marks, accuracy_pct, grade, time_taken, scheme, timestamp, student_name, student_class, answers_json, online_test_id, is_locked FROM test_history WHERE id = ? AND institute_id = ? LIMIT 1",
+			sql: "SELECT id, mobile, chapter, lecture, topic, correct_count, wrong_count, skipped_count, total_questions, marks_score, max_marks, accuracy_pct, grade, time_taken, scheme, timestamp, student_name, student_class, answers_json, online_test_id, is_locked, question_order_json FROM test_history WHERE id = ? AND institute_id = ? LIMIT 1",
 			args: [attemptId, instId],
 		});
 
@@ -1646,6 +1663,9 @@ router.get("/api/admin/test-attempt-details/:attemptId", requireAdmin, async (re
 					} else {
 						questions = JSON.parse(r.questions_json || "[]");
 					}
+					// Re-order into the sequence this particular student was served, so
+					// the stored answer indexes point at the right questions.
+					questions = applyQuestionOrder(questions, parseQuestionOrder(attempt.question_order_json));
 				} catch (_) { }
 			}
 		} else {
@@ -1722,13 +1742,126 @@ router.post("/api/admin/test-history/:id/unlock", requireAdmin, async (req, res)
 	}
 });
 
+// ── ADMIN: remove a student ──────────────────────────────────────────────────
+// The :id segment may be either the numeric primary key OR the roll number
+// (the students list in the portal identifies rows by roll number). Passing a
+// roll number like "STU001" through Number() used to produce NaN, which
+// Postgres rejected with: invalid input syntax for type bigint: "NaN".
+// So branch on the shape of the parameter and match the right column.
 router.delete("/api/admin/registered-students/:id", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
-		await db.execute({ sql: "DELETE FROM registered_students WHERE id = ? AND institute_id = ?", args: [Number(req.params.id), instId] });
-		res.json({ success: true });
+		const raw = String(req.params.id || "").trim();
+		if (!raw) return res.status(400).json({ error: "Missing student id" });
+
+		const numericId = /^\d+$/.test(raw) ? Number(raw) : null;
+		const result = numericId !== null
+			? await db.execute({
+				sql: "DELETE FROM registered_students WHERE id = ? AND institute_id = ?",
+				args: [numericId, instId],
+			})
+			: await db.execute({
+				sql: "DELETE FROM registered_students WHERE roll_number = ? AND institute_id = ?",
+				args: [raw, instId],
+			});
+
+		const removed = Number(result?.rowsAffected ?? result?.rowCount ?? 0);
+		if (!removed) return res.status(404).json({ error: "Student not found in this institute" });
+		res.json({ success: true, removed });
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
+	}
+});
+
+// ── ADMIN: edit a student's details ──────────────────────────────────────────
+// Accepts a numeric id or a roll number, same as DELETE above. Only the fields
+// present in the body are written, so a partial edit never blanks the rest.
+// Email is the login identity, so it must stay unique within the institute.
+router.put("/api/admin/registered-students/:id", requireAdmin, requireFeature("studentManagement"), async (req, res) => {
+	try {
+		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
+		const raw = String(req.params.id || "").trim();
+		if (!raw) return res.status(400).json({ error: "Missing student id" });
+
+		const numericId = /^\d+$/.test(raw) ? Number(raw) : null;
+		const findSql = numericId !== null
+			? "SELECT id, roll_number, email FROM registered_students WHERE id = ? AND institute_id = ? LIMIT 1"
+			: "SELECT id, roll_number, email FROM registered_students WHERE roll_number = ? AND institute_id = ? LIMIT 1";
+		const found = await db.execute({ sql: findSql, args: [numericId !== null ? numericId : raw, instId] });
+		const student = found.rows[0];
+		if (!student) return res.status(404).json({ error: "Student not found in this institute" });
+
+		const body = req.body || {};
+		const sets = [];
+		const args = [];
+		const pushIfGiven = (column, value) => { sets.push(`${column} = ?`); args.push(value); };
+
+		if (body.name !== undefined) {
+			const name = String(body.name).trim();
+			if (!name) return res.status(400).json({ error: "Name cannot be empty" });
+			pushIfGiven("name", name);
+		}
+		if (body.className !== undefined) pushIfGiven("class_name", String(body.className).trim().replace(/\s+/g, " "));
+		if (body.section !== undefined) pushIfGiven("section", String(body.section).trim());
+		if (body.mobile !== undefined || body.phone !== undefined) {
+			const digits = String(body.mobile ?? body.phone).replace(/\D/g, "");
+			if (digits && digits.length !== 10) return res.status(400).json({ error: "Mobile number must be 10 digits" });
+			pushIfGiven("phone", digits);
+		}
+		if (body.age !== undefined) pushIfGiven("age", body.age === "" || body.age === null ? null : Number(body.age) || null);
+		if (body.dateOfBirth !== undefined) pushIfGiven("date_of_birth", String(body.dateOfBirth || ""));
+		if (body.email !== undefined) {
+			const email = String(body.email).trim().toLowerCase();
+			if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+				return res.status(400).json({ error: "Please enter a valid email address" });
+			}
+			if (email !== String(student.email || "").toLowerCase()) {
+				const clash = await db.execute({
+					sql: "SELECT id FROM registered_students WHERE LOWER(email) = ? AND institute_id = ? AND id <> ? LIMIT 1",
+					args: [email, instId, student.id],
+				});
+				if (clash.rows.length) return res.status(409).json({ error: "Another student already uses this email" });
+			}
+			pushIfGiven("email", email);
+		}
+
+		if (!sets.length) return res.status(400).json({ error: "Nothing to update" });
+
+		sets.push("updated_at = ?");
+		args.push(Date.now());
+		args.push(student.id, instId);
+
+		await db.execute({
+			sql: `UPDATE registered_students SET ${sets.join(", ")} WHERE id = ? AND institute_id = ?`,
+			args,
+		});
+
+		const after = await db.execute({
+			sql: `SELECT id, roll_number, name, class_name, section, phone, email, age,
+			             date_of_birth, profile_complete, batch_id, updated_at
+			        FROM registered_students WHERE id = ? LIMIT 1`,
+			args: [student.id],
+		});
+		const r = after.rows[0] || {};
+		res.json({
+			success: true,
+			student: {
+				id: r.id,
+				rollNumber: r.roll_number,
+				name: r.name || "",
+				className: r.class_name || "",
+				section: r.section || "",
+				phone: r.phone || "",
+				email: r.email || "",
+				age: r.age || "",
+				dateOfBirth: r.date_of_birth || "",
+				batchId: r.batch_id || null,
+				profileComplete: !!r.profile_complete,
+				updatedAt: r.updated_at,
+			},
+		});
+	} catch (e) {
+		res.status(500).json({ error: e.message || "Failed to update the student" });
 	}
 });
 

@@ -340,8 +340,8 @@ router.get("/api/owner/institutes/:id/online-tests", requireOwner, async (req, r
 		res.json(result.rows.map(r => ({
 			id: r.id,
 			testName: r.test_name,
-			marksCorrect: r.marks_correct,
-			marksWrong: r.marks_wrong,
+			marksCorrect: Number(r.marks_correct),
+			marksWrong: Number(r.marks_wrong),
 			liveAt: r.live_at,
 			endsAt: r.ends_at,
 			questionCount: r.question_count || 0,

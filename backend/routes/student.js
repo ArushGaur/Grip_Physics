@@ -6,7 +6,11 @@ const { rateLimit, resolveStudentInstituteId, sessionInstituteId, getDefaultInst
 const { loadQuestions, refreshCache, rebuildYearIndex, findQuestion, resolveQuestionKeys } = require("../utils/questions");
 // Redis-backed (with in-process LRU in front) cache for shared, read-heavy data.
 const cache = require("../config/cache");
-const { isCorrect, normalizeQuestionRow } = helpers;
+const {
+	isCorrect, normalizeQuestionRow,
+	// Per-student question shuffle + analysis ordering (see utils/helpers.js)
+	questionOrderForStudent, applyQuestionOrder, isValidQuestionOrder, parseQuestionOrder,
+} = helpers;
 const crypto = require("crypto");
 const { sendOtpEmail, activeProvider } = require("../utils/mailer");
 // Per-institute feature flags (set from the developer panel). An institute that
@@ -31,6 +35,57 @@ async function studentFeatureAllowed(instituteId, feature) {
 
 function featureBlocked(res, message) {
 	return res.status(403).json({ error: message, blocked: true });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WHEN MAY A STUDENT SEE THE FULL QUESTION-BY-QUESTION ANALYSIS?
+
+   An institute test is a shared exam window. A student who finishes early (or
+   whose attempt got locked by strict mode) must NOT be able to see the correct
+   answers and solutions while classmates are still writing the paper —
+   otherwise the answer key leaks within minutes.
+
+   Rule:
+     • before online_tests.ends_at  → score only (marks, accuracy, counts)
+     • from  online_tests.ends_at   → full analysis for EVERYONE, including
+                                      students whose attempt is locked
+     • self-practice / star-quiz tests (no online_test_id) → always available
+══════════════════════════════════════════════════════════════════════════ */
+function computeAnalysisGate(onlineTestId, endsAt, isLocked, now = Date.now()) {
+	const testId = Number(onlineTestId);
+	if (!Number.isFinite(testId) || testId <= 0) {
+		return { analysisAvailable: true, analysisAvailableAt: null, analysisLockedReason: null };
+	}
+	const end = Number(endsAt) || 0;
+	const locked = Number(isLocked) || 0;
+	// Test window is over → everybody gets their analysis.
+	if (end && now >= end) {
+		return { analysisAvailable: true, analysisAvailableAt: end, analysisLockedReason: null };
+	}
+	// Legacy rows whose test has been deleted: nothing to protect any more.
+	if (!end && locked === 0) {
+		return { analysisAvailable: true, analysisAvailableAt: null, analysisLockedReason: null };
+	}
+	return {
+		analysisAvailable: false,
+		analysisAvailableAt: end || null,
+		// The student sees a different message for a locked attempt.
+		analysisLockedReason: locked !== 0 ? "attempt_locked" : "test_in_progress",
+	};
+}
+
+/**
+ * Strip everything that would reveal the paper, keeping the score intact.
+ * Mutates and returns the attempt payload.
+ */
+function hideAttemptAnalysis(payload, gate) {
+	payload.questions = [];
+	payload.answers = [];
+	payload.timeSpentJson = [];
+	payload.analysisAvailable = false;
+	payload.analysisAvailableAt = gate.analysisAvailableAt;
+	payload.analysisLockedReason = gate.analysisLockedReason;
+	return payload;
 }
 function genToken() {
     return crypto.randomBytes(32).toString("hex");
@@ -178,6 +233,7 @@ router.post("/api/save-test-result", async (req, res) => {
 			online_test_id,
 			is_locked,
 			timeSpentJson,   // NEW: array of seconds per question, e.g. [12, 45, 8, …]
+			questionOrder,   // NEW: the shuffled order this student actually saw
 		} = req.body || {};
 
 		const compactAnswers = Array.isArray(answers)
@@ -252,13 +308,20 @@ router.post("/api/save-test-result", async (req, res) => {
 			? timeSpentJson.map((t) => Math.max(0, Math.round(Number(t) || 0)))
 			: [];
 
+		// The per-student question order is stored with the attempt. Without it the
+		// analysis screen would line answer #1 up against the test's original
+		// question #1 instead of the one this student actually saw first.
+		const compactOrder = Array.isArray(questionOrder)
+			? questionOrder.map((v) => Number(v)).filter((v) => Number.isInteger(v) && v >= 0)
+			: [];
+
 		await db.execute({
 			sql: `INSERT INTO test_history (
 				mobile, chapter, lecture, topic, correct_count, wrong_count, skipped_count,
 				total_questions, marks_score, max_marks, accuracy_pct, grade, time_taken,
 				scheme, timestamp, student_name, student_class, answers_json, online_test_id,
-				is_locked, institute_id, time_spent_json
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				is_locked, institute_id, time_spent_json, question_order_json
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				mobile,
 				chapter || null,
@@ -282,6 +345,7 @@ router.post("/api/save-test-result", async (req, res) => {
 				Number(is_locked) || 0,
 				instId,
 				JSON.stringify(compactTimeSpent),
+				JSON.stringify(compactOrder),
 			]
 		});
 
@@ -429,6 +493,8 @@ router.get("/api/test-history/:mobile", async (req, res) => {
 				scheme: row.scheme,
 				online_test_id: row.online_test_id,
 				is_locked: row.is_locked,
+				// The order this student saw the paper in (empty = original order).
+				questionOrder: parseQuestionOrder(row.question_order_json),
 				timeSpentJson: (() => { try { return JSON.parse(row.time_spent_json || "[]"); } catch { return []; } })(),
 				questions: questions,
 				answers: (() => {
@@ -504,7 +570,8 @@ router.get("/api/test-history/:mobile", async (req, res) => {
 			try {
 				const placeholders = uniqueTestIds.map(() => "?").join(", ");
 				const batchResult = await db.execute({
-					sql: `SELECT id, question_keys_json, questions_json FROM online_tests WHERE id IN (${placeholders})`,
+					// ends_at decides whether the detailed analysis may be shown yet.
+				sql: `SELECT id, question_keys_json, questions_json, ends_at FROM online_tests WHERE id IN (${placeholders})`,
 					args: uniqueTestIds
 				});
 				for (const r of batchResult.rows) {
@@ -558,6 +625,23 @@ router.get("/api/test-history/:mobile", async (req, res) => {
 			}
 			delete item._raw_row;
 			historyWithQuestions.push(item);
+		}
+
+		// ── Re-order to what the student saw + gate the detailed analysis ─────
+		const nowTs = Date.now();
+		for (const item of historyWithQuestions) {
+			const testRow = testQuestionsCache.get(Number(item.online_test_id));
+			const gate = computeAnalysisGate(item.online_test_id, testRow?.ends_at, item.is_locked, nowTs);
+			if (!gate.analysisAvailable) {
+				hideAttemptAnalysis(item, gate);
+				delete item.questionOrder;
+				continue;
+			}
+			item.questions = applyQuestionOrder(item.questions, item.questionOrder);
+			item.analysisAvailable = true;
+			item.analysisAvailableAt = gate.analysisAvailableAt;
+			item.analysisLockedReason = null;
+			delete item.questionOrder;
 		}
 
 		// If paginated request (?page= or ?limit= provided), return wrapper object
@@ -630,14 +714,16 @@ router.get("/api/test-history/:mobile/attempt/:id", async (req, res) => {
 
 		// Resolve questions for online tests (single test id → at most one lookup)
 		let questions = [];
+		let testEndsAt = 0;
 		if (row.online_test_id && Number.isFinite(Number(row.online_test_id))) {
 			try {
 				const testRes = await db.execute({
-					sql: "SELECT id, question_keys_json, questions_json FROM online_tests WHERE id = ? LIMIT 1",
+					sql: "SELECT id, question_keys_json, questions_json, ends_at FROM online_tests WHERE id = ? LIMIT 1",
 					args: [Number(row.online_test_id)]
 				});
 				const testRow = testRes.rows[0];
 				if (testRow) {
+					testEndsAt = Number(testRow.ends_at) || 0;
 					const keys = JSON.parse(testRow.question_keys_json || "[]");
 					if (Array.isArray(keys) && keys.length) {
 						const resolved = await resolveQuestionKeys(keys);
@@ -667,6 +753,33 @@ router.get("/api/test-history/:mobile/attempt/:id", async (req, res) => {
 		let timeSpentJson = [];
 		try { timeSpentJson = JSON.parse(row.time_spent_json || "[]"); } catch { timeSpentJson = []; }
 
+		// ── Analysis gate ────────────────────────────────────────────────────
+		// Score is always returned; the paper, the student's answers and the
+		// per-question timings are withheld until the test window closes.
+		const gate = computeAnalysisGate(row.online_test_id, testEndsAt, row.is_locked);
+		if (!gate.analysisAvailable) {
+			return res.json(hideAttemptAnalysis({
+				id: row.id,
+				timestamp: row.timestamp,
+				student: { name: row.student_name, roll: mobile, class: row.student_class },
+				test: { chapter: row.chapter || "", lecture: row.lecture, topic: row.topic || "" },
+				result: {
+					correct: row.correct_count,
+					wrong: row.wrong_count,
+					skipped: row.skipped_count,
+					total: row.total_questions,
+					marksScore: row.marks_score,
+					maxMarks: row.max_marks,
+					pct: row.accuracy_pct,
+					grade: row.grade,
+					timeTaken: row.time_taken
+				},
+				scheme: row.scheme,
+				online_test_id: row.online_test_id,
+				is_locked: row.is_locked,
+			}, gate));
+		}
+
 		return res.json({
 			id: row.id,
 			timestamp: row.timestamp,
@@ -687,8 +800,12 @@ router.get("/api/test-history/:mobile/attempt/:id", async (req, res) => {
 			online_test_id: row.online_test_id,
 			is_locked: row.is_locked,
 			timeSpentJson,
-			questions,
-			answers
+			// Shown in the order this student actually attempted them.
+			questions: applyQuestionOrder(questions, parseQuestionOrder(row.question_order_json)),
+			answers,
+			analysisAvailable: true,
+			analysisAvailableAt: gate.analysisAvailableAt,
+			analysisLockedReason: null,
 		});
 	} catch (e) {
 		console.error("GET /api/test-history/:mobile/attempt/:id error:", e.message);
@@ -941,8 +1058,8 @@ router.get("/api/student/online-tests", async (req, res) => {
 				return {
 					id: r.id,
 					testName: r.test_name,
-					marksCorrect: r.marks_correct,
-					marksWrong: r.marks_wrong,
+					marksCorrect: Number(r.marks_correct),
+					marksWrong: Number(r.marks_wrong),
 					liveAt: r.live_at,
 					endsAt: r.ends_at,
 					isUpcoming: r.live_at > now,
@@ -1018,6 +1135,12 @@ router.get("/api/student/online-tests/:id/questions", async (req, res) => {
 			);
 		} catch { questions = []; }
 
+		// ── Per-student question order (anti-cheating) ────────────────────────
+		// All 30 students of a batch get the SAME questions, but each one gets
+		// them in a different sequence, derived from (testId + their roll number).
+		// Deterministic, so a resumed attempt shows the same paper again.
+		let questionOrder = questionOrderForStudent(testId, roll, questions.length);
+
 		// Server-side maxAttempts enforcement — count only non-locked normal submissions
 		const maxAttempts = Number(r.max_attempts) || 1;
 		if (maxAttempts > 0) {
@@ -1037,7 +1160,7 @@ router.get("/api/student/online-tests/:id/questions", async (req, res) => {
 		let existingAttempt = null;
 		try {
 			const prevResult = await db.execute({
-				sql: "SELECT id, answers_json, time_spent_json, time_taken, is_locked FROM test_history WHERE mobile = ? AND online_test_id = ? ORDER BY timestamp DESC LIMIT 1",
+				sql: "SELECT id, answers_json, time_spent_json, time_taken, is_locked, question_order_json FROM test_history WHERE mobile = ? AND online_test_id = ? ORDER BY timestamp DESC LIMIT 1",
 				args: [roll, testId],
 			});
 			if (prevResult.rows.length) {
@@ -1068,6 +1191,10 @@ router.get("/api/student/online-tests/:id/questions", async (req, res) => {
 					// per-question timings existed, so resumed tests never restart at full time.
 					const elapsedSec = Math.max(0, Math.round(spentFromJson || Number(prev.time_taken) || 0));
 					const totalSec = (Number(r.duration_minutes) || 90) * 60;
+					// Resume with the EXACT order this student saw the first time, so the
+					// answers saved earlier still point at the same questions.
+					const savedOrder = parseQuestionOrder(prev.question_order_json);
+					if (isValidQuestionOrder(savedOrder, questions.length)) questionOrder = savedOrder;
 					existingAttempt = {
 						attemptId: prev.id,
 						isLocked: prev.is_locked,
@@ -1083,12 +1210,18 @@ router.get("/api/student/online-tests/:id/questions", async (req, res) => {
 		res.json({
 			id: r.id,
 			testName: r.test_name,
-			marksCorrect: r.marks_correct,
-			marksWrong: r.marks_wrong,
+			marksCorrect: Number(r.marks_correct),
+			marksWrong: Number(r.marks_wrong),
 			durationMinutes: r.duration_minutes || 90,
 			maxAttempts: r.max_attempts || 1,
 			isStrict: !!(r.is_strict),
-			questions,
+			liveAt: Number(r.live_at) || null,
+			endsAt: Number(r.ends_at) || null,
+			// Shuffled for this student. `applyQuestionOrder` returns a new array, so
+			// the cached shared question list is never mutated.
+			questions: applyQuestionOrder(questions, questionOrder),
+			// The client sends this back on submit so the attempt records the order.
+			questionOrder,
 			existingAttempt,
 		});
 	} catch (e) {
@@ -1367,7 +1500,7 @@ router.get("/api/student/me", async (req, res) => {
 	}
 });
 
-// ── STUDENT: update own profile ──────────────────────────────────────────────
+// ── STUDENT: update own profile ───────────────────────────────────────���──────
 router.post("/api/student/update-profile", async (req, res) => {
 	try {
 		const row = await getStudentFromToken(req);
@@ -1663,6 +1796,30 @@ router.post("/api/student/request-otp", rateLimit(60 * 1000, 5), async (req, res
 				console.error("[otp] \u26a0 " + setupHint);
 			}
 
+			// Escape hatch while the email provider is still being set up (e.g.
+			// Resend sandbox mode, which refuses every recipient except the account
+			// owner). With OTP_ALLOW_UNSENT_CODE=1 the code is handed back to the
+			// portal - exactly like the no-provider-configured path above - so real
+			// students can still sign in instead of being hard-blocked.
+			// TESTING ONLY: anyone who knows a student email can then log in as them,
+			// so unset this the moment your sending domain is verified.
+			if (String(process.env.OTP_ALLOW_UNSENT_CODE || "") === "1") {
+				console.warn(
+					`[otp] \u26a0 OTP_ALLOW_UNSENT_CODE=1 \u2014 delivery failed, returning the code to the portal for ${masked}. ` +
+					"Disable this once email works."
+				);
+				return res.json({
+					success: true,
+					sent: false,
+					emailConfigured: false,
+					provider,
+					devCode: code,
+					maskedEmail: masked,
+					expiresInSec: OTP_TTL_MS / 1000,
+					deliveryError: friendly,
+				});
+			}
+
 			return res.status(502).json({
 				error: friendly,
 				setupHint: setupHint || undefined,
@@ -1677,7 +1834,7 @@ router.post("/api/student/request-otp", rateLimit(60 * 1000, 5), async (req, res
 	}
 });
 
-// ── STUDENT: verify the code and log in ───────────────────────────────
+// ── STUDENT: verify the code and log in ────────���──────────────────────
 router.post("/api/student/verify-otp", rateLimit(60 * 1000, 15), async (req, res) => {
 	try {
 		const email = normalizeEmail(req.body?.email);

@@ -73,6 +73,12 @@ let _jeeElapsedSec = 0;
 let _jeePriorElapsedSec = 0;
 let _jeeScheme = true;      // true = +4/-1, false = +1/0
 let _jeeOnlineScheme = false; // true when online test has custom scheme
+// Per-student question shuffle: the server serves an online test's questions in
+// a different order to every student. We keep that order (array of the test's
+// ORIGINAL question indexes) and send it back on submit, so the analysis screen
+// can later line the saved answers up with the questions this student saw.
+let _jeeQuestionOrder = [];
+let _jeeTestEndsAt = 0; // online_tests.ends_at (ms) — detailed analysis unlocks then
 let _jeeOnlineMarksCorrect = 4;
 let _jeeOnlineMarksWrong = -1;
 let _jeeReviewItems = [];   // cached for filter
@@ -136,11 +142,19 @@ async function openJeePortal(chapter, lecture, meta) {
             }
             qData = await qRes.json();
             questions = qData.questions || [];
+            // Order is already applied to `questions` by the server; store it so
+            // the submitted attempt records which sequence was shown.
+            _jeeQuestionOrder = Array.isArray(qData.questionOrder) ? qData.questionOrder : [];
+            _jeeTestEndsAt = Number(qData.endsAt) || 0;
             topicStr = qData.testName || meta.testName || meta.topic || '';
             // Use marks from the fetched data (authoritative)
-            if (typeof qData.marksCorrect === 'number') {
-                _jeeOnlineMarksCorrect = qData.marksCorrect;
-                _jeeOnlineMarksWrong = qData.marksWrong != null ? qData.marksWrong : 0;
+            // Postgres NUMERIC can arrive as a string ("4", "0"), so coerce
+            // instead of testing typeof - and keep a 0 penalty as 0.
+            const _mc = Number(qData.marksCorrect);
+            if (qData.marksCorrect != null && Number.isFinite(_mc)) {
+                _jeeOnlineMarksCorrect = _mc;
+                const _mw = Number(qData.marksWrong);
+                _jeeOnlineMarksWrong = qData.marksWrong != null && Number.isFinite(_mw) ? _mw : 0;
                 _jeeOnlineScheme = true;
             } else {
                 _jeeOnlineScheme = false;
@@ -167,6 +181,9 @@ async function openJeePortal(chapter, lecture, meta) {
     } else {
         // Star-quiz test: fetch from server
         _jeeOnlineScheme = false;
+        // Self-practice tests are not shuffled and have no shared end time.
+        _jeeQuestionOrder = [];
+        _jeeTestEndsAt = 0;
         let res;
         try {
             showStartLoader(meta || { chapter, lecture, topic: '' });
@@ -1032,7 +1049,9 @@ async function jeeDoSubmit() {
                 online_test_id: _jeeTestMeta.onlineTestId || null,
                 is_locked: window._jeeStrictLocked ? 1 : 0,
                 // Store total elapsed seconds so unlock can restore remaining time
-                timeSpentJson: [_jeeElapsedSec]
+                timeSpentJson: [_jeeElapsedSec],
+                // The shuffled order this student was served (empty for practice tests)
+                questionOrder: Array.isArray(_jeeQuestionOrder) ? _jeeQuestionOrder : []
             };
             const saveResp = await fetch(`${API_BASE}/api/save-test-result`, {
                 method: 'POST',
@@ -1088,6 +1107,24 @@ async function jeeDoSubmit() {
             questionImage: null // omit large images to keep localStorage small
         }))
     };
+
+    /* ══ Don't cache the paper locally while the test window is still open ══
+       The server already withholds the analysis until online_tests.ends_at, so
+       keeping the questions + answers in localStorage would be a way around it
+       for a student who submits early or gets locked out by strict mode. Store
+       the score only; the full analysis is fetched from the server afterwards. */
+    const _isOnlineAttempt = !!(_jeeTestMeta && _jeeTestMeta.onlineTestId);
+    const _analysisStillLocked = _isOnlineAttempt && (
+        window._jeeStrictLocked ? true : (_jeeTestEndsAt ? Date.now() < _jeeTestEndsAt : false)
+    );
+    if (_analysisStillLocked) {
+        attemptRecord.questions = [];
+        attemptRecord.answers = [];
+        attemptRecord.analysisAvailable = false;
+        attemptRecord.analysisAvailableAt = _jeeTestEndsAt || null;
+        attemptRecord.analysisLockedReason = window._jeeStrictLocked ? 'attempt_locked' : 'test_in_progress';
+    }
+
     history.unshift(attemptRecord);
     if (history.length > 50) history = history.slice(0, 50); // keep last 50
     localStorage.setItem(historyKey, JSON.stringify(history));
@@ -3054,6 +3091,42 @@ async function _openTestDetailInner(idx) {
     if (ls) ls.textContent = `Skipped (${s})`;
 
     const questionsContainer = document.getElementById('testDetailQuestions');
+
+    /* ══ ANALYSIS GATE ══════════════════════════════════════════════════════
+       For institute (online) tests the server withholds the questions, the
+       student's answers and the per-question timings until the test's end time
+       has passed — so a student who submits early, or whose attempt got locked
+       by strict mode, cannot leak the answer key to classmates who are still
+       writing. The score above is always shown. */
+    if (test.analysisAvailable === false) {
+        const unlockAt = Number(test.analysisAvailableAt) || 0;
+        const unlockStr = unlockAt
+            ? new Date(unlockAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+            : '';
+        const wasLocked = test.analysisLockedReason === 'attempt_locked';
+        const heading = wasLocked ? 'Attempt locked' : 'Analysis not available yet';
+        const detail = wasLocked
+            ? 'This attempt was locked, so only your marks are shown for now.'
+            : 'You submitted before the test window closed, so only your marks are shown for now.';
+        const viewer = document.getElementById('tdQuestionViewer');
+        if (viewer) viewer.innerHTML = '';
+        if (questionsContainer) {
+            questionsContainer.innerHTML = `
+                <div style="text-align:center;padding:28px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px">
+                    <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+                    <div style="font-weight:700;margin-bottom:6px">${heading}</div>
+                    <div style="color:var(--text-faint);font-size:0.85rem;line-height:1.5">
+                        ${detail}<br>
+                        The full question-by-question analysis unlocks for everyone
+                        ${unlockStr ? `on <b>${escHtml(unlockStr)}</b>` : 'once the test time is over'}.
+                    </div>
+                </div>`;
+        }
+        const qLabelLocked = document.getElementById('tdQuestionsLabel');
+        if (qLabelLocked) qLabelLocked.textContent = 'RESULT ONLY';
+        window._tdQuestions = [];
+        return;
+    }
     const qLabel = null; // Legacy — kept for fallback paths; primary UI uses split-panel now
     // Reset state
     window._tdQuestions = [];

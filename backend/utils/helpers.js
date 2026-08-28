@@ -601,8 +601,111 @@ function validatePasswordComplexity(password) {
 	return hasLetter && hasDigit && hasSpecial;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   PER-STUDENT QUESTION SHUFFLE (anti-cheating)
+
+   Every student assigned to an online test gets the SAME questions but in a
+   DIFFERENT order, so two students sitting next to each other never see the
+   same question at the same position.
+
+   The order is derived deterministically from (testId + rollNumber), so:
+     • the same student always gets the same order (safe resume after unlock)
+     • no extra DB write is needed to *generate* it
+   The order actually used is still stored on the attempt row
+   (test_history.question_order_json) so analysis keeps working even if the
+   teacher later edits the test's question list, and so attempts saved before
+   this feature existed keep their original (unshuffled) order.
+══════════════════════════════════════════════════════════════════════════ */
+
+// Small, fast, deterministic 32-bit string hash (FNV-1a).
+function _seedFromString(str) {
+	let h = 2166136261 >>> 0;
+	const s = String(str == null ? "" : str);
+	for (let i = 0; i < s.length; i++) {
+		h ^= s.charCodeAt(i);
+		h = Math.imul(h, 16777619) >>> 0;
+	}
+	return h >>> 0;
+}
+
+// mulberry32 PRNG — tiny, seedable, good enough for shuffling a question paper.
+function _mulberry32(seed) {
+	let a = seed >>> 0;
+	return function () {
+		a = (a + 0x6d2b79f5) >>> 0;
+		let t = a;
+		t = Math.imul(t ^ (t >>> 15), t | 1);
+		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+/**
+ * Build the question order for one student.
+ *
+ * @param {string|number} testId  online_tests.id
+ * @param {string}        roll    the student's roll number
+ * @param {number}        count   how many questions the test has
+ * @returns {number[]} array of ORIGINAL indexes, in the order this student
+ *                     should see them. e.g. [3, 0, 2, 1] means the student's
+ *                     Q1 is the test's original question #4.
+ */
+function questionOrderForStudent(testId, roll, count) {
+	const n = Math.max(0, Math.floor(Number(count) || 0));
+	const order = Array.from({ length: n }, (_, i) => i);
+	if (n < 2) return order;
+	const rand = _mulberry32(_seedFromString(`${testId}::${roll}`));
+	// Fisher-Yates, driven by the seeded PRNG.
+	for (let i = n - 1; i > 0; i--) {
+		const j = Math.floor(rand() * (i + 1));
+		[order[i], order[j]] = [order[j], order[i]];
+	}
+	return order;
+}
+
+/**
+ * Is `order` a usable permutation for a list of `count` items?
+ * Guards against a teacher adding/removing questions after students submitted.
+ */
+function isValidQuestionOrder(order, count) {
+	if (!Array.isArray(order) || order.length !== count) return false;
+	const seen = new Set();
+	for (const v of order) {
+		const n = Number(v);
+		if (!Number.isInteger(n) || n < 0 || n >= count || seen.has(n)) return false;
+		seen.add(n);
+	}
+	return true;
+}
+
+/**
+ * Reorder a question list into the order a student actually saw.
+ * Returns the list untouched when the order is missing or doesn't fit —
+ * that is exactly the legacy / pre-shuffle case.
+ */
+function applyQuestionOrder(questions, order) {
+	if (!Array.isArray(questions) || !questions.length) return questions || [];
+	if (!isValidQuestionOrder(order, questions.length)) return questions;
+	return order.map((originalIdx) => questions[Number(originalIdx)]);
+}
+
+/** Safely parse a stored question_order_json value into an array. */
+function parseQuestionOrder(raw) {
+	if (Array.isArray(raw)) return raw.map(Number).filter(Number.isFinite);
+	try {
+		const parsed = JSON.parse(raw || "[]");
+		return Array.isArray(parsed) ? parsed.map(Number).filter(Number.isFinite) : [];
+	} catch {
+		return [];
+	}
+}
+
 module.exports = {
 	clamp,
+	questionOrderForStudent,
+	isValidQuestionOrder,
+	applyQuestionOrder,
+	parseQuestionOrder,
 	getMime,
 	toImgPart,
 	cleanJson,

@@ -397,8 +397,14 @@ async function assignOnlineTest() {
         return;
     }
 
-    const marksCorrect = parseFloat(document.getElementById('ot-marks-correct')?.value) || 4;
-    const marksWrong = parseFloat(document.getElementById('ot-marks-wrong')?.value) || -1;
+    // A wrong-answer penalty of 0 is a legitimate choice, so never let `|| -1`
+    // swallow it - fall back only when the field is blank or not a number.
+    const _otNum = (id, fallback) => {
+        const n = parseFloat(document.getElementById(id)?.value);
+        return Number.isFinite(n) ? n : fallback;
+    };
+    const marksCorrect = _otNum('ot-marks-correct', 4);
+    const marksWrong = _otNum('ot-marks-wrong', -1);
     const liveAtVal = document.getElementById('ot-live-at')?.value;
     const endsAtVal = document.getElementById('ot-ends-at')?.value;
     const durationMinutes = parseInt(document.getElementById('ot-duration')?.value, 10) || 90;

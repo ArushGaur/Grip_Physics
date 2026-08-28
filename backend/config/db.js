@@ -262,7 +262,7 @@ async function initDB(TEACHER_PASSCODE, hashPasscode) {
 		`CREATE TABLE IF NOT EXISTS attempts (id BIGSERIAL PRIMARY KEY, mobile TEXT NOT NULL, chapter TEXT, lecture TEXT NOT NULL, time BIGINT DEFAULT 0, institute_id BIGINT DEFAULT NULL)`,
 		`CREATE TABLE IF NOT EXISTS sessions (sid TEXT PRIMARY KEY, data TEXT NOT NULL, expires BIGINT NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS star_quiz_questions (id BIGSERIAL PRIMARY KEY, chapter TEXT NOT NULL, lecture TEXT NOT NULL, topic TEXT DEFAULT '', questions_json TEXT NOT NULL DEFAULT '[]', updated_at BIGINT DEFAULT 0, access_code TEXT DEFAULT NULL)`,
-		`CREATE TABLE IF NOT EXISTS test_history (id BIGSERIAL PRIMARY KEY, mobile TEXT NOT NULL DEFAULT '', chapter TEXT, lecture TEXT NOT NULL DEFAULT '', topic TEXT DEFAULT '', correct_count INTEGER DEFAULT 0, wrong_count INTEGER DEFAULT 0, skipped_count INTEGER DEFAULT 0, total_questions INTEGER DEFAULT 0, marks_score INTEGER DEFAULT 0, max_marks INTEGER DEFAULT 0, accuracy_pct INTEGER DEFAULT 0, grade TEXT DEFAULT '', time_taken INTEGER DEFAULT 0, scheme TEXT DEFAULT '+1/0', timestamp BIGINT DEFAULT 0, student_name TEXT DEFAULT '', student_class TEXT DEFAULT '', answers_json TEXT DEFAULT '[]', questions_json TEXT DEFAULT '[]', online_test_id BIGINT DEFAULT NULL, is_locked INTEGER DEFAULT 0, institute_id BIGINT DEFAULT NULL, time_spent_json TEXT DEFAULT '[]')`,
+		`CREATE TABLE IF NOT EXISTS test_history (id BIGSERIAL PRIMARY KEY, mobile TEXT NOT NULL DEFAULT '', chapter TEXT, lecture TEXT NOT NULL DEFAULT '', topic TEXT DEFAULT '', correct_count INTEGER DEFAULT 0, wrong_count INTEGER DEFAULT 0, skipped_count INTEGER DEFAULT 0, total_questions INTEGER DEFAULT 0, marks_score INTEGER DEFAULT 0, max_marks INTEGER DEFAULT 0, accuracy_pct INTEGER DEFAULT 0, grade TEXT DEFAULT '', time_taken INTEGER DEFAULT 0, scheme TEXT DEFAULT '+1/0', timestamp BIGINT DEFAULT 0, student_name TEXT DEFAULT '', student_class TEXT DEFAULT '', answers_json TEXT DEFAULT '[]', questions_json TEXT DEFAULT '[]', online_test_id BIGINT DEFAULT NULL, is_locked INTEGER DEFAULT 0, institute_id BIGINT DEFAULT NULL, time_spent_json TEXT DEFAULT '[]', question_order_json TEXT DEFAULT '[]')`,
 		`CREATE INDEX IF NOT EXISTS idx_test_history_mobile ON test_history(mobile)`,
 		`CREATE INDEX IF NOT EXISTS idx_test_history_mobile_timestamp ON test_history(mobile, timestamp DESC)`,
 		`CREATE TABLE IF NOT EXISTS student_stats (mobile TEXT PRIMARY KEY, tests_completed INTEGER DEFAULT 0, avg_pct INTEGER DEFAULT 0, day_streak INTEGER DEFAULT 0, last_test BIGINT DEFAULT 0, updated_at BIGINT DEFAULT 0)`,
@@ -306,6 +306,13 @@ async function initDB(TEACHER_PASSCODE, hashPasscode) {
 		`ALTER TABLE registered_students ADD COLUMN IF NOT EXISTS section TEXT DEFAULT ''`,
 		`ALTER TABLE student_requests ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''`,
 		`ALTER TABLE student_requests ADD COLUMN IF NOT EXISTS section TEXT DEFAULT ''`,
+
+		// ── Per-student question order (anti-cheating shuffle) ───────────────
+		// Online tests are served to each student in a different question order.
+		// The order actually shown is stored on the attempt so the analysis screen
+		// can line the stored answers up with the right questions. Rows created
+		// before this feature keep '[]' = original, unshuffled order.
+		`ALTER TABLE test_history ADD COLUMN IF NOT EXISTS question_order_json TEXT DEFAULT '[]'`,
 
 		// ── Email login identity ────────────────────────────────────
 		// Case-insensitive and scoped to the institute: the same address can exist

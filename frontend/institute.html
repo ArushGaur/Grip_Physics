@@ -8897,6 +8897,61 @@
         </div>
     </div>
 
+    <!-- ══ EDIT STUDENT MODAL ══════════════════════════════════════════════
+         Same fields as Add Student, minus the roll number: that is minted by
+         the server and is what attendance, results and sessions join on, so it
+         is shown read-only. -->
+    <div class="modal-overlay" id="edit-student-overlay">
+        <div class="modal">
+            <div class="modal-head">
+                <div>
+                    <h2>✎ Edit Student</h2>
+                    <p>Update the student's details. Changing the email changes where their sign-in code is sent.</p>
+                </div>
+                <button class="modal-close" onclick="closeEditStudent()">✕</button>
+            </div>
+            <div class="form-grid">
+                <div class="form-field full">
+                    <label>Roll Number (cannot be changed)</label>
+                    <input id="es-roll" type="text" class="mono" readonly disabled>
+                </div>
+                <div class="form-field full">
+                    <label>Student Name</label>
+                    <input id="es-name" type="text" placeholder="e.g. Aarav Sharma">
+                </div>
+                <div class="form-field">
+                    <label>Class</label>
+                    <input id="es-class" type="text" list="es-class-list" placeholder="e.g. 11" autocomplete="off"
+                        spellcheck="false">
+                    <datalist id="es-class-list"></datalist>
+                </div>
+                <div class="form-field">
+                    <label>Section</label>
+                    <input id="es-section" type="text" list="es-section-list" placeholder="e.g. A" autocomplete="off"
+                        spellcheck="false">
+                    <datalist id="es-section-list"></datalist>
+                </div>
+                <div class="form-field">
+                    <label>Mobile Number</label>
+                    <input id="es-mobile" type="tel" placeholder="e.g. 9876543210" maxlength="14">
+                </div>
+                <div class="form-field">
+                    <label>Age</label>
+                    <input id="es-age" type="number" min="3" max="99" placeholder="optional">
+                </div>
+                <div class="form-field full">
+                    <label>Email Address</label>
+                    <input id="es-email" type="email" placeholder="e.g. aarav@gmail.com" autocomplete="off"
+                        spellcheck="false">
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="ghost-btn" onclick="closeEditStudent()">Cancel</button>
+                <button class="primary-btn" onclick="saveEditStudent()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ══ AUTO-GENERATE WIZARD MODAL ══ -->
     <div class="modal-overlay" id="wiz-overlay">
         <div class="modal wiz">
@@ -10516,6 +10571,9 @@
         });
         document.getElementById('add-student-overlay').addEventListener('click', function (e) {
             if (e.target === this) closeAddStudent();
+        });
+        document.getElementById('edit-student-overlay').addEventListener('click', function (e) {
+            if (e.target === this && typeof closeEditStudent === 'function') closeEditStudent();
         });
 
         /* ══════════════════════════════════════════════════════
@@ -12743,7 +12801,7 @@
                     <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">${esc(s.class_name || '—')} — ${esc(s.batch_name || '—')}</span></div>
                     <div class="stu-card-kv"><span class="k">Roll No.</span><span class="v mono">${esc(s.roll_number || '')}</span></div>
                     <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">${esc(s.mobile || '—')}</span></div>
-                    <div class="ecard-foot"><span class="ecard-sub">${esc(s.email || '')}</span><button class="row-action" onclick="__inst.removeStudent('${esc(s.roll_number || s.id)}')">Remove</button></div>
+                    <div class="ecard-foot"><span class="ecard-sub">${esc(s.email || '')}</span><span style="display:flex;gap:6px"><button class="row-action" onclick="__inst.editStudent('${esc(s.roll_number || s.id)}')">Edit</button><button class="row-action" onclick="__inst.removeStudent('${esc(s.roll_number || s.id)}')">Remove</button></span></div>
                 </article>`;
                 }).join('') : '<div class="empty-state" style="grid-column:1/-1"><span class="es-ico">👥</span>No students in this section yet. Tap ＋ Add Student to add one.</div>';
                 if (wrap) wrap.innerHTML = html;
@@ -12769,7 +12827,7 @@
                             <td class="mono">${esc(s.mobile || '\u2014')}</td>
                             <td class="mono" style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.email || '')}">${esc(s.email || '\u2014')}</td>
                             <td>${pill}</td>
-                            <td><button class="row-action" onclick="__inst.removeStudent('${esc(s.roll_number || s.id)}')">Remove</button></td>
+                            <td style="white-space:nowrap"><button class="row-action" onclick="__inst.editStudent('${esc(s.roll_number || s.id)}')">Edit</button> <button class="row-action" onclick="__inst.removeStudent('${esc(s.roll_number || s.id)}')">Remove</button></td>
                         </tr>`;
                         }).join('');
                         tblWrap.innerHTML = `<table class="data-table">
@@ -12786,6 +12844,86 @@
                 const stat = document.getElementById('sv-stat-reg'); if (stat) stat.textContent = students.length;
                 const show = document.getElementById('sv-stat-show'); if (show) show.textContent = students.length;
             }
+
+            /* ══════════════════════ EDIT STUDENT ══════════════════════
+               `key` is whatever the row was rendered with — a roll number, or
+               the numeric id as a fallback. The backend accepts either. */
+            function _findStudentByKey(key) {
+                const k = String(key);
+                return (State.students || []).find(s => String(s.roll_number) === k || String(s.id) === k) || null;
+            }
+
+            function _fillStudentDatalist(id, values) {
+                const dl = document.getElementById(id);
+                if (!dl) return;
+                const uniq = [...new Set(values.filter(v => String(v || '').trim()))].sort();
+                dl.innerHTML = uniq.map(v => `<option value="${esc(v)}"></option>`).join('');
+            }
+
+            let _editingStudentKey = null;
+
+            function editStudent(key) {
+                const s = _findStudentByKey(key);
+                if (!s) { toast('Could not find that student'); return; }
+                _editingStudentKey = s.roll_number || s.id;
+
+                const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+                set('es-roll', s.roll_number || '');
+                set('es-name', s.name || '');
+                set('es-class', s.class_name || '');
+                set('es-section', s.section || s.batch_name || '');
+                set('es-mobile', s.mobile || '');
+                set('es-age', s.age || '');
+                set('es-email', s.email || '');
+
+                // Offer the classes/sections this institute already uses.
+                _fillStudentDatalist('es-class-list', [
+                    ...(State.classes || []).map(c => c.name),
+                    ...(State.students || []).map(x => x.class_name),
+                ]);
+                _fillStudentDatalist('es-section-list', (State.students || []).map(x => x.section || x.batch_name));
+
+                const ov = document.getElementById('edit-student-overlay');
+                if (ov) ov.classList.add('open');
+            }
+
+            function closeEditStudent() {
+                _editingStudentKey = null;
+                const ov = document.getElementById('edit-student-overlay');
+                if (ov) ov.classList.remove('open');
+            }
+
+            async function saveEditStudent() {
+                if (!_editingStudentKey) return;
+                const val = id => String((document.getElementById(id) || {}).value || '').trim();
+                const name = val('es-name');
+                const cls = val('es-class').replace(/\s+/g, ' ');
+                const section = (typeof secBare === 'function' ? secBare(val('es-section')) : val('es-section'));
+                const mobile = val('es-mobile').replace(/\D/g, '');
+                const email = val('es-email').toLowerCase();
+                const age = val('es-age');
+
+                if (!name) { toast('Student name is required'); return; }
+                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { toast('Please enter a valid email address'); return; }
+                if (mobile && mobile.length !== 10) { toast('Mobile number must be 10 digits'); return; }
+
+                try {
+                    await api(`/api/admin/registered-students/${encodeURIComponent(_editingStudentKey)}`, {
+                        method: 'PUT',
+                        body: { name, className: cls, section, mobile, email, age },
+                    });
+                    if (cls && section && typeof rememberClassSection === 'function') rememberClassSection(cls, section);
+                    toast('Student details updated');
+                    closeEditStudent();
+                    await loadStudents();
+                    if (State.currentBatchId) renderStudentList(studentsInBatch(State.currentBatchId));
+                    else renderStudentList(State.students);
+                    renderClassesGrids(); renderDashboard();
+                } catch (e) { toast(e.message || 'Failed to update the student'); }
+            }
+
+            window.closeEditStudent = closeEditStudent;
+            window.saveEditStudent = saveEditStudent;
 
             async function removeStudent(roll) {
                 if (!confirm('Remove this student?')) return;
@@ -14832,7 +14970,7 @@
                 openSubject, openChapterView, openClassSections, openClassGroup, openGroupSection, openSectionClass, openStuStats, openBatch, openAllStudents, openUnassigned,
                 openStudentSections, openSectionKey,
                 openStudentStats: (k) => { if (typeof window.openStudentStats === 'function') window.openStudentStats(k); },
-                cycleAttendance, openAttemptDetails, removeStudent, unlockAttempt,
+                cycleAttendance, openAttemptDetails, removeStudent, editStudent, unlockAttempt,
                 openTestReport, editTestFromCard, openEditTest, toggleEditStudent, vqSel,
                 openAttStatsReal: (r) => { if (typeof window.openAttStatsReal === "function") window.openAttStatsReal(r); },
             };

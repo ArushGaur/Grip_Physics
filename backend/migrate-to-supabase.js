@@ -164,7 +164,7 @@ async function createSchema() {
 	await safe(`CREATE TABLE IF NOT EXISTS star_quiz_questions (id BIGSERIAL PRIMARY KEY, chapter TEXT NOT NULL, lecture TEXT NOT NULL, topic TEXT DEFAULT '', questions_json TEXT NOT NULL DEFAULT '[]', updated_at BIGINT DEFAULT 0, access_code TEXT DEFAULT NULL)`);
 	await safe(`CREATE INDEX IF NOT EXISTS idx_sqq_chapter_lecture ON star_quiz_questions(chapter, lecture)`);
 
-	await safe(`CREATE TABLE IF NOT EXISTS test_history (id BIGSERIAL PRIMARY KEY, mobile TEXT NOT NULL DEFAULT '', chapter TEXT, lecture TEXT NOT NULL DEFAULT '', topic TEXT DEFAULT '', correct_count INTEGER DEFAULT 0, wrong_count INTEGER DEFAULT 0, skipped_count INTEGER DEFAULT 0, total_questions INTEGER DEFAULT 0, marks_score INTEGER DEFAULT 0, max_marks INTEGER DEFAULT 0, accuracy_pct INTEGER DEFAULT 0, grade TEXT DEFAULT '', time_taken INTEGER DEFAULT 0, scheme TEXT DEFAULT '+1/0', timestamp BIGINT DEFAULT 0, student_name TEXT DEFAULT '', student_class TEXT DEFAULT '', answers_json TEXT DEFAULT '[]', questions_json TEXT DEFAULT '[]', online_test_id BIGINT DEFAULT NULL, is_locked INTEGER DEFAULT 0, institute_id BIGINT DEFAULT NULL, time_spent_json TEXT DEFAULT '[]')`);
+	await safe(`CREATE TABLE IF NOT EXISTS test_history (id BIGSERIAL PRIMARY KEY, mobile TEXT NOT NULL DEFAULT '', chapter TEXT, lecture TEXT NOT NULL DEFAULT '', topic TEXT DEFAULT '', correct_count INTEGER DEFAULT 0, wrong_count INTEGER DEFAULT 0, skipped_count INTEGER DEFAULT 0, total_questions INTEGER DEFAULT 0, marks_score INTEGER DEFAULT 0, max_marks INTEGER DEFAULT 0, accuracy_pct INTEGER DEFAULT 0, grade TEXT DEFAULT '', time_taken INTEGER DEFAULT 0, scheme TEXT DEFAULT '+1/0', timestamp BIGINT DEFAULT 0, student_name TEXT DEFAULT '', student_class TEXT DEFAULT '', answers_json TEXT DEFAULT '[]', questions_json TEXT DEFAULT '[]', online_test_id BIGINT DEFAULT NULL, is_locked INTEGER DEFAULT 0, institute_id BIGINT DEFAULT NULL, time_spent_json TEXT DEFAULT '[]', question_order_json TEXT DEFAULT '[]')`);
 	await safe(`CREATE INDEX IF NOT EXISTS idx_th_inst    ON test_history(institute_id)`);
 	await safe(`CREATE INDEX IF NOT EXISTS idx_th_mobile  ON test_history(mobile)`);
 	await safe(`CREATE INDEX IF NOT EXISTS idx_th_inst_ts ON test_history(institute_id, timestamp DESC)`);
@@ -323,7 +323,7 @@ async function migrate() {
 	if (tableExists("test_history")) {
 		const rows = all("SELECT * FROM test_history ORDER BY id");
 		await batchInsert("test_history", rows, (r) => [
-			`INSERT INTO test_history (id,mobile,chapter,lecture,topic,correct_count,wrong_count,skipped_count,total_questions,marks_score,max_marks,accuracy_pct,grade,time_taken,scheme,timestamp,student_name,student_class,answers_json,questions_json,online_test_id,is_locked,institute_id,time_spent_json)
+			`INSERT INTO test_history (id,mobile,chapter,lecture,topic,correct_count,wrong_count,skipped_count,total_questions,marks_score,max_marks,accuracy_pct,grade,time_taken,scheme,timestamp,student_name,student_class,answers_json,questions_json,online_test_id,is_locked,institute_id,time_spent_json,question_order_json)
 			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING`,
 			[r.id, r.mobile || "", r.chapter || null, r.lecture || "", r.topic || "",
 			r.correct_count || 0, r.wrong_count || 0, r.skipped_count || 0, r.total_questions || 0,
@@ -331,7 +331,7 @@ async function migrate() {
 			r.time_taken || 0, r.scheme || "+1/0", r.timestamp || 0, r.student_name || "",
 			r.student_class || "", r.answers_json || "[]", r.questions_json || "[]",
 			r.online_test_id || null, r.is_locked || 0, r.institute_id || null,
-			r.time_spent_json || "[]"],
+			r.time_spent_json || "[]", r.question_order_json || "[]"],
 		]);
 		await pgRun("SELECT setval('test_history_id_seq', COALESCE((SELECT MAX(id) FROM test_history), 1))");
 	}

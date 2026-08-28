@@ -1373,8 +1373,9 @@
             if (endsAt <= liveAt) { toast('The closing time must be after the start time'); return; }
             var body = {
                 testName: val('qpool-ot-name') || 'Combined Online Test',
-                marksCorrect: Number(val('qpool-ot-mc')) || 4,
-                marksWrong: Number(val('qpool-ot-mw')) || -1,
+                marksCorrect: (function () { var n = parseFloat(val('qpool-ot-mc')); return isFinite(n) ? n : 4; })(),
+                // 0 is a valid penalty, so isFinite() instead of `|| -1`.
+                marksWrong: (function () { var n = parseFloat(val('qpool-ot-mw')); return isFinite(n) ? n : -1; })(),
                 durationMinutes: Number(val('qpool-ot-dur')) || 60,
                 liveAt: liveAt,
                 endsAt: endsAt,

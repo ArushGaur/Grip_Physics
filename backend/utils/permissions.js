@@ -234,20 +234,22 @@ function requireFeature(key) {
 
 /**
  * Build a SQL fragment restricting `column` to the allowed subjects.
- * Returns `null` when there is no restriction.
+ * Always returns an object. `clause` is an empty string and `args` is an
+ * empty array when there is no restriction, so callers can safely read
+ * `.clause` / `.args` without a null check.
  *
  *   const f = subjectSqlFilter(perms);
  *   if (f) { sql += ` AND ${f.clause}`; args.push(...f.args); }
  */
 function subjectSqlFilter(perms, column = "subject") {
 	const p = normalizePermissions(perms);
-	if (!p.allowedSubjects.length) return null;
+	if (!p.allowedSubjects.length) return { clause: "", args: [] };
 	const variants = new Set();
 	for (const s of p.allowedSubjects) {
 		for (const v of subjectVariants(s)) variants.add(v);
 	}
 	const list = [...variants];
-	if (!list.length) return null;
+	if (!list.length) return { clause: "", args: [] };
 	const col = `LOWER(TRIM(${column}))`;
 	// Match plain spelling OR the alias-collapsed spelling ("maths" vs "math").
 	const clause = `(${col} IN (${list.map(() => "?").join(",")}) OR REPLACE(REPLACE(${col},' ',''),'.','') IN (${list.map(() => "?").join(",")}))`;
