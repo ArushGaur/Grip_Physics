@@ -162,19 +162,12 @@
             box-sizing: border-box;
         }
 
-        html {
-            overflow-x: hidden;
-        }
-
         body {
             font-family: 'Outfit', sans-serif;
             background: var(--canvas);
             color: var(--ink);
             min-height: 100vh;
             padding: 0;
-            /* nothing may spill sideways and cut the panel off on smaller screens */
-            overflow-x: hidden;
-            max-width: 100%;
         }
 
         .deco-dot {
@@ -230,33 +223,8 @@
             box-shadow: none;
             display: grid;
             grid-template-columns: 260px 1fr;
-            overflow-x: clip;
+            overflow: visible;
             min-height: 100vh;
-        }
-
-        /* Tablets & small laptops (sidebar still visible): keep everything inside the viewport */
-        @media (min-width:901px) and (max-width:1100px) {
-            .app-frame {
-                grid-template-columns: 200px 1fr;
-            }
-
-            #sidebar {
-                margin: 12px 0 12px 12px;
-                border-radius: 24px;
-            }
-
-            main {
-                padding: 22px 18px 32px 16px;
-            }
-
-            .topbar {
-                flex-wrap: wrap;
-                gap: 10px;
-            }
-
-            #theme-fab {
-                display: none;
-            }
         }
 
         /* ── SIDEBAR ───────────────────────────────────────────── */
@@ -264,83 +232,15 @@
             background: linear-gradient(168deg, var(--sidebar-a) 0%, var(--sidebar-b) 78%);
             border-radius: 32px;
             margin: 18px;
-            padding: 26px 0 0;
+            padding: 34px 0 0;
             display: flex;
             flex-direction: column;
             position: sticky;
             top: 18px;
             align-self: start;
             height: calc(100vh - 36px);
-            max-height: calc(100vh - 36px);
-            min-height: 0;
             overflow: hidden;
             color: #eafff8;
-        }
-
-        /* Short laptop / scaled displays: shrink the profile block so nav + actions all fit */
-        @media (min-width:901px) and (max-height:820px) {
-            #sidebar {
-                padding-top: 18px;
-                border-radius: 26px;
-                margin: 12px;
-                top: 12px;
-                height: calc(100vh - 24px);
-                max-height: calc(100vh - 24px);
-            }
-
-            .side-profile {
-                padding: 0 18px 16px;
-            }
-
-            .side-avatar {
-                width: 58px;
-                height: 58px;
-                font-size: 1.4rem;
-                margin-bottom: 8px;
-            }
-
-            .side-name {
-                font-size: .95rem;
-            }
-
-            .nav-item {
-                padding: 10px 18px;
-                margin: 2px 0;
-            }
-
-            .nav-ico {
-                width: 30px;
-                height: 30px;
-                border-radius: 10px;
-            }
-
-            .side-action {
-                padding: 9px 12px;
-                font-size: .85rem;
-            }
-
-            .side-bottom {
-                padding: 10px 16px 14px;
-                gap: 8px;
-            }
-        }
-
-        /* Very short viewports: collapse the actions into one compact row */
-        @media (min-width:901px) and (max-height:640px) {
-            .side-profile {
-                display: none;
-            }
-
-            .side-bottom {
-                flex-direction: row;
-            }
-
-            .side-action {
-                justify-content: center;
-                gap: 6px;
-                font-size: .78rem;
-                padding: 8px 6px;
-            }
         }
 
         #sidebar::after {
@@ -389,30 +289,10 @@
         }
 
         .side-nav {
-            flex: 1 1 auto;
-            min-height: 0;
-            /* the nav itself scrolls, so the bottom actions can never be pushed out of view */
-            overflow-y: auto;
-            overflow-x: hidden;
-            overscroll-behavior: contain;
+            flex: 1;
             padding: 8px 0 8px 18px;
             position: relative;
             z-index: 2;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, .28) transparent;
-        }
-
-        .side-nav::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .side-nav::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, .24);
-            border-radius: 8px;
-        }
-
-        .side-nav::-webkit-scrollbar-track {
-            background: transparent;
         }
 
         .nav-item {
@@ -483,15 +363,11 @@
 
         .side-bottom {
             position: relative;
-            z-index: 3;
-            flex: 0 0 auto;
-            /* pinned to the bottom of the sidebar, always visible */
-            padding: 14px 20px calc(18px + env(safe-area-inset-bottom));
+            z-index: 2;
+            padding: 18px 24px 28px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            background: linear-gradient(to top, rgba(4, 32, 26, .62), rgba(4, 32, 26, 0));
-            border-top: 1px solid rgba(255, 255, 255, .1);
         }
 
         .side-action {
@@ -758,122 +634,6 @@
             to {
                 opacity: 1;
                 transform: translateY(0);
-            }
-        }
-
-        /* ── SECTION SLIDE TRANSITIONS ─────────────────────────────
-           The outgoing section slides out the way it is travelling, then
-           the incoming one slides in from the opposite edge, so switching
-           nav items reads as one continuous movement instead of a blink. */
-        .page {
-            animation: none;
-            will-change: transform, opacity;
-            backface-visibility: hidden;
-        }
-
-        .page.active {
-            animation: pgIn .34s cubic-bezier(.16, .84, .44, 1) both;
-        }
-
-        .page.active.pg-in-r {
-            animation: pgInR .34s cubic-bezier(.16, .84, .44, 1) both;
-        }
-
-        .page.active.pg-in-l {
-            animation: pgInL .34s cubic-bezier(.16, .84, .44, 1) both;
-        }
-
-        .page.active.pg-out-l {
-            animation: pgOutL .17s cubic-bezier(.55, .06, .68, .19) both;
-            pointer-events: none;
-        }
-
-        .page.active.pg-out-r {
-            animation: pgOutR .17s cubic-bezier(.55, .06, .68, .19) both;
-            pointer-events: none;
-        }
-
-        @keyframes pgIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px)
-            }
-
-            to {
-                opacity: 1;
-                transform: none
-            }
-        }
-
-        @keyframes pgInR {
-            from {
-                opacity: 0;
-                transform: translate3d(38px, 0, 0)
-            }
-
-            to {
-                opacity: 1;
-                transform: none
-            }
-        }
-
-        @keyframes pgInL {
-            from {
-                opacity: 0;
-                transform: translate3d(-38px, 0, 0)
-            }
-
-            to {
-                opacity: 1;
-                transform: none
-            }
-        }
-
-        @keyframes pgOutL {
-            from {
-                opacity: 1;
-                transform: none
-            }
-
-            to {
-                opacity: 0;
-                transform: translate3d(-30px, 0, 0)
-            }
-        }
-
-        @keyframes pgOutR {
-            from {
-                opacity: 1;
-                transform: none
-            }
-
-            to {
-                opacity: 0;
-                transform: translate3d(30px, 0, 0)
-            }
-        }
-
-        /* subviews inside a section slide the same way */
-        .subview.active.sv-in-r {
-            animation: pgInR .3s cubic-bezier(.16, .84, .44, 1) both;
-        }
-
-        .subview.active.sv-in-l {
-            animation: pgInL .3s cubic-bezier(.16, .84, .44, 1) both;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-
-            .page,
-            .page.active,
-            .page.active.pg-in-r,
-            .page.active.pg-in-l,
-            .page.active.pg-out-l,
-            .page.active.pg-out-r,
-            .subview,
-            .subview.active.sv-in-r,
-            .subview.active.sv-in-l {
-                animation: none !important;
             }
         }
 
@@ -4828,7 +4588,7 @@
             }
         }
 
-        /* ── EDIT TEST MODAL EXTRAS ─────────────��──────────────── */
+        /* ── EDIT TEST MODAL EXTRAS ────────────────────────────── */
         .switch {
             position: relative;
             display: inline-block;
@@ -5477,390 +5237,7 @@
             transform: rotate(18deg) scale(1.07);
         }
 
-        /* ── PAPER TEMPLATE MANAGER MODAL ──────────────────────── */
-        .tplm-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 9000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-            background: rgba(6, 33, 27, .55);
-            backdrop-filter: blur(6px);
-            animation: tplmFade .22s ease;
-        }
-
-        @keyframes tplmFade {
-            from {
-                opacity: 0
-            }
-
-            to {
-                opacity: 1
-            }
-        }
-
-        @keyframes tplmPop {
-            from {
-                opacity: 0;
-                transform: translateY(14px) scale(.97)
-            }
-
-            to {
-                opacity: 1;
-                transform: none
-            }
-        }
-
-        .tplm-card {
-            width: 100%;
-            max-width: 540px;
-            max-height: min(86vh, 720px);
-            display: flex;
-            flex-direction: column;
-            background: var(--card, #fff);
-            color: var(--ink, #14231f);
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 30px 80px rgba(6, 33, 27, .38);
-            animation: tplmPop .26s cubic-bezier(.2, .9, .3, 1.1);
-        }
-
-        .tplm-head {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 20px 22px;
-            color: #eafff8;
-            background: linear-gradient(135deg, var(--sidebar-a, #0d4c3e), var(--sidebar-b, #082f26));
-        }
-
-        .tplm-head-ico {
-            width: 44px;
-            height: 44px;
-            flex-shrink: 0;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            background: rgba(255, 255, 255, .16);
-        }
-
-        .tplm-head-txt {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .tplm-head-txt h3 {
-            margin: 0;
-            font-size: 1.08rem;
-            font-weight: 700;
-        }
-
-        .tplm-head-txt p {
-            margin: 3px 0 0;
-            font-size: .78rem;
-            opacity: .72;
-            line-height: 1.4;
-        }
-
-        .tplm-x {
-            width: 34px;
-            height: 34px;
-            flex-shrink: 0;
-            border: 0;
-            border-radius: 11px;
-            background: rgba(255, 255, 255, .14);
-            color: #eafff8;
-            font-size: .85rem;
-            cursor: pointer;
-            transition: background .18s;
-        }
-
-        .tplm-x:hover {
-            background: rgba(255, 255, 255, .28);
-        }
-
-        .tplm-body {
-            padding: 20px 22px 6px;
-            overflow-y: auto;
-            flex: 1;
-            min-height: 0;
-        }
-
-        .tplm-drop {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            text-align: center;
-            padding: 26px 18px;
-            border-radius: 18px;
-            border: 2px dashed rgba(15, 85, 70, .3);
-            background: rgba(0, 210, 180, .06);
-            cursor: pointer;
-            transition: border-color .2s, background .2s, transform .2s;
-        }
-
-        body.dark .tplm-drop {
-            border-color: rgba(0, 210, 180, .32);
-            background: rgba(0, 210, 180, .08);
-        }
-
-        .tplm-drop:hover,
-        .tplm-drop.dragging {
-            border-color: var(--teal, #00d2b4);
-            background: rgba(0, 210, 180, .14);
-            transform: translateY(-1px);
-        }
-
-        .tplm-drop-ico {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            background: linear-gradient(135deg, var(--teal, #00d2b4), var(--teal-deep, #0e8f78));
-            color: #05332a;
-            margin-bottom: 4px;
-        }
-
-        .tplm-drop b {
-            font-size: .92rem;
-        }
-
-        .tplm-drop-sub {
-            font-size: .76rem;
-            color: var(--ink-dim, #5c6f69);
-        }
-
-        .tplm-file {
-            margin-top: 10px;
-            max-width: 100%;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 13px;
-            border-radius: 30px;
-            font-size: .78rem;
-            font-weight: 600;
-            background: rgba(15, 85, 70, .1);
-            color: var(--teal-deep, #0e8f78);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .tplm-file[hidden] {
-            display: none;
-        }
-
-        body.dark .tplm-file {
-            background: rgba(0, 210, 180, .16);
-            color: #8ff0e0;
-        }
-
-        .tplm-actions-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin: 16px 0 4px;
-        }
-
-        .tplm-btn {
-            font-family: inherit;
-            font-size: .86rem;
-            font-weight: 600;
-            padding: 11px 20px;
-            border-radius: 12px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            transition: transform .15s, box-shadow .18s, background .18s;
-        }
-
-        .tplm-btn:active {
-            transform: scale(.97);
-        }
-
-        .tplm-btn-primary {
-            background: linear-gradient(135deg, var(--teal-deep, #0e8f78), var(--sidebar-a, #0d4c3e));
-            color: #fff;
-            box-shadow: 0 8px 20px rgba(14, 143, 120, .28);
-        }
-
-        .tplm-btn-primary[disabled] {
-            opacity: .6;
-            cursor: default;
-            box-shadow: none;
-        }
-
-        .tplm-btn-ghost {
-            background: transparent;
-            color: var(--ink, #14231f);
-            border-color: rgba(120, 140, 134, .34);
-        }
-
-        .tplm-btn-ghost:hover {
-            background: rgba(120, 140, 134, .12);
-        }
-
-        .tplm-msg {
-            font-size: .8rem;
-            font-weight: 600;
-            flex: 1;
-            min-width: 120px;
-        }
-
-        .tplm-msg.ok {
-            color: #1f9d78;
-        }
-
-        .tplm-msg.err {
-            color: #d95f5f;
-        }
-
-        .tplm-msg.busy {
-            color: var(--ink-dim, #5c6f69);
-        }
-
-        .tplm-list-head {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin: 20px 0 10px;
-            font-size: .68rem;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-            font-weight: 800;
-            color: var(--ink-dim, #5c6f69);
-        }
-
-        .tplm-hint {
-            letter-spacing: 0;
-            text-transform: none;
-            font-weight: 500;
-            font-size: .74rem;
-            opacity: .8;
-        }
-
-        .tplm-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .tplm-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            border-radius: 14px;
-            background: rgba(120, 140, 134, .09);
-            border: 1px solid rgba(120, 140, 134, .16);
-        }
-
-        .tplm-row-ico {
-            width: 34px;
-            height: 34px;
-            flex-shrink: 0;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: .95rem;
-            background: rgba(46, 110, 220, .14);
-        }
-
-        .tplm-row-txt {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .tplm-row-name {
-            font-weight: 600;
-            font-size: .88rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .tplm-badge {
-            display: inline-block;
-            margin-left: 8px;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: .64rem;
-            font-weight: 800;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            background: rgba(0, 210, 180, .18);
-            color: var(--teal-deep, #0e8f78);
-        }
-
-        body.dark .tplm-badge {
-            color: #8ff0e0;
-        }
-
-        .tplm-del {
-            border: 0;
-            background: rgba(217, 95, 95, .12);
-            color: #d95f5f;
-            font-family: inherit;
-            font-size: .78rem;
-            font-weight: 700;
-            padding: 8px 13px;
-            border-radius: 10px;
-            cursor: pointer;
-            flex-shrink: 0;
-            transition: background .18s;
-        }
-
-        .tplm-del:hover {
-            background: rgba(217, 95, 95, .24);
-        }
-
-        .tplm-empty {
-            padding: 18px;
-            text-align: center;
-            font-size: .84rem;
-            border-radius: 14px;
-            border: 1px dashed rgba(120, 140, 134, .3);
-            color: var(--ink-dim, #5c6f69);
-        }
-
-        .tplm-foot {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            padding: 14px 22px calc(16px + env(safe-area-inset-bottom));
-            border-top: 1px solid rgba(120, 140, 134, .18);
-        }
-
-        @media (max-width:560px) {
-            .tplm-overlay {
-                padding: 0;
-                align-items: flex-end;
-            }
-
-            .tplm-card {
-                max-width: none;
-                max-height: 92vh;
-                border-radius: 22px 22px 0 0;
-            }
-
-            .tplm-actions-row .tplm-btn-primary {
-                width: 100%;
-            }
-        }
-
-        /* ── TOAST ──────────────────────────────────────────���──── */
+        /* ── TOAST ─────────────────────────────────────────────── */
         #toast {
             position: fixed;
             left: 50%;
@@ -8671,7 +8048,12 @@
 
             <!-- ════════════ COMBINE & CREATE TEST ════════════ -->
             <section class="page" id="page-combine">
-                <!-- the pool's own gradient masthead carries the title here -->
+                <header class="sec-head">
+                    <div>
+                        <h1>Combine &amp; Create Test</h1>
+                        <p>Questions pooled by every teacher → pick across subjects → offline paper or online test</p>
+                    </div>
+                </header>
                 <div id="qpool-host"></div>
             </section>
 
@@ -10478,15 +9860,6 @@
         ══════════════════════════════════════════════════════ */
         const pageTitles = { dashboard: 'Dashboard', questions: 'Question Library', combine: 'Combine & Create Test', students: 'Students', attendance: 'Attendance', results: 'Test Results' };
 
-        /* sidebar order, so we know which way a section switch travels */
-        const PAGE_ORDER = ['dashboard', 'questions', 'combine', 'students', 'attendance', 'results'];
-        const PAGE_ANIM = ['pg-in-l', 'pg-in-r', 'pg-out-l', 'pg-out-r'];
-        let _pageSwap = null;
-
-        function lessMotion() {
-            try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
-        }
-
         function navigateTo(page) {
             // Guard: a blocked feature must not be reachable, even by deep link.
             if (page === 'students' && typeof window.permOn === 'function' && !window.permOn('studentManagement')) {
@@ -10495,9 +9868,6 @@
             if ((page === 'attendance' || page === 'results') && typeof window.permOn === 'function' && !window.permOn('onlineTests')) {
                 page = 'dashboard';
             }
-
-            /* Chrome (nav highlight, title, drawer) updates at once so the tap
-               feels instant even while the sections are still animating. */
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
             document.querySelectorAll('.tab-item').forEach(n => n.classList.remove('active'));
@@ -10505,38 +9875,13 @@
             // drawer menu items
             document.querySelectorAll('.drawer-item').forEach(n => n.classList.remove('active'));
             document.querySelector(`.drawer-item[data-page="${page}"]`)?.classList.add('active');
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + page)?.classList.add('active');
             document.body.classList.toggle('page-questions', page === 'questions');
+            if (page === 'combine' && window.QPool && typeof window.QPool.mount === 'function') { try { window.QPool.mount(); } catch (_) { } }
             document.getElementById('ab-page-title').textContent = pageTitles[page] || 'Dashboard';
             document.body.classList.remove('drawer-open');
-
-            const next = document.getElementById('page-' + page);
-            const current = document.querySelector('.page.active');
-            const forward = PAGE_ORDER.indexOf(page) >=
-                PAGE_ORDER.indexOf(current ? current.id.replace(/^page-/, '') : 'dashboard');
-
-            function reveal() {
-                _pageSwap = null;
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active', ...PAGE_ANIM));
-                if (!next) return;
-                void next.offsetWidth;                  // restart the animation cleanly
-                next.classList.add('active');
-                if (current && current !== next && !lessMotion()) {
-                    next.classList.add(forward ? 'pg-in-r' : 'pg-in-l');
-                }
-                window.scrollTo({ top: 0, behavior: 'auto' });
-                if (page === 'combine' && window.QPool && typeof window.QPool.mount === 'function') {
-                    try { window.QPool.mount(); } catch (_) { }
-                }
-            }
-
-            if (_pageSwap) { clearTimeout(_pageSwap); _pageSwap = null; }
-
-            // no previous section, same section, or reduced motion → swap at once
-            if (!next || !current || next === current || lessMotion()) { reveal(); return; }
-
-            current.classList.remove('pg-in-l', 'pg-in-r');
-            current.classList.add(forward ? 'pg-out-l' : 'pg-out-r');
-            _pageSwap = setTimeout(reveal, 170);        // matches the pg-out duration
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         /* ── MOBILE MENU DRAWER ── */
@@ -10564,159 +9909,12 @@
             item.addEventListener('click', () => navigateTo(item.dataset.page));
         });
 
-        /* ═══════════════════════════════════════════════════════════════
-           APP BACK BUTTON  —  step one screen back instead of closing
-           ───────────────────────────────────────────────────────────────
-           A spare history entry is always kept on top, so the very first
-           Back press is captured by us instead of unloading the app. Each
-           press then unwinds exactly one layer: overlay → drill level →
-           subview → previous page → "press again to exit".
-           ═══════════════════════════════════════════════════════════ */
-        (function () {
-            var pageStack = [];   // pages we came from
-            var viewStack = [];   // subviews we came from, inside the current page
-            var qpDepth = 0;      // Combine & Create drill depth
-            var exitArmed = false, exitTimer = null;
-
-            function guard() { try { history.pushState({ instGuard: true }, '', ''); } catch (e) { } }
-
-            function activePage() {
-                var el = document.querySelector('.page.active');
-                return el ? el.id.replace(/^page-/, '') : 'dashboard';
-            }
-            function activeViewIn(page) {
-                var p = document.getElementById('page-' + page);
-                if (!p) return null;
-                var v = p.querySelector('.subview.active');
-                return v ? v.id : null;
-            }
-            function visible(sel) {
-                var el = document.querySelector(sel);
-                if (!el) return false;
-                return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
-            }
-
-            /* remember where each navigation came from */
-            var _nav = window.navigateTo;
-            window.navigateTo = function (page, silent) {
-                var from = activePage();
-                var fromView = activeViewIn(from);
-                _nav(page);
-                if (!silent && page !== from) {
-                    pageStack.push({ page: from, view: fromView });
-                    viewStack.length = 0;
-                }
-                if (page === 'combine') wrapPool();
-            };
-
-            var _view = window.showView;
-            window.showView = function (id, silent) {
-                var prev = activeViewIn(activePage());
-                _view(id);
-                var el = document.getElementById(id);
-                if (el && prev && prev !== id) {          // slide in from the travel direction
-                    el.classList.remove('sv-in-l', 'sv-in-r');
-                    void el.offsetWidth;
-                    el.classList.add(silent ? 'sv-in-l' : 'sv-in-r');
-                }
-                if (!silent && prev && prev !== id) viewStack.push(prev);
-            };
-
-            /* track how deep we are inside the Combine & Create drill */
-            function wrapPool() {
-                var P = window.QPool;
-                if (!P || P.__backWrapped) return;
-                var _drill = P.drillTo, _up = P.up;
-                P.drillTo = function (lv, enc) { _drill.call(P, lv, enc); qpDepth = lv + 1; };
-                P.up = function (lv) { _up.call(P, lv); qpDepth = Math.max(0, lv); };
-                P.__backWrapped = true;
-            }
-
-            /* dismiss the top-most overlay, if any */
-            function closeTopLayer() {
-                if (document.body.classList.contains('drawer-open')) { closeDrawer(); return true; }
-                var tpl = document.getElementById('inst-tpl-modal');
-                if (tpl) { tpl.remove(); return true; }
-                var ctx = document.querySelector('.qp-ctx');
-                if (ctx) { ctx.remove(); return true; }
-                var ipb = document.getElementById('ipb-modal');
-                if (ipb && ipb.classList.contains('open')) {
-                    if (typeof window.instCloseGenerate === 'function') window.instCloseGenerate();
-                    else ipb.classList.remove('open');
-                    return true;
-                }
-                return false;
-            }
-
-            /* one press = one step back */
-            function stepBack() {
-                if (closeTopLayer()) return true;
-
-                // an open question detail view in the Question Library
-                if (visible('#mq-question-view') && typeof window.goBackFromQuestion === 'function') {
-                    var realBack = history.back;
-                    history.back = function () { };      // its own back() must not fight ours
-                    try { window.goBackFromQuestion(); } finally { history.back = realBack; }
-                    return true;
-                }
-
-                var page = activePage();
-
-                // Combine & Create → climb one drill level
-                if (page === 'combine') {
-                    wrapPool();
-                    if (qpDepth > 0 && window.QPool) { window.QPool.up(qpDepth - 1); return true; }
-                }
-
-                if (viewStack.length) { window.showView(viewStack.pop(), true); return true; }
-
-                if (pageStack.length) {
-                    var prev = pageStack.pop();
-                    window.navigateTo(prev.page, true);
-                    if (prev.view) window.showView(prev.view, true);
-                    return true;
-                }
-
-                if (page !== 'dashboard') { window.navigateTo('dashboard', true); return true; }
-
-                return false;   // already home
-            }
-
-            function onBack() {
-                if (stepBack()) { guard(); exitArmed = false; return; }
-
-                if (!exitArmed) {                 // at home → confirm before leaving
-                    exitArmed = true;
-                    guard();
-                    if (typeof showToast === 'function') showToast('Press back again to exit');
-                    clearTimeout(exitTimer);
-                    exitTimer = setTimeout(function () { exitArmed = false; }, 2500);
-                    return;
-                }
-
-                exitArmed = false;                // second press → really leave
-                try {
-                    if (window.navigator && navigator.app && navigator.app.exitApp) { navigator.app.exitApp(); return; }
-                } catch (e) { }
-                history.back();
-            }
-
-            window.addEventListener('popstate', onBack);
-            document.addEventListener('backbutton', function (e) {
-                if (e && e.preventDefault) e.preventDefault();
-                onBack();
-            }, false);
-            window.instStepBack = stepBack;
-
-            guard();   // keep a spare entry so Back never unloads the app first
-        })();
-
         /* ── Subview switcher ── */
         function showView(id) {
             const el = document.getElementById(id);
-            el.parentElement.querySelectorAll(':scope > .subview').forEach(v => v.classList.remove('active', 'sv-in-l', 'sv-in-r'));
+            el.parentElement.querySelectorAll(':scope > .subview').forEach(v => v.classList.remove('active'));
             el.classList.add('active');
-            window.scrollTo({ top: 0, behavior: 'auto' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function cardClick(card, target, chapterName, chapterColor) {
@@ -10992,7 +10190,7 @@
             document.getElementById('a-count').textContent = a;
         }
 
-        /* ══════════════════════════════��════════════════  ══════
+        /* ═══════════════════════════════════════════════  ══════
            QUESTION LIBRARY — CARD VIEW  → click question → open detail
         ══════════════════════════════════════════════════════ */
         const QLIB_CHAPTERS = {
@@ -11572,7 +10770,7 @@
                 </section>`;
         }
 
-        /* ══��══════     ════════════════════════════════════════════
+        /* ═════════     ════════════════════════════════════════════
            EDIT TEST
         ══════════════════════════════════════════════════════ */
         let editStudentSet = new Set();
@@ -14097,7 +13295,7 @@
                     return;
                 }
 
-                // Level 2 �� section cards inside the chosen class
+                // Level 2 — section cards inside the chosen class
                 const secs = tree.get(_etDrill.cls) || new Map();
                 if (!_etDrill.sec) {
                     const keys = _etSortKeys([...secs.keys()]);
@@ -14432,59 +13630,15 @@
                 }
                 return picked;
             }
-            /* MIME must match the real file type. Android Chrome / WebView
-               ignores the download filename and renames the file after the
-               blob's MIME type, so a .docx served as application/pdf lands in
-               the phone's Downloads as "Paper.docx.pdf". Always derive the
-               type from the extension instead of defaulting to PDF. */
-            const INST_MIME_BY_EXT = {
-                docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                doc: 'application/msword',
-                pdf: 'application/pdf',
-                csv: 'text/csv;charset=utf-8',
-                xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                zip: 'application/zip'
-            };
-            function instMimeForFile(filename) {
-                const m = /\.([a-z0-9]+)\s*$/i.exec(String(filename || ''));
-                const ext = m ? m[1].toLowerCase() : '';
-                return INST_MIME_BY_EXT[ext] || 'application/octet-stream';
-            }
-            /* Strip characters Android / Windows reject in filenames, otherwise
-               a paper title like "Physics: Ch 1/2" produces a broken save. */
-            function instSafeFileName(filename) {
-                return String(filename || 'download')
-                    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
-                    .replace(/\s+/g, ' ')
-                    .trim() || 'download';
-            }
             function b64ToBlobUrl(b64, mime) {
-                /* chunked decode: atob() on multi-MB strings can be very slow
-                   or corrupt data on mobile browsers */
-                const bin = atob(b64); const len = bin.length;
-                const CHUNK = 8192, parts = [];
-                for (let i = 0; i < len; i += CHUNK) {
-                    const slice = bin.slice(i, i + CHUNK);
-                    const bytes = new Uint8Array(slice.length);
-                    for (let j = 0; j < slice.length; j++) bytes[j] = slice.charCodeAt(j);
-                    parts.push(bytes);
-                }
-                return URL.createObjectURL(new Blob(parts, { type: mime || 'application/octet-stream' }));
+                const bin = atob(b64); const len = bin.length; const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+                return URL.createObjectURL(new Blob([bytes], { type: mime || 'application/pdf' }));
             }
-            function downloadB64(b64, filename, mime) {
+            function downloadB64(b64, filename) {
                 if (!b64) return;
-                try {
-                    const name = instSafeFileName(filename);
-                    const type = mime || instMimeForFile(name);
-                    const url = b64ToBlobUrl(b64, type);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = name;
-                    a.setAttribute('type', type);   // extra hint for Android WebView
-                    a.rel = 'noopener';
-                    document.body.appendChild(a); a.click(); a.remove();
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
-                } catch (e) { console.error('download failed', e); }
+                try { const url = b64ToBlobUrl(b64); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000); }
+                catch (e) { console.error('download failed', e); }
             }
             function wizShowDone(type, count) {
                 const ico = document.getElementById('wiz-done-ico'); if (ico) ico.textContent = type === 'offline' ? '📄' : '💻';
@@ -15045,75 +14199,28 @@
                 if (!ov) {
                     ov = document.createElement('div');
                     ov.id = 'inst-tpl-modal';
-                    ov.className = 'tplm-overlay';
-                    ov.innerHTML = `<div class="tplm-card" role="dialog" aria-modal="true" aria-labelledby="tplm-title">
-                        <div class="tplm-head">
-                            <div class="tplm-head-ico">📄</div>
-                            <div class="tplm-head-txt">
-                                <h3 id="tplm-title">Paper Templates</h3>
-                                <p>The Word layout your question papers are built on</p>
-                            </div>
-                            <button class="tplm-x" id="inst-tpl-close" type="button" aria-label="Close">✕</button>
+                    ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+                    ov.innerHTML = `<div style="background:var(--card,#fff);border-radius:14px;max-width:520px;width:100%;max-height:82vh;overflow:auto;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.28)">
+                        <h3 style="margin:0 0 4px">Paper Templates</h3>
+                        <p style="margin:0 0 16px;font-size:.85rem;opacity:.7">Upload the Word (.docx) file your question papers should be built on. The newest template is the default; with more than one you can pick which to use while generating a paper.</p>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+                            <input type="file" id="inst-tpl-file" accept=".docx" style="flex:1;min-width:200px">
+                            <button id="inst-tpl-upload" style="padding:9px 16px;border:0;border-radius:9px;background:#2f7d63;color:#fff;font-weight:600;cursor:pointer">Upload</button>
                         </div>
-                        <div class="tplm-body">
-                            <label class="tplm-drop" id="inst-tpl-drop" for="inst-tpl-file">
-                                <input type="file" id="inst-tpl-file" accept=".docx" hidden>
-                                <span class="tplm-drop-ico">⬆️</span>
-                                <b>Drop your .docx template here</b>
-                                <span class="tplm-drop-sub">or click to browse — Word documents only</span>
-                                <span class="tplm-file" id="inst-tpl-name" hidden></span>
-                            </label>
-                            <div class="tplm-actions-row">
-                                <button class="tplm-btn tplm-btn-primary" id="inst-tpl-upload" type="button">Upload template</button>
-                                <span class="tplm-msg" id="inst-tpl-msg"></span>
-                            </div>
-                            <div class="tplm-list-head">Saved templates<span class="tplm-hint">Newest one is used by default</span></div>
-                            <div class="tplm-list" id="inst-tpl-list"></div>
-                        </div>
-                        <div class="tplm-foot"><button class="tplm-btn tplm-btn-ghost" id="inst-tpl-done" type="button">Done</button></div>
+                        <div id="inst-tpl-msg" style="font-size:.82rem;min-height:18px;margin-bottom:10px"></div>
+                        <div id="inst-tpl-list" style="display:flex;flex-direction:column;gap:8px"></div>
+                        <div style="text-align:right;margin-top:18px"><button id="inst-tpl-close" style="padding:9px 16px;border:1px solid rgba(0,0,0,.15);border-radius:9px;background:transparent;cursor:pointer">Close</button></div>
                     </div>`;
                     document.body.appendChild(ov);
-
-                    const closeModal = () => {
-                        document.removeEventListener('keydown', onEsc);
-                        ov.remove();
-                    };
-                    function onEsc(e) { if (e.key === 'Escape') closeModal(); }
-                    document.addEventListener('keydown', onEsc);
-                    ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
-                    ov.querySelector('#inst-tpl-close').onclick = closeModal;
-                    ov.querySelector('#inst-tpl-done').onclick = closeModal;
-
-                    const drop = ov.querySelector('#inst-tpl-drop');
-                    const nameChip = ov.querySelector('#inst-tpl-name');
-                    const fileInput = ov.querySelector('#inst-tpl-file');
-                    const showPicked = () => {
-                        const f = fileInput.files && fileInput.files[0];
-                        if (f) { nameChip.hidden = false; nameChip.textContent = '📎 ' + f.name; }
-                        else { nameChip.hidden = true; nameChip.textContent = ''; }
-                    };
-                    fileInput.addEventListener('change', showPicked);
-                    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragging'); }));
-                    ['dragleave', 'dragend'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('dragging')));
-                    drop.addEventListener('drop', e => {
-                        e.preventDefault();
-                        drop.classList.remove('dragging');
-                        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-                        if (!f) return;
-                        try { const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files; } catch (_) { }
-                        showPicked();
-                    });
-
-                    ov.querySelector('#inst-tpl-upload').onclick = async (e) => {
-                        const btn = e.currentTarget;
+                    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+                    ov.querySelector('#inst-tpl-close').onclick = () => ov.remove();
+                    ov.querySelector('#inst-tpl-upload').onclick = async () => {
                         const inp = document.getElementById('inst-tpl-file');
                         const msg = document.getElementById('inst-tpl-msg');
-                        const setMsg = (t, cls) => { msg.textContent = t; msg.className = 'tplm-msg ' + (cls || ''); };
                         const file = inp && inp.files && inp.files[0];
-                        if (!file) { setMsg('Choose a .docx file first.', 'err'); return; }
-                        if (!/\.docx$/i.test(file.name)) { setMsg('Only .docx templates are supported.', 'err'); return; }
-                        btn.disabled = true;
-                        setMsg('Uploading…', 'busy');
+                        if (!file) { msg.textContent = 'Choose a .docx file first.'; msg.style.color = '#d95f5f'; return; }
+                        if (!/\.docx$/i.test(file.name)) { msg.textContent = 'Only .docx templates are supported.'; msg.style.color = '#d95f5f'; return; }
+                        msg.textContent = 'Uploading...'; msg.style.color = '';
                         try {
                             const fd = new FormData();
                             fd.append('template', file);
@@ -15121,14 +14228,12 @@
                             const r = await fetch(instApiBase() + '/api/admin/paper-templates', { method: 'POST', credentials: 'include', body: fd });
                             let d = null; try { d = await r.json(); } catch (_) { }
                             if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
-                            setMsg('Template uploaded.', 'ok');
+                            msg.textContent = 'Template uploaded.'; msg.style.color = '#2f7d63';
                             if (inp) inp.value = '';
-                            showPicked();
                             _instTplCache = null;
                             await window.instRenderTemplateList();
                             await instSyncTemplateField();
-                        } catch (err) { setMsg(err.message || 'Upload failed', 'err'); }
-                        finally { btn.disabled = false; }
+                        } catch (e) { msg.textContent = e.message || 'Upload failed'; msg.style.color = '#d95f5f'; }
                     };
                 }
                 await window.instRenderTemplateList();
@@ -15137,15 +14242,12 @@
             window.instRenderTemplateList = async function () {
                 const box = document.getElementById('inst-tpl-list');
                 if (!box) return;
-                box.innerHTML = '<div class="tplm-empty">Loading…</div>';
+                box.innerHTML = '<div style="opacity:.6;font-size:.85rem">Loading...</div>';
                 const rows = await instLoadTemplates(true);
-                if (!rows.length) { box.innerHTML = '<div class="tplm-empty">No templates yet — upload a .docx above to get started.</div>'; return; }
-                box.innerHTML = rows.map((r, i) => `<div class="tplm-row">
-                    <span class="tplm-row-ico">📘</span>
-                    <div class="tplm-row-txt">
-                        <div class="tplm-row-name">${esc(r.name || ('Template ' + r.id))}${i === 0 ? '<span class="tplm-badge">Default</span>' : ''}</div>
-                    </div>
-                    <button class="tplm-del" type="button" onclick="window.instDeleteTemplate(${r.id})">Delete</button>
+                if (!rows.length) { box.innerHTML = '<div style="opacity:.6;font-size:.85rem">No templates yet.</div>'; return; }
+                box.innerHTML = rows.map((r, i) => `<div style="display:flex;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:10px 12px">
+                    <span style="flex:1;font-weight:600">${esc(r.name || ('Template ' + r.id))}${i === 0 ? ' <span style="font-weight:400;opacity:.6;font-size:.78rem">(default)</span>' : ''}</span>
+                    <button onclick="window.instDeleteTemplate(${r.id})" style="border:0;background:transparent;cursor:pointer;color:#d95f5f;font-weight:600">Delete</button>
                 </div>`).join('');
             };
 
@@ -15635,8 +14737,7 @@
             };
             function instFileNames() {
                 const ext = _instGen.format === 'pdf' ? 'pdf' : 'docx';
-                const title = instSafeFileName(_instGen.meta.paperTitle || 'Question Paper')
-                    .replace(/\.(docx?|pdf)$/i, '');   // never end up with "Paper.docx.docx"
+                const title = _instGen.meta.paperTitle || 'Question Paper';
                 return { questionPaper: title + ' — Questions.' + ext, answerKey: title + ' — Answer Key.' + ext, solutions: title + ' — Solutions.' + ext };
             }
             function instRenderLinks() {
@@ -15676,11 +14777,7 @@
             window.instDownloadOne = function (key) {
                 const files = _instGen.format === 'pdf' ? _instGen.pdf : _instGen.docx;
                 const names = instFileNames();
-                // pass the MIME explicitly so Word files are never labelled as PDF
-                const mime = _instGen.format === 'pdf'
-                    ? INST_MIME_BY_EXT.pdf
-                    : INST_MIME_BY_EXT.docx;
-                if (files && files[key]) downloadB64(files[key], names[key], mime); else toast('File not ready');
+                if (files && files[key]) downloadB64(files[key], names[key]); else toast('File not ready');
             };
             window.instDownloadAll = function () { ['questionPaper', 'answerKey', 'solutions'].forEach((k, i) => setTimeout(() => window.instDownloadOne(k), i * 300)); };
             window.instRunOnline = async function () {

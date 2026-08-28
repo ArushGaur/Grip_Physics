@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 
  */
 async function chapterAllowed(perms, chapter) {
 	try {
-		const subjFilter = subjectSqlFilter(perms, "q.subject") || { clause: "", args: [] };
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
 		if (!subjFilter.clause) return true;
 		const ch = decodeURIComponent(chapter || "");
 		const isNone = ch === "_none_" || ch === "";
@@ -62,7 +62,7 @@ router.get("/api/chapters", async (req, res) => {
 		// Chapters of blocked subjects must not even be listed.
 		const perms = await permissionsForRequest(req);
 		if (hasSubjectLimit(perms)) {
-			const subjFilter = subjectSqlFilter(perms, "q.subject") || { clause: "", args: [] };
+			const subjFilter = subjectSqlFilter(perms, "q.subject");
 			const r = await db.execute({
 				sql: `SELECT DISTINCT chapter FROM ${ALL_Q} WHERE ${subjFilter.clause} ORDER BY chapter`,
 				args: subjFilter.args,
@@ -217,7 +217,7 @@ router.post("/api/admin/student/:id/mark-cheater", requireAdmin, async (req, res
 router.get("/api/admin/questions", requireAdmin, async (req, res) => {
 	try {
 		const perms = await permissionsForRequest(req);
-		const subjFilter = subjectSqlFilter(perms, "q.subject") || { clause: "", args: [] };
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
 		const result = await db.execute({
 			sql: `SELECT id, chapter, topic, raw_json, updated_at FROM ${ALL_Q}
 			      ${subjFilter.clause ? "WHERE " + subjFilter.clause : ""}
@@ -254,7 +254,7 @@ router.get("/api/admin/questions", requireAdmin, async (req, res) => {
 router.get("/api/admin/questions-meta", requireAdmin, async (req, res) => {
 	try {
 		const perms = await permissionsForRequest(req);
-		const subjFilter = subjectSqlFilter(perms, "q.subject") || { clause: "", args: [] };
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
 		const result = await db.execute({
 			sql: `SELECT chapter, topic, MAX(subject) as subject, MAX(updated_at) as updated_at, COUNT(*) as qcount
 			 FROM ${ALL_Q}
@@ -391,7 +391,7 @@ router.get("/api/admin/questions-for-chapter/:chapter", requireAdmin, async (req
 	try {
 		const chapter = decodeURIComponent(req.params.chapter || "");
 		const perms = await permissionsForRequest(req);
-		const subjFilter = subjectSqlFilter(perms, "q.subject") || { clause: "", args: [] };
+		const subjFilter = subjectSqlFilter(perms, "q.subject");
 		const extra = subjFilter.clause ? ` AND (${subjFilter.clause})` : "";
 		let result;
 		if (chapter === "_none_" || chapter === "") {
@@ -580,7 +580,7 @@ router.post("/api/admin/rename-topic", requireAdmin, async (req, res) => {
 router.get("/api/admin/year-counts", requireAdmin, async (req, res) => {
 	try {
 		const perms = await permissionsForRequest(req);
-		const subjFilter = subjectSqlFilter(perms, "subject") || { clause: "", args: [] };
+		const subjFilter = subjectSqlFilter(perms, "subject");
 		const result = await db.execute({
 			sql: `SELECT year, COUNT(*) as count FROM ${PYQ_TABLE}
 			      WHERE year IS NOT NULL AND year != ''${subjFilter.clause ? " AND (" + subjFilter.clause + ")" : ""}
@@ -604,7 +604,7 @@ router.get("/api/admin/questions-by-year/:year", requireAdmin, async (req, res) 
 		if (!year) return res.status(400).json({ error: "Year required" });
 
 		const perms = await permissionsForRequest(req);
-		const subjFilter = subjectSqlFilter(perms, "subject") || { clause: "", args: [] };
+		const subjFilter = subjectSqlFilter(perms, "subject");
 		const result = await db.execute({
 			sql: `SELECT id, chapter, topic, raw_json
 			      FROM ${PYQ_TABLE}

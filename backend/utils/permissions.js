@@ -234,29 +234,20 @@ function requireFeature(key) {
 
 /**
  * Build a SQL fragment restricting `column` to the allowed subjects.
- *
- * ALWAYS returns an object. When there is no restriction (the owner /
- * developer panel, or an institute with no subject whitelist) the result is
- * `{ clause: "", args: [] }` — an empty clause, NOT null. Returning null used
- * to crash every caller that reads `filter.clause` directly, which made the
- * owner panel's question endpoints answer 500 and left the Manage section
- * with no subjects at all.
- *
- * Check `clause` (never the object itself) to decide whether to apply it:
+ * Returns `null` when there is no restriction.
  *
  *   const f = subjectSqlFilter(perms);
- *   if (f.clause) { sql += ` AND ${f.clause}`; args.push(...f.args); }
+ *   if (f) { sql += ` AND ${f.clause}`; args.push(...f.args); }
  */
 function subjectSqlFilter(perms, column = "subject") {
-	const EMPTY = { clause: "", args: [] };
 	const p = normalizePermissions(perms);
-	if (!p.allowedSubjects.length) return EMPTY;
+	if (!p.allowedSubjects.length) return null;
 	const variants = new Set();
 	for (const s of p.allowedSubjects) {
 		for (const v of subjectVariants(s)) variants.add(v);
 	}
 	const list = [...variants];
-	if (!list.length) return EMPTY;
+	if (!list.length) return null;
 	const col = `LOWER(TRIM(${column}))`;
 	// Match plain spelling OR the alias-collapsed spelling ("maths" vs "math").
 	const clause = `(${col} IN (${list.map(() => "?").join(",")}) OR REPLACE(REPLACE(${col},' ',''),'.','') IN (${list.map(() => "?").join(",")}))`;

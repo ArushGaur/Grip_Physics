@@ -18,62 +18,46 @@
  *                    (Resend/Brevo need this domain verified)
  */
 
-const MAIL_FROM = process.env.MAIL_FROM || "Vyorra <onboarding@resend.dev>";
-const FALLBACK_FROM_EMAIL = "onboarding@resend.dev";
-
-/** A mailbox address strict enough for what Resend / Brevo will accept. */
-const EMAIL_RE =
-	/^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/;
-
 /**
- * Display-name characters that need no quoting (RFC 5322 atext, plus space).
- * Everything else — including ".", "," and any non-ASCII letter — is dropped
- * rather than quoted or escaped, because Resend validates `from` against the
- * plain `Name <email@example.com>` shape and rejects a quoted display name
- * (or raw UTF-8) with a 422 validation_error.
+ * Dashboards such as Sevalla/Render often store env values with the quotes the
+ * user typed, so MAIL_FROM arrives as `"Grip Physics <login@x.com>"` (quotes
+ * included) and Resend answers 422 "Invalid `from` field". Strip wrapping
+ * quotes/whitespace and validate; fall back to the sandbox sender rather than
+ * failing every login.
  */
-const NAME_STRIP_RE = /[^A-Za-z0-9 !#$%&'*+\-/=?^_`{|}~]/g;
-const FROM_HEADER_RE = /^[A-Za-z0-9 !#$%&'*+\-/=?^_`{|}~]+ <[^\s<>@]+@[^\s<>@]+>$/;
+function sanitizeMailFrom(raw) {
+	let v = String(raw == null ? "" : raw).trim();
+	// Peel repeated wrapping quotes: "\"Name <a@b.com>\"" -> Name <a@b.com>
+	for (let i = 0; i < 3; i++) {
+		const m = /^(["'])([\s\S]*)\1$/.exec(v);
+		if (!m) break;
+		v = m[2].trim();
+	}
+	v = v.replace(/[\r\n]+/g, " ").trim();
+	if (!v) return { from: DEFAULT_MAIL_FROM, problem: "" };
+	const addr = /<([^>]+)>\s*$/.exec(v);
+	const email = (addr ? addr[1] : v).trim();
+	if (!/^[^\s@"<>,;]+@[^\s@"<>,;.]+\.[^\s@"<>,;]+$/.test(email)) {
+		return { from: DEFAULT_MAIL_FROM, problem: v };
+	}
+	return { from: v, problem: "" };
+}
+
+const DEFAULT_MAIL_FROM = "Vyorra <onboarding@resend.dev>";
+const _mailFrom = sanitizeMailFrom(process.env.MAIL_FROM);
+if (_mailFrom.problem) {
+	console.error(
+		`[mailer] \u26a0 MAIL_FROM is not a valid sender: ${JSON.stringify(_mailFrom.problem)}. ` +
+		'Expected "Name <you@yourdomain.com>" or "you@yourdomain.com" (no surrounding quotes). ' +
+		`Falling back to ${DEFAULT_MAIL_FROM} so login codes still go out.`
+	);
+}
+const MAIL_FROM = _mailFrom.from;
 
 function parseFrom(from) {
-	const raw = String(from == null ? "" : from).trim();
-	const m = /^(.*?)<([^>]*)>\s*$/.exec(raw);
-	const name = m ? m[1].trim().replace(/^"+|"+$/g, "").trim() : "";
-	const email = (m ? m[2] : raw).trim();
-	return { name: name || "Vyorra", email, valid: EMAIL_RE.test(email) };
-}
-
-let _warnedBadFrom = false;
-
-/**
- * The verified sender address every message goes out from. A malformed
- * MAIL_FROM (blank, a bare name, a stray space inside the angle brackets)
- * used to be passed straight through to the provider, which answered 422 and
- * surfaced to the student as a generic connection error — so fall back to a
- * working address and say loudly what's wrong instead.
- */
-function senderAddress() {
-	const base = parseFrom(MAIL_FROM);
-	if (base.valid) return base;
-	if (!_warnedBadFrom) {
-		_warnedBadFrom = true;
-		console.error(
-			`[mailer] \u26a0 MAIL_FROM is not a valid sender: ${JSON.stringify(MAIL_FROM)}. ` +
-			`Expected "Name <you@yourdomain.com>" or "you@yourdomain.com". ` +
-			`Falling back to ${FALLBACK_FROM_EMAIL} so login codes still go out.`
-		);
-	}
-	return { name: base.name, email: FALLBACK_FROM_EMAIL, valid: true };
-}
-
-/** Strip a display name down to something safe to send unquoted. */
-function cleanName(value) {
-	return String(value == null ? "" : value)
-		.replace(NAME_STRIP_RE, " ")
-		.replace(/\s+/g, " ")
-		.trim()
-		.slice(0, 64)
-		.trim();
+	const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(from);
+	if (m) return { name: m[1] || "Vyorra", email: m[2] };
+	return { name: "Vyorra", email: String(from).trim() };
 }
 
 /**
@@ -83,13 +67,15 @@ function cleanName(value) {
  * remain on a domain verified with the provider.
  */
 function buildFrom(fromName) {
-	const base = senderAddress();
-	const name = cleanName(fromName) || cleanName(base.name);
-	// A bare address is a format Resend accepts, so it's the safe fallback
-	// whenever the institute's name leaves nothing usable behind.
-	if (!name) return base.email;
-	const header = `${name} <${base.email}>`;
-	return FROM_HEADER_RE.test(header) ? header : base.email;
+	const base = parseFrom(MAIL_FROM);
+	const clean = String(fromName == null ? "" : fromName)
+		.replace(/[\r\n<>"]/g, " ")   // never let a name break the header
+		.replace(/\s+/g, " ")
+		.trim()
+		.slice(0, 78);
+	const name = clean || base.name;
+	const needsQuotes = /[,;:@()\[\]\\.]/.test(name);
+	return `${needsQuotes ? `"${name}"` : name} <${base.email}>`;
 }
 
 /** Which provider is active. Exposed so /api/health can report it. */
@@ -249,19 +235,16 @@ function escapeHtml(s) {
  */
 function mailDiagnostics() {
 	const provider = activeProvider();
-	const configuredFrom = parseFrom(MAIL_FROM);
-	const from = senderAddress();
+	const from = parseFrom(MAIL_FROM);
 	return {
 		provider,
 		configured: provider !== "console",
 		from: from.email,
 		fromName: from.name,
-		mailFromValid: configuredFrom.valid,
-		exampleFromHeader: buildFrom("Your Institute"),
 		usingResendSandboxSender: /@resend\.dev$/i.test(from.email),
-		hint: !configuredFrom.valid
-			? `MAIL_FROM (${JSON.stringify(MAIL_FROM)}) is not a valid sender address. Set it to "Name <you@yourdomain.com>" (domain verified with your provider) and restart.`
-			: provider === "console"
+		mailFromInvalid: Boolean(_mailFrom.problem),
+		hint:
+			provider === "console"
 				? "No email provider configured. Set RESEND_API_KEY (or BREVO_API_KEY, or SMTP_HOST + SMTP_USER + SMTP_PASS) and MAIL_FROM, then restart. See EMAIL_SETUP.md."
 				: /@resend\.dev$/i.test(from.email)
 					? "MAIL_FROM still uses onboarding@resend.dev. Resend only delivers from that address to the email you signed up with \u2014 add and verify your own domain, then set MAIL_FROM to it."

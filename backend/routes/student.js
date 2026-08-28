@@ -1641,9 +1641,32 @@ router.post("/api/student/request-otp", rateLimit(60 * 1000, 5), async (req, res
 			});
 			console.log(`[otp] code emailed to ${masked} via ${provider}`);
 		} catch (mailErr) {
-			console.error(`[otp] send failed via ${provider}:`, mailErr.message);
+			const raw = String(mailErr?.message || "");
+			console.error(`[otp] send failed via ${provider}:`, raw);
+
+			// Turn the provider's raw API error into something a student and an
+			// institute owner can both act on, instead of a generic
+			// "connection error" in the portal.
+			let friendly = "Could not send the login code right now. Please try again in a minute.";
+			let setupHint = "";
+			if (/only send testing emails to your own email/i.test(raw)) {
+				friendly = "Email login is not fully set up for this institute yet, so codes can only go to the account owner's address.";
+				setupHint = "Resend is still in sandbox mode: verify your domain at resend.com/domains, then set MAIL_FROM to an address on that domain and redeploy.";
+				console.error("[otp] \u26a0 " + setupHint);
+			} else if (/Invalid `?from`? field|invalid sender/i.test(raw)) {
+				friendly = "Email login is misconfigured for this institute, so the code could not be sent.";
+				setupHint = 'MAIL_FROM must look like Name <you@yourdomain.com> with no surrounding quotes.';
+				console.error("[otp] \u26a0 " + setupHint);
+			} else if (/\b(401|403)\b|api[_ ]?key|unauthor/i.test(raw)) {
+				friendly = "Email login is misconfigured for this institute, so the code could not be sent.";
+				setupHint = "The email provider rejected the API key. Check RESEND_API_KEY / BREVO_API_KEY.";
+				console.error("[otp] \u26a0 " + setupHint);
+			}
+
 			return res.status(502).json({
-				error: "Could not send the email. " + (mailErr.message || "").slice(0, 200),
+				error: friendly,
+				setupHint: setupHint || undefined,
+				providerError: raw.slice(0, 200),
 				provider,
 			});
 		}
