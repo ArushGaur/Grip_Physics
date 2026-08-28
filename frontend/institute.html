@@ -2968,6 +2968,13 @@
             border-bottom: 1px dashed var(--line);
         }
 
+        /* Keep the Action buttons lined up under the "ACTION" heading. */
+        #stu-table-wrap .data-table th:last-child,
+        #stu-table-wrap .data-table td:last-child {
+            text-align: right;
+            white-space: nowrap;
+        }
+
         .data-table tr:last-child td {
             border-bottom: none;
         }
@@ -3020,6 +3027,33 @@
             align-items: center;
             gap: 12px;
             margin-bottom: 14px;
+            min-width: 0;
+        }
+
+        /* The name/email column must be allowed to shrink, otherwise a long
+           email pushes the ✓ Complete pill past the card's right edge. */
+        .stu-card-top>span:not(.stud-av):not(.status-pill) {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .stu-card-top .stud-name,
+        .stu-card-top .stud-mail {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .stu-card-top .status-pill {
+            flex: 0 0 auto;
+            margin-left: auto;
+            align-self: flex-start;
+            white-space: nowrap;
+        }
+
+        .stu-card .stud-av {
+            flex: 0 0 auto;
         }
 
         .stu-card .stud-av {
@@ -14778,7 +14812,7 @@
                     openStudents() { spSel = new Set(rolls); spCls = null; spSec = null; const m = spElm(); m.classList.add('open'); const s = document.getElementById('iot-sp-search'); if (s) s.value = ''; this.spRender(); },
                     closeStudents() { const m = document.getElementById('iot-sp'); if (m) m.classList.remove('open'); },
                     // Students are picked by drilling through Class cards → Section cards
-                    // → student rows, instead of one long flat list.
+                    // ��� student rows, instead of one long flat list.
                     spRender() {
                         const list = document.getElementById('iot-sp-list'); if (!list) return;
                         const query = (document.getElementById('iot-sp-search')?.value || '').trim();

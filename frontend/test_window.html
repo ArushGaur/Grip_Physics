@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Student Portal — Vyorra</title>
+    <!-- Tab icon: swapped to the institute's own logo at runtime by
+         applyInstituteFavicon() in test_window.js -->
+    <link rel="icon" id="instituteFavicon" href="triumph-192.png">
+    <link rel="apple-touch-icon" id="instituteAppleIcon" href="triumph-192.png">
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://vyorra.in/test_window">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -926,8 +930,11 @@
                     style="height:52px;background:#111827;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0">
                     <!-- Brand - hidden on mobile via CSS -->
                     <div id="jeeBrandLabel"
-                        style="font-weight:800;font-size:1rem;color:#60c8ff;font-family:'Inter', sans-serif;letter-spacing:1px;white-space:nowrap;flex-shrink:0">
-                        ⚡ <span id="jeeTopBarBrandText">INSTITUTE</span> TEST</div>
+                        style="font-weight:800;font-size:1rem;color:#60c8ff;font-family:'Inter', sans-serif;letter-spacing:1px;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:8px">
+                        <span class="jee-brand-mark"
+                            style="width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;flex:none">⚡</span>
+                        <span><span id="jeeTopBarBrandText">INSTITUTE</span> TEST</span>
+                    </div>
                     <div style="flex:1;min-width:0"></div>
                     <div id="jeeTestInfo"
                         style="font-size:0.78rem;color:rgba(255,255,255,0.55);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">

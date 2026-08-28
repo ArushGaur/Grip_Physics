@@ -1501,13 +1501,15 @@ router.post("/api/student/login", rateLimit(60 * 1000, 10), async (req, res) => 
 			args: [token, roll, instId, expires],
 		});
 		let instituteName = "Vyorra";
+		let instituteLogo = "";
 		if (instId) {
-			const instR = await db.execute({ sql: "SELECT name FROM institutes WHERE id = ? LIMIT 1", args: [instId] });
+			const instR = await db.execute({ sql: "SELECT name, logo_url FROM institutes WHERE id = ? LIMIT 1", args: [instId] });
 			if (instR.rows.length) instituteName = instR.rows[0].name;
+			if (instR.rows.length) instituteLogo = instR.rows[0].logo_url || "";
 		}
 		res.json({
 			success: true, token,
-			student: { rollNumber: row.roll_number, name: row.name, className: row.class_name, phone: row.phone, age: row.age, dateOfBirth: row.date_of_birth, instituteName },
+			student: { rollNumber: row.roll_number, name: row.name, className: row.class_name, phone: row.phone, age: row.age, dateOfBirth: row.date_of_birth, instituteName, instituteLogo },
 		});
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
@@ -1520,11 +1522,13 @@ router.get("/api/student/me", async (req, res) => {
 		const row = await getStudentFromToken(req);
 		if (!row) return res.status(401).json({ error: "Not authenticated" });
 		let instituteName = "Vyorra";
+		let instituteLogo = "";
 		if (row.institute_id) {
-			const instR = await db.execute({ sql: "SELECT name FROM institutes WHERE id = ? LIMIT 1", args: [row.institute_id] });
+			const instR = await db.execute({ sql: "SELECT name, logo_url FROM institutes WHERE id = ? LIMIT 1", args: [row.institute_id] });
 			if (instR.rows.length) instituteName = instR.rows[0].name;
+			if (instR.rows.length) instituteLogo = instR.rows[0].logo_url || "";
 		}
-		res.json({ rollNumber: row.roll_number, name: row.name, className: row.class_name, section: row.section || "", email: row.email || "", phone: row.phone, age: row.age, dateOfBirth: row.date_of_birth, instituteName, hasPassword: !!row.password_hash });
+		res.json({ rollNumber: row.roll_number, name: row.name, className: row.class_name, section: row.section || "", email: row.email || "", phone: row.phone, age: row.age, dateOfBirth: row.date_of_birth, instituteName, instituteLogo, hasPassword: !!row.password_hash });
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
 	}
@@ -1764,11 +1768,13 @@ router.post("/api/student/request-otp", rateLimit(60 * 1000, 5), async (req, res
 		// Branding for the email: the institute's own name + logo, so the code
 		// looks like it came from their academy and not from us.
 		let instituteName = "Vyorra";
+		let instituteLogo = "";
 		let instituteLogoUrl = "";
 		try {
 			const ir = await db.execute({ sql: "SELECT name, logo_url FROM institutes WHERE id = ? LIMIT 1", args: [row.institute_id] });
 			if (ir.rows.length) {
 				instituteName = ir.rows[0].name;
+				if (ir.rows.length) instituteLogo = ir.rows[0].logo_url || "";
 				instituteLogoUrl = ir.rows[0].logo_url || "";
 			}
 		} catch (_) {}
@@ -1799,6 +1805,7 @@ router.post("/api/student/request-otp", rateLimit(60 * 1000, 5), async (req, res
 				code,
 				studentName: row.name || "",
 				instituteName,
+				instituteLogo,
 				logoUrl: instituteLogoUrl,
 				minutes: OTP_TTL_MS / 60000,
 			});
@@ -1933,9 +1940,11 @@ router.post("/api/student/verify-otp", rateLimit(60 * 1000, 15), async (req, res
 		});
 
 		let instituteName = "Vyorra";
+		let instituteLogo = "";
 		try {
 			const ir = await db.execute({ sql: "SELECT name, code FROM institutes WHERE id = ? LIMIT 1", args: [row.institute_id] });
 			if (ir.rows.length) instituteName = ir.rows[0].name;
+			if (ir.rows.length) instituteLogo = ir.rows[0].logo_url || "";
 		} catch (_) {}
 
 		// First code they ever redeem -> the app makes them pick a password next.
@@ -1961,6 +1970,7 @@ router.post("/api/student/verify-otp", rateLimit(60 * 1000, 15), async (req, res
 				email: row.email || email,
 				phone: row.phone || "",
 				instituteName,
+				instituteLogo,
 				hasPassword,
 			},
 		});
@@ -2040,11 +2050,13 @@ async function openStudentSession(row) {
 		args: [token, row.roll_number, row.institute_id, expires],
 	});
 	let instituteName = "Vyorra";
+	let instituteLogo = "";
 	try {
-		const ir = await db.execute({ sql: "SELECT name FROM institutes WHERE id = ? LIMIT 1", args: [row.institute_id] });
+		const ir = await db.execute({ sql: "SELECT name, logo_url FROM institutes WHERE id = ? LIMIT 1", args: [row.institute_id] });
 		if (ir.rows.length) instituteName = ir.rows[0].name;
+		if (ir.rows.length) instituteLogo = ir.rows[0].logo_url || "";
 	} catch (_) {}
-	return { token, instituteName };
+	return { token, instituteName, instituteLogo };
 }
 
 // ── STUDENT: does this email already have a password? ─────────────────
@@ -2100,7 +2112,7 @@ router.post("/api/student/login-password", rateLimit(60 * 1000, 10), async (req,
 		}
 		if (!helpers.verifyPasscode(password, stored)) return res.status(401).json({ error: WRONG });
 
-		const { token, instituteName } = await openStudentSession(row);
+		const { token, instituteName, instituteLogo } = await openStudentSession(row);
 		res.json({
 			success: true,
 			token,
@@ -2113,6 +2125,7 @@ router.post("/api/student/login-password", rateLimit(60 * 1000, 10), async (req,
 				email: row.email || email,
 				phone: row.phone || "",
 				instituteName,
+				instituteLogo,
 				hasPassword: true,
 			},
 		});
@@ -2177,7 +2190,7 @@ router.post("/api/student/reset-password", rateLimit(60 * 1000, 10), async (req,
 			});
 		} catch (_) {}
 
-		const { token, instituteName } = await openStudentSession(row);
+		const { token, instituteName, instituteLogo } = await openStudentSession(row);
 		res.json({
 			success: true,
 			token,
@@ -2190,6 +2203,7 @@ router.post("/api/student/reset-password", rateLimit(60 * 1000, 10), async (req,
 				email: row.email || email,
 				phone: row.phone || "",
 				instituteName,
+				instituteLogo,
 				hasPassword: true,
 			},
 		});

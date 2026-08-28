@@ -13,37 +13,88 @@ if (_instituteCode && _instituteCode !== 'DEFAULT') {
 }
 
 /* ── Institute Branding Helpers ── */
-function applyInstituteBranding(name) {
-    if (!name) return;
-    document.title = `${name} | Student Portal`;
-    const brandNameEl = document.getElementById('sidebarBrandName') || document.querySelector('.sidebar-brand-name');
-    if (brandNameEl) brandNameEl.textContent = name;
-    const footerSpanEl = document.getElementById('footerBrandSpan') || document.querySelector('.main-footer span');
-    if (footerSpanEl) footerSpanEl.textContent = `⚡ ${name} Student Portal v2`;
-    const jeeTextEl = document.getElementById('jeeTopBarBrandText');
-    if (jeeTextEl) jeeTextEl.textContent = name.toUpperCase();
+const DEFAULT_BRAND_ICON = 'triumph-192.png';
+
+function _savedInstituteLogo() {
+    try { return localStorage.getItem('gp_institute_logo') || ''; } catch (_) { return ''; }
+}
+
+// Swaps the browser tab icon (the "logo in the page title") to the institute's
+// own logo. Falls back to the bundled app icon when the institute has none.
+function applyInstituteFavicon(logoUrl) {
+    const href = logoUrl || DEFAULT_BRAND_ICON;
+    [['instituteFavicon', 'icon'], ['instituteAppleIcon', 'apple-touch-icon']].forEach(([id, rel]) => {
+        let link = document.getElementById(id);
+        if (!link) {
+            link = document.createElement('link');
+            link.id = id;
+            link.rel = rel;
+            document.head.appendChild(link);
+        }
+        link.rel = rel;
+        link.href = href;
+    });
+}
+
+// Replaces every ⚡ brand mark (sidebar, sign-in panel, test top bar) with the
+// institute's logo image, and restores the bolt when there is no logo.
+function applyInstituteLogoMarks(logoUrl, name) {
+    document.querySelectorAll('.sidebar-brand-mark, .auth-left-logo, .jee-brand-mark').forEach(el => {
+        if (logoUrl) {
+            el.classList.add('has-logo');
+            const alt = (name || 'Institute') + ' logo';
+            el.innerHTML = '<img src="' + logoUrl + '" alt="' + alt.replace(/"/g, '&quot;') + '" onerror="this.parentNode.classList.remove(\'has-logo\');this.parentNode.textContent=\'⚡\'">';
+        } else {
+            el.classList.remove('has-logo');
+            el.textContent = '⚡';
+        }
+    });
+}
+
+function applyInstituteBranding(name, logoUrl) {
+    if (logoUrl === undefined || logoUrl === null) logoUrl = _savedInstituteLogo();
+    if (logoUrl) { try { localStorage.setItem('gp_institute_logo', logoUrl); } catch (_) { } }
+    if (name) {
+        document.title = `${name} | Student Portal`;
+        const brandNameEl = document.getElementById('sidebarBrandName') || document.querySelector('.sidebar-brand-name');
+        if (brandNameEl) brandNameEl.textContent = name;
+        const footerSpanEl = document.getElementById('footerBrandSpan') || document.querySelector('.main-footer span');
+        if (footerSpanEl) footerSpanEl.textContent = `${name} Student Portal v2`;
+        const jeeTextEl = document.getElementById('jeeTopBarBrandText');
+        if (jeeTextEl) jeeTextEl.textContent = name.toUpperCase();
+    }
+    applyInstituteFavicon(logoUrl);
+    applyInstituteLogoMarks(logoUrl, name);
 }
 
 // Apply any previously-saved institute name immediately (only if user has an active session)
 (function () {
     try {
         const saved = localStorage.getItem('gp_institute_name');
+        const savedLogo = localStorage.getItem('gp_institute_logo') || '';
         const hasSession = !!localStorage.getItem('gp_student_token');
-        if (saved && hasSession) applyInstituteBranding(saved);
+        // The logo/tab icon is safe to show even before sign-in (it is public
+        // branding for the institute this portal link belongs to).
+        if (savedLogo) applyInstituteBranding(hasSession ? saved : '', savedLogo);
+        else if (saved && hasSession) applyInstituteBranding(saved);
     } catch (_) { }
 })();
 
 // Try to fetch the institute name from the server using the institute code (only if logged in)
 (async function fetchInstituteName() {
     if (!_instituteCode || _instituteCode === 'DEFAULT') return;
-    if (!localStorage.getItem('gp_student_token')) return; // Don't apply branding before login
+    const loggedIn = !!localStorage.getItem('gp_student_token');
     try {
         const r = await fetch(`${API_BASE}/api/institute/info?code=${encodeURIComponent(_instituteCode)}`, { cache: 'no-store' });
         if (r.ok) {
             const d = await r.json();
-            if (d && d.name) {
-                try { localStorage.setItem('gp_institute_name', d.name); } catch (_) { }
-                applyInstituteBranding(d.name);
+            if (d && (d.name || d.logoUrl)) {
+                try {
+                    if (d.name) localStorage.setItem('gp_institute_name', d.name);
+                    localStorage.setItem('gp_institute_logo', d.logoUrl || '');
+                } catch (_) { }
+                // Names stay hidden until sign-in; the logo is public branding.
+                applyInstituteBranding(loggedIn ? d.name : '', d.logoUrl || '');
             }
         }
     } catch (_) { /* silent — branding will update after login anyway */ }
@@ -2455,9 +2506,12 @@ function loadDashboard() {
     const initials = (_student.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
     // Dynamically update Branding based on the institute the student belongs to
-    if (_student.instituteName) {
-        try { localStorage.setItem('gp_institute_name', _student.instituteName); } catch (_) { }
-        applyInstituteBranding(_student.instituteName);
+    if (_student.instituteName || _student.instituteLogo) {
+        try {
+            if (_student.instituteName) localStorage.setItem('gp_institute_name', _student.instituteName);
+            if (_student.instituteLogo != null) localStorage.setItem('gp_institute_logo', _student.instituteLogo || '');
+        } catch (_) { }
+        applyInstituteBranding(_student.instituteName, _student.instituteLogo || '');
     }
 
     // sidebar
@@ -4006,12 +4060,18 @@ async function doLogout() {
     localStorage.removeItem('gp_pending_roll');
     localStorage.removeItem('gp_institute_name');
     localStorage.removeItem('inst_role');
-    // Reset branding to generic defaults
+    // Reset branding to generic defaults (the logo stays only if this portal
+    // link still points at a specific institute).
     document.title = 'Student Portal';
     const brandNameEl = document.getElementById('sidebarBrandName') || document.querySelector('.sidebar-brand-name');
     if (brandNameEl) brandNameEl.textContent = 'Student Portal';
     const footerSpanEl = document.getElementById('footerBrandSpan') || document.querySelector('.main-footer span');
-    if (footerSpanEl) footerSpanEl.textContent = '⚡ Student Portal v2';
+    if (footerSpanEl) footerSpanEl.textContent = 'Student Portal v2';
+    if (!_instituteCode || _instituteCode === 'DEFAULT') {
+        localStorage.removeItem('gp_institute_logo');
+        applyInstituteFavicon('');
+        applyInstituteLogoMarks('', '');
+    }
     ['loginEmailInput', 'signupEmailInput', 'loginPwInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
