@@ -1497,9 +1497,11 @@ async function addStudentsToInstitute(students, instId, now = Date.now()) {
 		const email = String(s.email || "").trim().toLowerCase();
 		const label = name || email || "(blank row)";
 
-		if (!name || !className || !section || !mobile || !email) {
+		// Mobile is optional: the student logs in with a one-time code sent to
+		// their email, so a phone number is only nice-to-have contact detail.
+		if (!name || !className || !section || !email) {
 			invalid++;
-			errors.push({ student: label, reason: "Name, class, section, mobile and email are all required" });
+			errors.push({ student: label, reason: "Name, class, section and email are all required" });
 			continue;
 		}
 		if (!EMAIL_RE.test(email)) {
@@ -1507,7 +1509,8 @@ async function addStudentsToInstitute(students, instId, now = Date.now()) {
 			errors.push({ student: label, reason: `"${email}" is not a valid email address` });
 			continue;
 		}
-		if (!/^\d{10}$/.test(mobile)) {
+		// Only validate the number when one was actually supplied.
+		if (mobile && !/^\d{10}$/.test(mobile)) {
 			invalid++;
 			errors.push({ student: label, reason: "Mobile number must be exactly 10 digits" });
 			continue;

@@ -8877,9 +8877,11 @@
                         autocomplete="off" spellcheck="false">
                     <datalist id="f-section-list"></datalist>
                 </div>
+                <!-- Optional: students sign in with an emailed one-time code, so a
+                     phone number is contact detail only, not a login credential. -->
                 <div class="form-field">
-                    <label>Mobile Number</label>
-                    <input id="f-mobile" type="tel" placeholder="e.g. 9876543210" maxlength="14">
+                    <label>Mobile Number <span style="opacity:.6;font-weight:400">(optional)</span></label>
+                    <input id="f-mobile" type="tel" placeholder="optional — e.g. 9876543210" maxlength="14">
                 </div>
                 <!-- Email is the student's login identity. They receive a one-time
                      code here to sign in, so it has to be correct. Roll numbers are
@@ -8932,8 +8934,8 @@
                     <datalist id="es-section-list"></datalist>
                 </div>
                 <div class="form-field">
-                    <label>Mobile Number</label>
-                    <input id="es-mobile" type="tel" placeholder="e.g. 9876543210" maxlength="14">
+                    <label>Mobile Number <span style="opacity:.6;font-weight:400">(optional)</span></label>
+                    <input id="es-mobile" type="tel" placeholder="optional — e.g. 9876543210" maxlength="14">
                 </div>
                 <div class="form-field">
                     <label>Age</label>
@@ -9885,7 +9887,8 @@
             const section = document.getElementById('f-section').value;
             const mobile = document.getElementById('f-mobile').value.trim();
             const email = document.getElementById('f-email').value.trim().toLowerCase();
-            if (!name || !cls || !section || !mobile || !email) {
+            // Mobile is optional — email is the login identity.
+            if (!name || !cls || !section || !email) {
                 showToast('⚠️ Please fill in all required fields');
                 return;
             }
@@ -13549,13 +13552,14 @@
 
                 // Roll numbers are minted server-side now, and there is no password:
                 // the student logs in with a one-time code emailed to this address.
-                if (!name || !cls || !section || !mobile || !email) {
-                    toast('Name, class, section, mobile and email are all required'); return;
+                // Mobile is optional — the one-time sign-in code goes to the email.
+                if (!name || !cls || !section || !email) {
+                    toast('Name, class, section and email are all required'); return;
                 }
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
                     toast('Please enter a valid email address'); return;
                 }
-                if (mobile.length !== 10) {
+                if (mobile && mobile.length !== 10) {
                     toast('Mobile number must be 10 digits'); return;
                 }
                 try {
@@ -13580,7 +13584,7 @@
                 } catch (e) { toast(e.message || 'Failed'); }
             };
 
-            /* ════════════ AUTO-GENERATE WIZARD (data-driven override) ════════════ */
+            /* ════════��═══ AUTO-GENERATE WIZARD (data-driven override) ════════════ */
             // The mockup wizard is driven by hardcoded WIZARD_DATA. We override every step to
             // pull real subjects/chapters/topics from State.questionsMeta and to actually create
             // an online test / generate a paper PDF via the admin API.
