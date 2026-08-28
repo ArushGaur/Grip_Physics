@@ -1,6 +1,10 @@
 /* ══════════════════════════════════════════════════════════════════
            CHAPTERS
         ══════════════════════════════════════════════════════════════════ */
+/* NOTE: `allQuestions` is declared in shared-utils.js (loaded first) and holds
+   the question metadata every Manage view renders from. Do not redeclare it
+   here — a second declaration is a SyntaxError that kills this whole file. */
+
 async function loadChaptersAdmin() {
     try {
         const r = await fetch(`${API_BASE}/api/chapters`, { credentials: "include" });
@@ -186,14 +190,32 @@ async function loadQuestionsAdmin() {
         // Load metadata only — no questions_json blobs, instant even for 20k questions
         const r = await fetch(`${API_BASE}/api/admin/questions-meta`, { credentials: "include" });
         console.log("Questions meta API status:", r.status);
-        if (r.status === 403) { console.log("Not authorized for questions"); return; }
-        if (!r.ok) { console.error("Questions meta API error:", r.status); return; }
-        allQuestions = await r.json();
+        if (!r.ok) {
+            // Never leave allQuestions unset — the Manage views read it directly.
+            if (!Array.isArray(allQuestions)) allQuestions = [];
+            let detail = "";
+            try { detail = (await r.json()).error || ""; } catch (_) { }
+            if (r.status === 403) console.warn("Not authorized for questions", detail);
+            else console.error("Questions meta API error:", r.status, detail);
+            renderQuestionList(allQuestions);
+            return;
+        }
+        const data = await r.json();
+        // Accept a bare array or a wrapped { rows | items | questions } payload
+        allQuestions = Array.isArray(data)
+            ? data
+            : (Array.isArray(data && data.rows) ? data.rows
+                : Array.isArray(data && data.items) ? data.items
+                    : Array.isArray(data && data.questions) ? data.questions : []);
         // Clear the row cache so re-opened rows fetch fresh data
         for (const key of Object.keys(_loadedRowCache)) delete _loadedRowCache[key];
         console.log("Question metadata loaded:", allQuestions.length, "rows (lazy, no blobs)");
         renderQuestionList(allQuestions);
-    } catch (e) { console.error("Error loading questions:", e); }
+    } catch (e) {
+        if (!Array.isArray(allQuestions)) allQuestions = [];
+        console.error("Error loading questions:", e);
+        renderQuestionList(allQuestions);
+    }
 }
 
 function mqGetOptionImages(question) {
@@ -380,7 +402,7 @@ function inferSubjectFromText(text) {
     if (!value) return '';
     if (/physics|mechanics|motion|kinematics|laws of motion|work\s*(?:,|and)?\s*energy|power|center of mass|system of particles|rotational motion|gravitation|units and measurements|measurement|dimensions|errors?|vectors?|projectile|friction|elasticity|fluid|thermodynamics|thermal|kinetic theory|oscillation|waves?|sound|electrostatics|current electricity|magnetism|electromagnetic induction|alternating current|ray optics|wave optics|modern physics|dual nature|atomic|nuclear|semiconductor|communication/i.test(value)) return 'Physics';
     if (/chemistry|organic|inorganic|physical chemistry|chemical bonding|acid|base|redox|periodic|hydrocarbon|polymer|biomolecule|environment|electrochem|kinetics|equilibr|solution|surface chemistry|thermodynamics/i.test(value)) return 'Chemistry';
-    if (/math|mathematics|algebra|calculus|geometry|trigon|vector|matrix|determinant|probability|statistic|complex|sequence|series|binomial|straight line|circle|parabola|ellipse|hyperbola|limit|integral|differential|linear/i.test(value)) return 'Mathematics';
+    if (/math|mathematics|algebra|calculus|geometry|trigon|vector|matrix|determinant|probability|statistic|complex|sequence|series|binomial|straight line|circle|parabola|ellipse|hyperbola|limit|integral|differential|linear|quadratic|permutation|combination|conic|logarithm|mensuration|coordinate geometry|set theory|relations? and functions?/i.test(value)) return 'Mathematics';
     return '';
 }
 
