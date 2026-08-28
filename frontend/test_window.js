@@ -1746,7 +1746,7 @@ document.addEventListener('touchmove', function (e) {
     }
 }, { passive: false });
 
-// ── pagehide fallback (iOS Safari) ────────────────────────────────────
+// ── pagehide fallback (iOS Safari) ��───────────────────────────────────
 window.addEventListener('pagehide', function () {
     if (_blockRefresh) {
         try { sessionStorage.setItem('_gpRefreshInterrupted', '1'); } catch (_) { }
@@ -4093,10 +4093,58 @@ async function updateProfile() {
 }
 
 /* ══ BACK TO ROLE CHOOSER (student / teacher login selection) ══ */
-// The login screen "← Back" button returns the user to the parent app's
-// role-chooser page (Student / Teacher). When this portal is embedded as
-// an <iframe> inside institute.html we signal the parent via postMessage;
-// otherwise we just stay on / reset the login screen.
+// The login screen "← Back" button returns the user to the institute panel's
+// role-chooser page (Student / Teacher).
+// Returns the user to the institute panel (role chooser).
+// The panel can reach this portal two ways:
+//   1. embedded in an <iframe>  → tell the parent via postMessage
+//   2. window.location.href = 'test_window.html' (what institute.html actually
+//      does) → this is a normal page load, so we must navigate back ourselves.
+// Returns true when a return path was taken.
+function _returnToInstitutePanel() {
+    let cameFromPanel = false;
+    try { cameFromPanel = !!localStorage.getItem('inst_role'); } catch (_) { }
+    try {
+        localStorage.removeItem('inst_role');
+        localStorage.removeItem('gp_active_role');
+    } catch (_) { }
+
+    // 1) Embedded inside institute.html
+    if (window.parent && window.parent !== window) {
+        try { window.parent.postMessage({ type: 'gp-student-logout' }, '*'); return true; }
+        catch (_) { /* fall through to navigation */ }
+    }
+
+    // 2) Navigated here from the institute panel — go back to it.
+    let ref = '';
+    try { ref = document.referrer || ''; } catch (_) { }
+    if (/institute\.html/i.test(ref)) {
+        window.location.replace(ref.split('#')[0]);
+        return true;
+    }
+    if (cameFromPanel) {
+        const base = String(location.pathname || '').replace(/[^/]*$/, '');
+        window.location.replace(base + 'institute.html');
+        return true;
+    }
+    return false; // opened standalone (direct student link)
+}
+
+// Hide the "← Back" button when there is no institute panel to go back to
+// (portal opened directly by a student rather than from the panel).
+(function _syncLoginBackBtn() {
+    const btn = document.getElementById('loginBackBtn');
+    if (!btn) return;
+    const embedded = !!(window.parent && window.parent !== window);
+    let cameFromPanel = false;
+    try { cameFromPanel = !!localStorage.getItem('inst_role'); } catch (_) { }
+    let ref = '';
+    try { ref = document.referrer || ''; } catch (_) { }
+    if (!embedded && !cameFromPanel && !/institute\.html/i.test(ref)) {
+        btn.style.display = 'none';
+    }
+})();
+
 function backToRoleChooser() {
     // Clear any half-entered login state.
     _token = ''; _student = null;
@@ -4111,10 +4159,7 @@ function backToRoleChooser() {
     });
     if (typeof setAuthMode === 'function') setAuthMode('login');
 
-    if (window.parent && window.parent !== window) {
-        try { window.parent.postMessage({ type: 'gp-student-logout' }, '*'); return; }
-        catch (_) { /* fall through */ }
-    }
+    if (_returnToInstitutePanel()) return;
     // Standalone fallback — just show the login screen.
     showScreen('login');
 }
@@ -4150,13 +4195,10 @@ async function doLogout() {
     });
     if (typeof setAuthMode === 'function') setAuthMode('login');
 
-    // When this portal is embedded inside institute.html (an <iframe>),
-    // logging out should return the user to the role-chooser page of the
-    // parent app — NOT to this portal's own student login screen.
-    if (window.parent && window.parent !== window) {
-        try { window.parent.postMessage({ type: 'gp-student-logout' }, '*'); return; }
-        catch (_) { /* fall through to local logout if messaging fails */ }
-    }
+    // If the user arrived from the institute panel (embedded or via a normal
+    // navigation), logging out should return them to the panel's role chooser
+    // — NOT to this portal's own student login screen.
+    if (_returnToInstitutePanel()) return;
     showScreen('login');
 }
 
