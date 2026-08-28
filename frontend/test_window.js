@@ -81,7 +81,7 @@ function applyInstituteFavicon(logoUrl) {
 // Replaces every ⚡ brand mark (sidebar, sign-in panel, test top bar) with the
 // institute's logo image, and restores the bolt when there is no logo.
 function applyInstituteLogoMarks(logoUrl, name) {
-    document.querySelectorAll('.sidebar-brand-mark, .auth-left-logo, .jee-brand-mark').forEach(el => {
+    document.querySelectorAll('.sidebar-brand-mark, .auth-left-logo, .auth-mobile-mark, .jee-brand-mark').forEach(el => {
         if (logoUrl) {
             el.classList.add('has-logo');
             const alt = (name || 'Institute') + ' logo';
@@ -103,6 +103,9 @@ function applyInstituteBranding(name, logoUrl) {
         if (brandNameEl) brandNameEl.textContent = name;
         const brandSubEl = document.querySelector('.sidebar-brand-sub');
         if (brandSubEl) brandSubEl.textContent = 'Student Portal';
+        // Mobile sign-in header (shown where the left brand panel is hidden)
+        const mobBrandNameEl = document.getElementById('authMobileBrandName');
+        if (mobBrandNameEl) mobBrandNameEl.textContent = name;
         const footerSpanEl = document.getElementById('footerBrandSpan') || document.querySelector('.main-footer span');
         if (footerSpanEl) footerSpanEl.textContent = `${name} Student Portal v2`;
         const jeeTextEl = document.getElementById('jeeTopBarBrandText');
@@ -2189,7 +2192,7 @@ async function requestLoginOtp(email, btnId) {
 }
 
 /* ══ PASSWORD FLOW ══
-   First visit  : email → code → create a password → dashboard
+   First visit  : email ��� code → create a password → dashboard
    Later visits : email → password → dashboard
    Forgot it    : email → "Forgot password?" → code → new password        */
 
@@ -4132,6 +4135,8 @@ async function doLogout() {
     if (brandNameEl) brandNameEl.textContent = 'Student Portal';
     const brandSubEl = document.querySelector('.sidebar-brand-sub');
     if (brandSubEl) brandSubEl.textContent = 'Student Portal v2';
+    const mobBrandNameEl = document.getElementById('authMobileBrandName');
+    if (mobBrandNameEl) mobBrandNameEl.textContent = 'Student Portal';
     const footerSpanEl = document.getElementById('footerBrandSpan') || document.querySelector('.main-footer span');
     if (footerSpanEl) footerSpanEl.textContent = 'Student Portal v2';
     applyInstituteFavicon('');

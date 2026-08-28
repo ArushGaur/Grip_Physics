@@ -707,6 +707,62 @@ html.refresh-blocked body {
     padding: 44px 40px;
 }
 
+/* Mobile-only institute brand header above the sign-in form (desktop keeps the
+   full left brand panel instead). */
+.auth-mobile-brand {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    margin: 2px 0 22px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.auth-mobile-mark {
+    width: 62px;
+    height: 62px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--cyan-dim), var(--violet-dim));
+    border: 1.5px solid var(--border-hi);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+    overflow: hidden;
+    flex: none;
+}
+
+.auth-mobile-mark.has-logo {
+    background: #fff;
+    padding: 0;
+}
+
+.auth-mobile-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    display: block;
+}
+
+.auth-mobile-name {
+    font-family: var(--font-head);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+}
+
+.auth-mobile-sub {
+    font-family: var(--font-mono);
+    font-size: .7rem;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-mid);
+}
+
 .auth-back-btn {
     display: inline-flex;
     align-items: center;
@@ -1680,6 +1736,11 @@ html.refresh-blocked body {
         display: none;
     }
 
+    /* Left brand panel is hidden here, so surface the institute brand on top */
+    .auth-mobile-brand {
+        display: flex;
+    }
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
@@ -1770,6 +1831,22 @@ html.refresh-blocked body {
 
     .auth-panel {
         padding: 28px 22px;
+    }
+
+    .auth-mobile-brand {
+        margin: 0 0 18px;
+        padding-bottom: 16px;
+    }
+
+    .auth-mobile-mark {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        font-size: 1.45rem;
+    }
+
+    .auth-mobile-name {
+        font-size: 1.05rem;
     }
 
     .main-footer {

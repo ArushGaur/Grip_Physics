@@ -7,9 +7,9 @@
     <title>Institute Panel — Vyorra</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://vyorra.in/institute">
-    <link rel="manifest" href="/assets/institute-manifest.json">
-    <link rel="icon" type="image/png" href="/assets/favicon.ico" id="favicon">
-    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" id="appleIcon">
+    <link rel="manifest" href="institute-manifest.json">
+    <link rel="icon" type="image/png" href="triumph-192.png" id="favicon">
+    <link rel="apple-touch-icon" href="triumph-192.png" id="appleIcon">
     <meta name="theme-color" content="#0d4c3e">
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,500;0,600&display=swap"
@@ -7623,20 +7623,27 @@
                 <div class="auth-eyebrow">Step 1 of 3</div>
                 <div class="auth-title">Sign in to your institute</div>
                 <div class="auth-sub">Enter the Institute ID and Institute Passcode assigned to you by the owner.</div>
-                <form id="authForm1">
+                <form id="authForm1" autocomplete="off" data-form-type="other">
                     <div class="auth-field">
                         <label for="authInstCode">Institute ID</label>
                         <div class="inp-wrap">
                             <span class="inp-ico">🏢</span>
-                            <input type="text" id="authInstCode" autocomplete="username" autocapitalize="characters"
-                                spellcheck="false" placeholder="e.g. TRI-001" required>
+                            <input type="text" id="authInstCode" name="institute-id" autocomplete="off"
+                                autocapitalize="characters" spellcheck="false" data-lpignore="true"
+                                data-form-type="other" placeholder="e.g. TRI-001" required>
                         </div>
                     </div>
                     <div class="auth-field">
                         <label for="authInstPass">Institute Passcode</label>
                         <div class="inp-wrap">
                             <span class="inp-ico">🔒</span>
-                            <input type="password" id="authInstPass" autocomplete="current-password"
+                            <!-- Masked text field, NOT type="password": the institute passcode is a
+                                 shared org credential, so we keep it out of Google Password Manager
+                                 (which otherwise shows "password found in a data breach" warnings). -->
+                            <input type="text" id="authInstPass" name="institute-passcode" data-masked="1"
+                                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                                data-lpignore="true" data-form-type="other"
+                                style="-webkit-text-security:disc;text-security:disc"
                                 placeholder="Institute passcode" required>
                             <button type="button" class="inp-toggle"
                                 onclick="__togglePw('authInstPass', this)">Show</button>
@@ -7677,12 +7684,16 @@
                 <div class="auth-title">Enter Teacher Passcode</div>
                 <div class="auth-sub">This unlocks the full teacher panel with students, attendance, tests and results.
                 </div>
-                <form id="authForm3">
+                <form id="authForm3" autocomplete="off" data-form-type="other">
                     <div class="auth-field">
                         <label for="authTeacherPass">Teacher Passcode</label>
                         <div class="inp-wrap">
                             <span class="inp-ico">🔐</span>
-                            <input type="password" id="authTeacherPass" autocomplete="current-password"
+                            <!-- Masked text field, NOT type="password" — see note on authInstPass. -->
+                            <input type="text" id="authTeacherPass" name="teacher-passcode" data-masked="1"
+                                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                                data-lpignore="true" data-form-type="other"
+                                style="-webkit-text-security:disc;text-security:disc"
                                 placeholder="Teacher passcode" required>
                             <button type="button" class="inp-toggle"
                                 onclick="__togglePw('authTeacherPass', this)">Show</button>
@@ -7693,7 +7704,7 @@
                 </form>
             </div>
 
-            <div class="auth-foot">Powered by <b>Vyorra</b></div>
+            <div class="auth-foot">Powered by <b>Triumph Learning Platform</b></div>
         </div>
     </div>
 
@@ -15141,6 +15152,16 @@
             window.__togglePw = function (id, btn) {
                 const inp = document.getElementById(id);
                 if (!inp) return;
+                // Passcode fields are masked with CSS instead of type="password" so the
+                // browser's password manager never stores or breach-checks them.
+                // Toggle the masking, never the input type.
+                if (inp.dataset.masked === '1') {
+                    const isHidden = inp.style.webkitTextSecurity !== 'none';
+                    inp.style.webkitTextSecurity = isHidden ? 'none' : 'disc';
+                    inp.style.textSecurity = isHidden ? 'none' : 'disc';
+                    if (btn) btn.textContent = isHidden ? 'Hide' : 'Show';
+                    return;
+                }
                 if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
                 else { inp.type = 'password'; btn.textContent = 'Show'; }
             };

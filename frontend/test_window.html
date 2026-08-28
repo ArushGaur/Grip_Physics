@@ -264,6 +264,14 @@
                             <div class="auth-panel">
                                 <button type="button" class="auth-back-btn" id="loginBackBtn"
                                     onclick="backToRoleChooser()" title="Back to login selection">← Back</button>
+                                <!-- Mobile-only brand header: on small screens the left brand panel is
+                                     hidden, so the institute's logo + name are shown above the form.
+                                     Both are filled in dynamically by applyInstituteBranding(). -->
+                                <div class="auth-mobile-brand" id="authMobileBrand">
+                                    <div class="auth-mobile-mark">⚡</div>
+                                    <div class="auth-mobile-name" id="authMobileBrandName">Student Portal</div>
+                                    <div class="auth-mobile-sub">Student Portal</div>
+                                </div>
                                 <!-- Log In / Sign Up switch -->
                                 <div class="auth-tabs" id="authTabs">
                                     <button type="button" class="auth-tab active" id="tabLogin"
