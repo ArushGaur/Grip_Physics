@@ -3116,7 +3116,10 @@
             font-size: .88rem;
         }
 
+        /* Roll numbers are internal identifiers and are never surfaced in the
+           institute panel — students are always identified by name. */
         .att-roll {
+            display: none !important;
             font-size: .7rem;
             color: var(--ink-muted);
             font-weight: 600;
@@ -7777,8 +7780,8 @@
                     </article>
                     <article class="hero-card grad-indigo">
                         <h3>Tests Conducted</h3>
-                        <div class="hero-num">36</div>
-                        <div class="hero-sub">Avg. score 71%</div>
+                        <div class="hero-num">0</div>
+                        <div class="hero-sub">Online tests created</div>
                         <span class="hero-emoji">📝</span>
                     </article>
                 </div>
@@ -8154,7 +8157,7 @@
                             Students</span>
                     </div>
                     <div class="toolbar">
-                        <div class="search-box">🔍 <input placeholder="Search roll number or name…"></div>
+                        <div class="search-box">🔍 <input placeholder="Search name or email…"></div>
                         <select class="select-pill">
                             <option>All Students</option>
                             <option>Profile Complete</option>
@@ -8187,8 +8190,6 @@
                                 </span><span class="status-pill done" style="margin-left:auto">✓ Complete</span></div>
                             <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">11 — Science
                                     A</span></div>
-                            <div class="stu-card-kv"><span class="k">Roll No.</span><span
-                                    class="v mono">TRI-2024-011</span></div>
                             <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">98765 43210</span>
                             </div>
                             <div class="ecard-foot"><span class="ecard-pct" style="--ec:#0e7e65">92%
@@ -8202,8 +8203,6 @@
                                 </span><span class="status-pill done" style="margin-left:auto">✓ Complete</span></div>
                             <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">11 — Science
                                     A</span></div>
-                            <div class="stu-card-kv"><span class="k">Roll No.</span><span
-                                    class="v mono">TRI-2024-018</span></div>
                             <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">91234 56780</span>
                             </div>
                             <div class="ecard-foot"><span class="ecard-pct" style="--ec:#f19120">88%
@@ -8217,8 +8216,6 @@
                                 </span><span class="status-pill partial" style="margin-left:auto">⌛ Pending</span></div>
                             <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">11 — Science
                                     A</span></div>
-                            <div class="stu-card-kv"><span class="k">Roll No.</span><span
-                                    class="v mono">TRI-2024-024</span></div>
                             <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">—</span></div>
                             <div class="ecard-foot"><span class="ecard-sub">Not registered yet</span><button
                                     class="row-action">Remove</button></div>
@@ -8231,8 +8228,6 @@
                                 </span><span class="status-pill done" style="margin-left:auto">✓ Complete</span></div>
                             <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">11 — Science
                                     A</span></div>
-                            <div class="stu-card-kv"><span class="k">Roll No.</span><span
-                                    class="v mono">TRI-2024-031</span></div>
                             <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">99887 66554</span>
                             </div>
                             <div class="ecard-foot"><span class="ecard-pct" style="--ec:#638d33">95%
@@ -8246,8 +8241,6 @@
                                 </span><span class="status-pill done" style="margin-left:auto">✓ Complete</span></div>
                             <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">11 — Science
                                     A</span></div>
-                            <div class="stu-card-kv"><span class="k">Roll No.</span><span
-                                    class="v mono">TRI-2024-042</span></div>
                             <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">90909 80807</span>
                             </div>
                             <div class="ecard-foot"><span class="ecard-pct" style="--ec:#00a390">81%
@@ -8261,8 +8254,6 @@
                                 </span><span class="status-pill partial" style="margin-left:auto">⌛ Pending</span></div>
                             <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">11 — Science
                                     A</span></div>
-                            <div class="stu-card-kv"><span class="k">Roll No.</span><span
-                                    class="v mono">TRI-2024-057</span></div>
                             <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">—</span></div>
                             <div class="ecard-foot"><span class="ecard-sub">Not registered yet</span><button
                                     class="row-action">Remove</button></div>
@@ -8274,7 +8265,6 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Roll Number</th>
                                     <th>Name</th>
                                     <th>Class / Section</th>
                                     <th>Phone</th>
@@ -8913,8 +8903,10 @@
                 <button class="modal-close" onclick="closeEditStudent()">✕</button>
             </div>
             <div class="form-grid">
-                <div class="form-field full">
-                    <label>Roll Number (cannot be changed)</label>
+                <!-- The roll number is the internal key this student's records are
+                     stored under. It is never shown in the panel, but the field is
+                     kept (hidden) because the save handler reads it. -->
+                <div class="form-field full" style="display:none">
                     <input id="es-roll" type="text" class="mono" readonly disabled>
                 </div>
                 <div class="form-field full">
@@ -9752,7 +9744,7 @@
             });
         }
 
-        /* ══════════════════════════════════════════════════════
+        /* ════════════════════════════��═════════════════════════
            STUDENTS
         ══════════════════════════════════════════════════════ */
         function showStuSections(className, subtitle) {
@@ -10248,7 +10240,7 @@
             document.getElementById('a-count').textContent = a;
         }
 
-        /* ═══════════════════════════════════════════════  ══════
+        /* ═══════════════════════════════════════════════  ═���════
            QUESTION LIBRARY — CARD VIEW  → click question → open detail
         ══════════════════════════════════════════════════════ */
         const QLIB_CHAPTERS = {
@@ -11894,7 +11886,7 @@
                 }
             }
 
-            /* ══════════════════════ RENDER: DASHBOARD ══════════════════════ */
+            /* ══════════════════════ RENDER: DASHBOARD ═══════��══════════════ */
             function renderDashboard() {
                 const total = State.students.length;
                 const attempts = State.testHistory.length;
@@ -11917,11 +11909,15 @@
                 const heroSubs = $$('#page-dashboard .hero-cards .hero-sub');
                 if (heroNums[0]) heroNums[0].textContent = total.toLocaleString();
                 if (heroNums[1]) heroNums[1].textContent = totalQuestions.toLocaleString();
-                if (heroNums[2]) heroNums[2].textContent = (State.onlineTests.length + attempts).toLocaleString();
+                // "Tests Conducted" counts TESTS only — attempts are a separate
+                // number and mixing them in made this card read far too high.
+                if (heroNums[2]) heroNums[2].textContent = State.onlineTests.length.toLocaleString();
                 const subjectList = Object.keys(meta.bySubject || {}).slice(0, 3).join(' · ');
                 if (heroSubs[0]) heroSubs[0].textContent = `${State.classes.length} classes registered`;
                 if (heroSubs[1]) heroSubs[1].textContent = subjectList || 'Question bank';
-                if (heroSubs[2]) heroSubs[2].textContent = `${State.onlineTests.length} tests · ${attempts} attempts`;
+                if (heroSubs[2]) heroSubs[2].textContent = State.onlineTests.length === 1
+                    ? 'Online test created'
+                    : 'Online tests created';
 
                 // Rewrite "Latest Test Results" table body with real data
                 const tbody = $('#page-dashboard .res-table tbody');
@@ -11936,7 +11932,7 @@
                             const pct = h.total ? Math.round(100 * (h.score || 0) / h.total) : 0;
                             const color = pct >= 80 ? '#0e7e65' : pct >= 60 ? '#638d33' : pct >= 40 ? '#f19120' : '#d95f5f';
                             const grad = `linear-gradient(135deg, ${palette[i % palette.length]}, #094f3e)`;
-                            return `<tr><td><div class="stud-cell"><span class="stud-av" style="background:${grad}">${initials(h.name || h.roll_number)}</span><span><div class="stud-name">${esc(h.name || 'Student')}</div><div class="stud-mail">${esc(h.roll_number || '')}</div></span></div></td><td>${esc(h.test_name || h.chapter || 'Test')}</td><td><span class="score-badge">${h.score || 0}</span></td><td class="pct" style="color:${color}">${pct}%</td></tr>`;
+                            return `<tr><td><div class="stud-cell"><span class="stud-av" style="background:${grad}">${initials(h.name || 'Student')}</span><span><div class="stud-name">${esc(h.name || 'Student')}</div><div class="stud-mail">${esc(h.student_class || '')}</div></span></div></td><td>${esc(h.test_name || h.chapter || 'Test')}</td><td><span class="score-badge">${h.score || 0}</span></td><td class="pct" style="color:${color}">${pct}%</td></tr>`;
                         }).join('');
                     }
                 }
@@ -12800,9 +12796,8 @@
                     const status = s.registered ? '<span class="status-pill done" style="margin-left:auto">✓ Complete</span>'
                         : '<span class="status-pill partial" style="margin-left:auto">⌛ Pending</span>';
                     return `<article class="stu-card">
-                    <div class="stu-card-top"><span class="stud-av" style="background:${grad}">${initials(s.name)}</span><span><div class="stud-name">${esc(s.name || '')}</div><div class="stud-mail mono">${esc(s.roll_number || '')}</div></span>${status}</div>
+                    <div class="stu-card-top"><span class="stud-av" style="background:${grad}">${initials(s.name)}</span><span><div class="stud-name">${esc(s.name || '')}</div><div class="stud-mail mono">${esc(s.email || '')}</div></span>${status}</div>
                     <div class="stu-card-kv"><span class="k">Class / Section</span><span class="v">${esc(s.class_name || '—')} — ${esc(s.batch_name || '—')}</span></div>
-                    <div class="stu-card-kv"><span class="k">Roll No.</span><span class="v mono">${esc(s.roll_number || '')}</span></div>
                     <div class="stu-card-kv"><span class="k">Phone</span><span class="v mono">${esc(s.mobile || '—')}</span></div>
                     <div class="ecard-foot"><span class="ecard-sub">${esc(s.email || '')}</span><span style="display:flex;gap:6px"><button class="row-action" onclick="__inst.editStudent('${esc(s.roll_number || s.id)}')">Edit</button><button class="row-action" onclick="__inst.removeStudent('${esc(s.roll_number || s.id)}')">Remove</button></span></div>
                 </article>`;
@@ -12824,7 +12819,6 @@
                                 ? '<span class="status-pill done">\u2713 Complete</span>'
                                 : '<span class="status-pill partial">\u231b Pending</span>';
                             return `<tr>
-                            <td class="mono">${esc(s.roll_number || '')}</td>
                             <td><div class="stud-cell"><span class="stud-av" style="background:${grad}">${initials(s.name)}</span><span class="stud-name">${esc(s.name || '\u2014')}</span></div></td>
                             <td>${clsSec}</td>
                             <td class="mono">${esc(s.mobile || '\u2014')}</td>
@@ -12835,7 +12829,7 @@
                         }).join('');
                         tblWrap.innerHTML = `<table class="data-table">
                         <thead><tr>
-                            <th>Roll Number</th><th>Name</th><th>Class / Section</th>
+                            <th>Name</th><th>Class / Section</th>
                             <th>Phone</th><th>Email</th><th>Status</th><th style="text-align:right">Action</th>
                         </tr></thead>
                         <tbody>${rows}</tbody></table>`;
@@ -12958,7 +12952,7 @@
                     return `<div class="att-row-card ${status}" data-roll="${esc(s.roll_number)}" data-classid="${esc(String(s.class_id != null ? s.class_id : (State.currentClassId || 0)))}" data-batchid="${esc(String(s.batch_id != null ? s.batch_id : (State.currentBatchId || '')))}" onclick="__inst.cycleAttendance(this)">
                     <span class="att-check">${status === 'present' ? '✓' : (status === 'absent' ? '✕' : '')}</span>
                     <span class="stud-av" style="background:linear-gradient(135deg,#0e7e65,#094f3e);color:#fff">${initials(s.name)}</span>
-                    <span><div class="att-name">${esc(s.name)}</div><div class="att-roll mono">${esc(s.roll_number || '')}</div></span>
+                    <span><div class="att-name">${esc(s.name)}</div></span>
                     ${pill}
                     <button class="stu-stats-btn" title="View stats" onclick="event.stopPropagation(); __inst.openAttStatsReal('${esc(s.roll_number || '')}')" style="margin-left:10px;background:var(--soft,#eef6f2);border:1px solid var(--line,#e3ede9);border-radius:9px;padding:5px 10px;cursor:pointer;font-size:.95rem;line-height:1">📊</button>
                 </div>`;
@@ -13001,6 +12995,12 @@
             function _attemptBelongs(h, idSet) { return idSet.has(String(h.mobile)) || idSet.has(String(h.roll_number)); }
             function _testKeyOf(h) { return h.online_test_id ? ('ot:' + h.online_test_id) : ('sq:' + (h.chapter || '') + '|' + (h.lecture || h.topic || '')); }
             function _onlineTestName(id) { const t = (State.onlineTests || []).find(t => String(t.id) === String(id)); return t ? (t.test_name || t.name) : null; }
+            // Assigned rolls arrive either as a real array or as a JSON string.
+            function _otAssignedRollList(t) {
+                let a = t && (t.assignedRolls != null ? t.assignedRolls : t.assigned_rolls);
+                if (typeof a === 'string') { try { a = JSON.parse(a); } catch (_) { a = []; } }
+                return Array.isArray(a) ? a.map(String) : [];
+            }
             function buildTestGroups(students) {
                 const idSet = _resIdSet(students);
                 const stuByKey = {};
@@ -13026,6 +13026,26 @@
                     if (Number(h.is_locked)) g.locked++;
                     const ts = Number(h.timestamp) || 0; if (ts > g.latest) g.latest = ts;
                 });
+                // Every online test gets its own card even when nobody has attempted it
+                // yet — otherwise a brand new test has no card and therefore no way to
+                // reach "Edit Test". Zero-attempt tests are seeded from State.onlineTests.
+                (State.onlineTests || []).forEach(t => {
+                    if (!t || t.id == null) return;
+                    const key = 'ot:' + t.id;
+                    if (groups[key]) return;
+                    const assigned = _otAssignedRollList(t);
+                    // An empty assignment list means the test went to everyone.
+                    if (assigned.length && !assigned.some(r => idSet.has(String(r)))) return;
+                    groups[key] = {
+                        key, isOnline: true, onlineTestId: t.id,
+                        title: t.test_name || t.testName || t.name || 'Online Test',
+                        type: 'Online Test',
+                        icon: '\ud83d\udcdd',
+                        rows: [], attempted: new Set(), locked: 0,
+                        latest: Number(t.created_at || t.createdAt || t.live_at || t.liveAt) || 0,
+                        noAttempts: true,
+                    };
+                });
                 Object.values(groups).forEach(g => { g._stuByKey = stuByKey; g._totalStudents = students.length; });
                 State._testGroups = groups;
                 return groups;
@@ -13040,7 +13060,7 @@
                 const crumb = document.querySelector('#rv-tests .crumb-trail');
                 if (crumb) crumb.innerHTML = '/ <b>Results</b> \u00b7 ' + list.length + ' Test' + (list.length === 1 ? '' : 's');
                 if (!list.length) {
-                    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="es-ico">\ud83d\udcca</span>No test attempts yet for this section.</div>';
+                    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="es-ico">\ud83d\udcca</span>No tests for this section yet.</div>';
                     return;
                 }
                 const total = students.length;
@@ -13048,7 +13068,9 @@
                     const color = palette[i % palette.length];
                     const att = g.attempted.size;
                     const when = g.latest ? fmtDate(g.latest) : '';
-                    const foot = g.locked ? ('<span class="status-pill danger">\ud83d\udd12 ' + g.locked + ' locked</span>') : '<span class="status-pill done">All submitted</span>';
+                    const foot = g.locked
+                        ? ('<span class="status-pill danger">\ud83d\udd12 ' + g.locked + ' locked</span>')
+                        : (att ? '<span class="status-pill done">All submitted</span>' : '<span class="status-pill partial">\u231b Not attempted yet</span>');
                     const editBtn = g.isOnline ? ('<button class="mini-edit" onclick="event.stopPropagation();__inst.editTestFromCard(\'' + esc(g.key) + '\')">\u270f\ufe0f Edit</button>') : '';
                     const subDetail = g.isOnline ? (when || 'Online Test') : ((g.rows[0] && (g.rows[0].topic || g.rows[0].lecture)) || 'Quiz');
                     return '<article class="ecard" style="--ec:' + color + '" onclick="__inst.openTestReport(\'' + esc(g.key) + '\')">' +
@@ -13247,7 +13269,7 @@
                 const g = id => document.getElementById(id);
                 if (g('as-avatar')) { g('as-avatar').textContent = initials; g('as-avatar').style.background = 'linear-gradient(135deg,#0e7e65,#094f3e)'; }
                 if (g('as-name')) g('as-name').textContent = nm;
-                if (g('as-meta')) g('as-meta').textContent = [roll, clsLabel(cls), sec ? secLabel(sec) : ''].filter(Boolean).join('  \u00b7  ');
+                if (g('as-meta')) g('as-meta').textContent = [clsLabel(cls), sec ? secLabel(sec) : ''].filter(Boolean).join('  \u00b7  ');
                 const norm = s => { s = String(s || '').toLowerCase(); if (s.startsWith('p')) return 'present'; if (s.startsWith('a')) return 'absent'; if (s.startsWith('l') || s.indexOf('leave') >= 0) return 'leave'; if (s.startsWith('h')) return 'holiday'; return s; };
                 let present = 0, absent = 0, leave = 0;
                 const byDate = {};
@@ -13405,7 +13427,7 @@
                     return '<div class="stu-select-row ' + (on ? 'on' : '') + '" onclick="__inst.toggleEditStudent(\'' + esc(roll) + '\',this)">' +
                         '<span class="ssr-check">\u2713</span>' +
                         '<span class="stud-av" style="width:34px;height:34px;font-size:.75rem;background:linear-gradient(135deg,' + _ET_PALETTE[i % _ET_PALETTE.length] + ')">' + esc(_etInitials(st.name)) + '</span>' +
-                        '<span><div class="ssr-name">' + esc(st.name || roll) + '</div><div class="ssr-roll mono">' + esc(roll) + '</div></span></div>';
+                        '<span><div class="ssr-name">' + esc(st.name || 'Student') + '</div><div class="ssr-roll">' + esc([st.class_name, st.batch_name || st.section].filter(Boolean).join(' \u00b7 ')) + '</div></span></div>';
                 }).join('') + '</div>';
             }
             function renderEditStudentsReal(filter) {
@@ -14341,28 +14363,118 @@
                 if (!ov) {
                     ov = document.createElement('div');
                     ov.id = 'inst-tpl-modal';
-                    ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
-                    ov.innerHTML = `<div style="background:var(--card,#fff);border-radius:14px;max-width:520px;width:100%;max-height:82vh;overflow:auto;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.28)">
-                        <h3 style="margin:0 0 4px">Paper Templates</h3>
-                        <p style="margin:0 0 16px;font-size:.85rem;opacity:.7">Upload the Word (.docx) file your question papers should be built on. The newest template is the default; with more than one you can pick which to use while generating a paper.</p>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-                            <input type="file" id="inst-tpl-file" accept=".docx" style="flex:1;min-width:200px">
-                            <button id="inst-tpl-upload" style="padding:9px 16px;border:0;border-radius:9px;background:#2f7d63;color:#fff;font-weight:600;cursor:pointer">Upload</button>
+                    ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(6,22,18,.55);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:16px;animation:tplFade .18s ease';
+                    ov.innerHTML = `<style>
+                        @keyframes tplFade{from{opacity:0}to{opacity:1}}
+                        @keyframes tplPop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+                        @keyframes tplSpin{to{transform:rotate(360deg)}}
+                        #inst-tpl-modal .tpl-card{background:var(--card,#fff);border-radius:22px;max-width:560px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(4,26,20,.38),0 0 0 1px rgba(255,255,255,.06);animation:tplPop .22s cubic-bezier(.2,.9,.3,1)}
+                        #inst-tpl-modal .tpl-head{position:relative;padding:22px 24px 20px;color:#fff;background:linear-gradient(135deg,#0e7e65 0%,#0a6350 55%,#08453a 100%);overflow:hidden}
+                        #inst-tpl-modal .tpl-head:after{content:'';position:absolute;width:190px;height:190px;right:-60px;top:-90px;border-radius:50%;background:rgba(255,255,255,.10)}
+                        #inst-tpl-modal .tpl-head-row{position:relative;display:flex;align-items:center;gap:13px;z-index:1}
+                        #inst-tpl-modal .tpl-ico{width:46px;height:46px;flex:none;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22)}
+                        #inst-tpl-modal .tpl-title{margin:0;font-size:1.12rem;font-weight:800;letter-spacing:-.01em}
+                        #inst-tpl-modal .tpl-sub{margin:3px 0 0;font-size:.79rem;opacity:.85;line-height:1.45}
+                        #inst-tpl-modal .tpl-x{position:absolute;top:14px;right:14px;z-index:2;width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);color:#fff;font-size:.9rem;cursor:pointer;transition:background .15s}
+                        #inst-tpl-modal .tpl-x:hover{background:rgba(255,255,255,.26)}
+                        #inst-tpl-modal .tpl-body{padding:20px 24px 4px;overflow:auto}
+                        #inst-tpl-modal .tpl-zone{border:2px dashed var(--line,#d7e6e0);border-radius:18px;padding:26px 18px;text-align:center;cursor:pointer;display:block;background:linear-gradient(180deg,rgba(14,126,101,.035),rgba(14,126,101,0));transition:border-color .16s,background .16s,transform .16s}
+                        #inst-tpl-modal .tpl-zone:hover{border-color:#0e7e65;background:rgba(14,126,101,.06)}
+                        #inst-tpl-modal .tpl-zone.over{border-color:#0e7e65;background:rgba(14,126,101,.10);transform:scale(1.01)}
+                        #inst-tpl-modal .tpl-zone-ico{width:54px;height:54px;margin:0 auto 10px;border-radius:16px;background:rgba(14,126,101,.10);display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+                        #inst-tpl-modal .tpl-zone-t{font-weight:700;font-size:.92rem}
+                        #inst-tpl-modal .tpl-zone-s{font-size:.76rem;opacity:.62;margin-top:4px}
+                        #inst-tpl-modal .tpl-chip{display:none;align-items:center;gap:10px;margin-top:12px;padding:11px 13px;border-radius:14px;background:var(--soft,#eef6f2);border:1px solid var(--line,#dcebe5)}
+                        #inst-tpl-modal .tpl-chip-ico{width:32px;height:32px;flex:none;border-radius:10px;background:#0e7e65;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+                        #inst-tpl-modal .tpl-chip-name{flex:1;min-width:0;font-size:.83rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                        #inst-tpl-modal .tpl-chip-x{border:0;background:transparent;cursor:pointer;font-size:.9rem;opacity:.55}
+                        #inst-tpl-modal .tpl-chip-x:hover{opacity:1}
+                        #inst-tpl-modal .tpl-up{width:100%;margin-top:14px;padding:12px 18px;border:0;border-radius:14px;background:linear-gradient(135deg,#0e7e65,#0a5c4b);color:#fff;font-weight:700;font-size:.9rem;cursor:pointer;box-shadow:0 8px 20px rgba(14,126,101,.28);transition:transform .14s,box-shadow .14s,opacity .14s}
+                        #inst-tpl-modal .tpl-up:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(14,126,101,.34)}
+                        #inst-tpl-modal .tpl-up:disabled{opacity:.65;cursor:progress;transform:none}
+                        #inst-tpl-modal .tpl-spin{display:inline-block;width:13px;height:13px;margin-right:7px;vertical-align:-2px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:tplSpin .7s linear infinite}
+                        #inst-tpl-modal .tpl-msg{font-size:.8rem;min-height:18px;margin-top:10px;font-weight:600}
+                        #inst-tpl-modal .tpl-sec{display:flex;align-items:center;gap:9px;margin:18px 0 10px}
+                        #inst-tpl-modal .tpl-sec-t{font-size:.72rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.55}
+                        #inst-tpl-modal .tpl-sec-line{flex:1;height:1px;background:var(--line,#e6efec)}
+                        #inst-tpl-modal .tpl-count{font-size:.68rem;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(14,126,101,.10);color:#0e7e65}
+                        #inst-tpl-modal .tpl-row{display:flex;align-items:center;gap:12px;border:1px solid var(--line,#e6efec);border-radius:15px;padding:12px 13px;background:var(--card,#fff);transition:border-color .15s,box-shadow .15s}
+                        #inst-tpl-modal .tpl-row:hover{border-color:#0e7e65;box-shadow:0 6px 18px rgba(4,26,20,.07)}
+                        #inst-tpl-modal .tpl-row-ico{width:36px;height:36px;flex:none;border-radius:11px;background:rgba(62,87,154,.10);display:flex;align-items:center;justify-content:center;font-size:1rem}
+                        #inst-tpl-modal .tpl-row-n{flex:1;min-width:0;font-weight:700;font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                        #inst-tpl-modal .tpl-badge{font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(14,126,101,.12);color:#0e7e65;margin-left:8px}
+                        #inst-tpl-modal .tpl-del{border:1px solid transparent;background:transparent;cursor:pointer;color:#d95f5f;font-weight:700;font-size:.78rem;padding:6px 10px;border-radius:10px;transition:background .15s,border-color .15s}
+                        #inst-tpl-modal .tpl-del:hover{background:rgba(217,95,95,.09);border-color:rgba(217,95,95,.25)}
+                        #inst-tpl-modal .tpl-foot{padding:14px 24px 20px;display:flex;justify-content:flex-end;border-top:1px solid var(--line,#eef4f2);background:var(--soft,#fafdfb)}
+                        #inst-tpl-modal .tpl-close{padding:10px 20px;border:1px solid var(--line,#dbe8e4);border-radius:12px;background:var(--card,#fff);font-weight:700;font-size:.85rem;cursor:pointer;transition:background .15s}
+                        #inst-tpl-modal .tpl-close:hover{background:var(--soft,#eef6f2)}
+                    </style>
+                    <div class="tpl-card">
+                        <div class="tpl-head">
+                            <button class="tpl-x" id="inst-tpl-x" title="Close">✕</button>
+                            <div class="tpl-head-row">
+                                <span class="tpl-ico">📄</span>
+                                <div>
+                                    <h3 class="tpl-title">Paper Templates</h3>
+                                    <p class="tpl-sub">Upload the Word (.docx) layout your question papers are built on. The newest upload becomes the default.</p>
+                                </div>
+                            </div>
                         </div>
-                        <div id="inst-tpl-msg" style="font-size:.82rem;min-height:18px;margin-bottom:10px"></div>
-                        <div id="inst-tpl-list" style="display:flex;flex-direction:column;gap:8px"></div>
-                        <div style="text-align:right;margin-top:18px"><button id="inst-tpl-close" style="padding:9px 16px;border:1px solid rgba(0,0,0,.15);border-radius:9px;background:transparent;cursor:pointer">Close</button></div>
+                        <div class="tpl-body">
+                            <label class="tpl-zone" id="inst-tpl-zone" for="inst-tpl-file">
+                                <div class="tpl-zone-ico">⬆️</div>
+                                <div class="tpl-zone-t">Drag &amp; drop your template here</div>
+                                <div class="tpl-zone-s">or click to browse · .docx only · max 1 file</div>
+                                <input type="file" id="inst-tpl-file" accept=".docx" style="display:none">
+                            </label>
+                            <div class="tpl-chip" id="inst-tpl-chip">
+                                <span class="tpl-chip-ico">DOC</span>
+                                <span class="tpl-chip-name" id="inst-tpl-chip-name"></span>
+                                <button class="tpl-chip-x" id="inst-tpl-chip-clear" title="Remove">✕</button>
+                            </div>
+                            <button class="tpl-up" id="inst-tpl-upload">Upload template</button>
+                            <div class="tpl-msg" id="inst-tpl-msg"></div>
+                            <div class="tpl-sec">
+                                <span class="tpl-sec-t">Your templates</span>
+                                <span class="tpl-sec-line"></span>
+                                <span class="tpl-count" id="inst-tpl-count">0</span>
+                            </div>
+                            <div id="inst-tpl-list" style="display:flex;flex-direction:column;gap:9px;padding-bottom:6px"></div>
+                        </div>
+                        <div class="tpl-foot"><button class="tpl-close" id="inst-tpl-close">Close</button></div>
                     </div>`;
                     document.body.appendChild(ov);
                     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
                     ov.querySelector('#inst-tpl-close').onclick = () => ov.remove();
+                    ov.querySelector('#inst-tpl-x').onclick = () => ov.remove();
+
+                    // Drag & drop + selected-file chip for the upload zone.
+                    const _tplZone = ov.querySelector('#inst-tpl-zone');
+                    const _tplInp = ov.querySelector('#inst-tpl-file');
+                    const _tplChip = ov.querySelector('#inst-tpl-chip');
+                    const _tplShowFile = () => {
+                        const f = _tplInp && _tplInp.files && _tplInp.files[0];
+                        if (!f) { _tplChip.style.display = 'none'; return; }
+                        ov.querySelector('#inst-tpl-chip-name').textContent = f.name + '  \u00b7  ' + Math.max(1, Math.round(f.size / 1024)) + ' KB';
+                        _tplChip.style.display = 'flex';
+                    };
+                    _tplInp.addEventListener('change', _tplShowFile);
+                    ov.querySelector('#inst-tpl-chip-clear').onclick = e => { e.preventDefault(); _tplInp.value = ''; _tplShowFile(); };
+                    ['dragenter', 'dragover'].forEach(ev => _tplZone.addEventListener(ev, e => { e.preventDefault(); _tplZone.classList.add('over'); }));
+                    ['dragleave', 'dragend', 'drop'].forEach(ev => _tplZone.addEventListener(ev, e => { e.preventDefault(); _tplZone.classList.remove('over'); }));
+                    _tplZone.addEventListener('drop', e => {
+                        const files = e.dataTransfer && e.dataTransfer.files;
+                        if (files && files.length) { try { _tplInp.files = files; } catch (_) { } _tplShowFile(); }
+                    });
                     ov.querySelector('#inst-tpl-upload').onclick = async () => {
                         const inp = document.getElementById('inst-tpl-file');
                         const msg = document.getElementById('inst-tpl-msg');
                         const file = inp && inp.files && inp.files[0];
-                        if (!file) { msg.textContent = 'Choose a .docx file first.'; msg.style.color = '#d95f5f'; return; }
-                        if (!/\.docx$/i.test(file.name)) { msg.textContent = 'Only .docx templates are supported.'; msg.style.color = '#d95f5f'; return; }
-                        msg.textContent = 'Uploading...'; msg.style.color = '';
+                        if (!file) { msg.textContent = '\u26a0 Choose a .docx file first.'; msg.style.color = '#d95f5f'; return; }
+                        if (!/\.docx$/i.test(file.name)) { msg.textContent = '\u26a0 Only .docx templates are supported.'; msg.style.color = '#d95f5f'; return; }
+                        const upBtn = document.getElementById('inst-tpl-upload');
+                        if (upBtn) { upBtn.disabled = true; upBtn.innerHTML = '<span class="tpl-spin"></span>Uploading\u2026'; }
+                        msg.textContent = 'Uploading your template\u2026'; msg.style.color = '';
                         try {
                             const fd = new FormData();
                             fd.append('template', file);
@@ -14370,12 +14482,14 @@
                             const r = await fetch(instApiBase() + '/api/admin/paper-templates', { method: 'POST', credentials: 'include', body: fd });
                             let d = null; try { d = await r.json(); } catch (_) { }
                             if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
-                            msg.textContent = 'Template uploaded.'; msg.style.color = '#2f7d63';
+                            msg.textContent = '\u2713 Template uploaded and set as default.'; msg.style.color = '#0e7e65';
                             if (inp) inp.value = '';
+                            const doneChip = document.getElementById('inst-tpl-chip'); if (doneChip) doneChip.style.display = 'none';
                             _instTplCache = null;
                             await window.instRenderTemplateList();
                             await instSyncTemplateField();
-                        } catch (e) { msg.textContent = e.message || 'Upload failed'; msg.style.color = '#d95f5f'; }
+                        } catch (e) { msg.textContent = '\u26a0 ' + (e.message || 'Upload failed'); msg.style.color = '#d95f5f'; }
+                        finally { const b = document.getElementById('inst-tpl-upload'); if (b) { b.disabled = false; b.textContent = 'Upload template'; } }
                     };
                 }
                 await window.instRenderTemplateList();
@@ -14384,12 +14498,21 @@
             window.instRenderTemplateList = async function () {
                 const box = document.getElementById('inst-tpl-list');
                 if (!box) return;
-                box.innerHTML = '<div style="opacity:.6;font-size:.85rem">Loading...</div>';
+                box.innerHTML = '<div style="opacity:.55;font-size:.82rem;padding:6px 2px">Loading\u2026</div>';
                 const rows = await instLoadTemplates(true);
-                if (!rows.length) { box.innerHTML = '<div style="opacity:.6;font-size:.85rem">No templates yet.</div>'; return; }
-                box.innerHTML = rows.map((r, i) => `<div style="display:flex;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:10px 12px">
-                    <span style="flex:1;font-weight:600">${esc(r.name || ('Template ' + r.id))}${i === 0 ? ' <span style="font-weight:400;opacity:.6;font-size:.78rem">(default)</span>' : ''}</span>
-                    <button onclick="window.instDeleteTemplate(${r.id})" style="border:0;background:transparent;cursor:pointer;color:#d95f5f;font-weight:600">Delete</button>
+                const countPill = document.getElementById('inst-tpl-count');
+                if (countPill) countPill.textContent = rows.length;
+                if (!rows.length) {
+                    box.innerHTML = '<div style="text-align:center;padding:20px 14px;border:1px dashed var(--line,#e2ede9);border-radius:15px">'
+                        + '<div style="font-size:1.4rem;opacity:.5">\ud83d\uddc2\ufe0f</div>'
+                        + '<div style="font-size:.83rem;font-weight:700;margin-top:6px">No templates yet</div>'
+                        + '<div style="font-size:.75rem;opacity:.6;margin-top:3px">Upload a .docx layout to get started.</div></div>';
+                    return;
+                }
+                box.innerHTML = rows.map((r, i) => `<div class="tpl-row">
+                    <span class="tpl-row-ico">\ud83d\udcdd</span>
+                    <span class="tpl-row-n">${esc(r.name || ('Template ' + r.id))}${i === 0 ? '<span class="tpl-badge">Default</span>' : ''}</span>
+                    <button class="tpl-del" onclick="window.instDeleteTemplate(${r.id})">Delete</button>
                 </div>`).join('');
             };
 
@@ -14668,7 +14791,8 @@
 
                         const rowHtml = s => {
                             const sel = spSel.has(s.roll_number);
-                            return `<div class="iot-sp-row ${sel ? 'sel' : ''}" data-roll="${_otEsc(s.roll_number)}"><div class="iot-cb">${sel ? '\u2713' : ''}</div><div><div class="n">${_otEsc(s.name || 'Student')}</div><div class="r">${_otEsc(s.roll_number)}</div></div></div>`;
+                            const _rowSub = [((s.class_name || '').trim()), ((s.batch_name || s.section || '').trim())].filter(Boolean).join(' \u00b7 ');
+                            return `<div class="iot-sp-row ${sel ? 'sel' : ''}" data-roll="${_otEsc(s.roll_number)}"><div class="iot-cb">${sel ? '\u2713' : ''}</div><div><div class="n">${_otEsc(s.name || 'Student')}</div><div class="r">${_otEsc(_rowSub || (s.email || ''))}</div></div></div>`;
                         };
                         const cardHtml = (icon, title, sub, onclick, active) => `<div onclick="${onclick}" role="button" tabindex="0" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;border:1px solid ${active ? 'var(--teal-deep,#1a9e7f)' : 'var(--line,rgba(0,0,0,.09))'};background:${active ? 'rgba(26,158,127,.06)' : 'var(--card,#fff)'};transition:border-color .15s,background .15s">
                                 <span style="width:32px;height:32px;flex:none;border-radius:10px;background:rgba(26,158,127,.10);display:flex;align-items:center;justify-content:center;font-size:.92rem">${icon}</span>
