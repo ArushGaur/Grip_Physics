@@ -3145,6 +3145,23 @@
             border-color: var(--teal-deep);
         }
 
+        /* Staged selection: ticking a student only stages them as present —
+           nothing is saved until "Mark Attendance" is pressed. */
+        .att-row-card.sel {
+            border-left-color: var(--teal-deep);
+            background: linear-gradient(90deg, rgba(0, 210, 180, .1), var(--card) 45%);
+        }
+
+        .att-row-card.sel .att-check {
+            background: var(--teal-deep);
+            border-color: var(--teal-deep);
+        }
+
+        .att-row-card.absent:not(.sel) .att-check {
+            background: var(--rose);
+            border-color: var(--rose);
+        }
+
         .att-name {
             font-weight: 700;
             font-size: .88rem;
@@ -6816,6 +6833,12 @@
                 bottom: calc(86px + env(safe-area-inset-bottom));
             }
 
+            /* The floating bar + bottom tab bar overlap the end of the list,
+               so reserve room or the last student stays hidden behind them. */
+            #att-list {
+                padding-bottom: calc(150px + env(safe-area-inset-bottom));
+            }
+
             #page-questions .ag-btn-header {
                 display: none !important;
             }
@@ -8488,9 +8511,9 @@
                             Back</button><span class="crumb-trail">/ Class 11 · <b>Section A</b> · 6 shown of 62</span>
                     </div>
                     <div class="toolbar">
-                        <div class="search-box">���� <input placeholder="Search students…"></div>
-                        <button class="ghost-btn">Select all</button>
-                        <button class="ghost-btn">Clear</button>
+                        <div class="search-box">🔍 <input id="att-search" placeholder="Search students…" oninput="__inst.filterAttendance(this.value)"></div>
+                        <button class="ghost-btn" onclick="__inst.attSelectAll(true)">Select all</button>
+                        <button class="ghost-btn" onclick="__inst.attSelectAll(false)">Clear</button>
                     </div>
                     <div id="att-list">
                         <div class="att-row-card present" onclick="attToggle(this)"><span
@@ -8542,11 +8565,14 @@
                                 title="Attendance stats"
                                 onclick="event.stopPropagation();openAttStats('MN')">📈</button></div>
                     </div>
+                    <!-- Checking a student only stages them; pressing "Mark Attendance"
+                         saves checked = present and unchecked = absent. -->
                     <div class="bulk-bar">
-                        <div class="bulk-sum"><span class="dot p"></span> <b id="p-count">3</b>&nbsp;present <span
+                        <div class="bulk-sum"><span class="dot p"></span> <b id="p-count">0</b>&nbsp;checked <span
                                 style="opacity:.4">·</span> <span class="dot a"></span> <b
-                                id="a-count">1</b>&nbsp;absent</div>
-                        <button class="mark-btn">✓ Mark Attendance</button>
+                                id="a-count">0</b>&nbsp;will be absent</div>
+                        <button class="mark-btn" id="att-mark-btn" onclick="__inst.commitAttendance()">✓ Mark
+                            Attendance</button>
                     </div>
                 </div>
             </section>
@@ -12016,6 +12042,10 @@
                 const subjects = Object.keys(meta.bySubject || {});
                 const grid = ecardGridIn('qv-subjects');
                 if (!grid) return;
+                // Keep the "📚 Subjects N" badge honest — it was reset to 0 on load
+                // and never updated once the real subjects arrived.
+                const subjCnt = document.querySelector('#qv-subjects .eyebrow .cnt');
+                if (subjCnt) subjCnt.textContent = subjects.length;
                 if (!subjects.length) {
                     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="es-ico">📚</span>No subjects available yet. Add questions from the owner panel.</div>';
                     return;
@@ -12986,6 +13016,7 @@
                 if (!list) return;
                 if (!students.length) {
                     list.innerHTML = '<div class="empty-state"><span class="es-ico">📅</span>No students to mark attendance for.</div>';
+                    updateAttCounts();
                     return;
                 }
                 const initials = n => (n || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
@@ -12994,38 +13025,111 @@
                     const pill = status === 'present' ? '<span class="att-pill present">● PRESENT</span>' :
                         status === 'absent' ? '<span class="att-pill absent">● ABSENT</span>' :
                             '<span class="att-pill unmarked">NOT MARKED</span>';
-                    return `<div class="att-row-card ${status}" data-roll="${esc(s.roll_number)}" data-classid="${esc(String(s.class_id != null ? s.class_id : (State.currentClassId || 0)))}" data-batchid="${esc(String(s.batch_id != null ? s.batch_id : (State.currentBatchId || '')))}" onclick="__inst.cycleAttendance(this)">
-                    <span class="att-check">${status === 'present' ? '✓' : (status === 'absent' ? '✕' : '')}</span>
+                    // The tick is a staged selection, not a saved value. Students
+                    // already saved as present stay ticked so pressing "Mark
+                    // Attendance" again never un-marks them.
+                    if (s.sel === undefined) s.sel = (status === 'present');
+                    return `<div class="att-row-card ${status}${s.sel ? ' sel' : ''}" data-roll="${esc(s.roll_number)}" data-classid="${esc(String(s.class_id != null ? s.class_id : (State.currentClassId || 0)))}" data-batchid="${esc(String(s.batch_id != null ? s.batch_id : (State.currentBatchId || '')))}" onclick="__inst.toggleAttendanceSelect(this)">
+                    <span class="att-check">${s.sel ? '✓' : (status === 'absent' ? '✕' : '')}</span>
                     <span class="stud-av" style="background:linear-gradient(135deg,#0e7e65,#094f3e);color:#fff">${initials(s.name)}</span>
                     <span><div class="att-name">${esc(s.name)}</div></span>
                     ${pill}
                     <button class="stu-stats-btn" title="View stats" onclick="event.stopPropagation(); __inst.openAttStatsReal('${esc(s.roll_number || '')}')" style="margin-left:10px;background:var(--soft,#eef6f2);border:1px solid var(--line,#e3ede9);border-radius:9px;padding:5px 10px;cursor:pointer;font-size:.95rem;line-height:1">📊</button>
                 </div>`;
                 }).join('');
+                updateAttCounts();
             }
 
-            async function cycleAttendance(row) {
-                const roll = row.getAttribute('data-roll');
-                const classId = Number(row.getAttribute('data-classid')) || 0;
-                const batchIdRaw = row.getAttribute('data-batchid');
-                const batchId = batchIdRaw ? Number(batchIdRaw) : null;
+            function _attStudentByRoll(roll) {
+                return ((State.attendance && State.attendance.students) || [])
+                    .find(s => String(s.roll_number) === String(roll));
+            }
+
+            // Tick / untick one student. This stages the choice only — no request is
+            // sent until the teacher presses "Mark Attendance".
+            function toggleAttendanceSelect(row) {
+                const on = !row.classList.contains('sel');
+                row.classList.toggle('sel', on);
+                const stu = _attStudentByRoll(row.getAttribute('data-roll'));
+                if (stu) stu.sel = on;
+                const chk = row.querySelector('.att-check');
+                if (chk) chk.textContent = on ? '✓' : ((stu && stu.status === 'absent') ? '✕' : '');
+                updateAttCounts();
+            }
+
+            // "Select all" / "Clear" — applies to the rows the search filter is showing.
+            function attSelectAll(on) {
+                document.querySelectorAll('#att-list .att-row-card').forEach(row => {
+                    if (row.style.display === 'none') return;
+                    const stu = _attStudentByRoll(row.getAttribute('data-roll'));
+                    if (stu) stu.sel = !!on;
+                    row.classList.toggle('sel', !!on);
+                    const chk = row.querySelector('.att-check');
+                    if (chk) chk.textContent = on ? '✓' : ((stu && stu.status === 'absent') ? '✕' : '');
+                });
+                updateAttCounts();
+            }
+
+            function filterAttendance(q) {
+                const term = String(q || '').trim().toLowerCase();
+                document.querySelectorAll('#att-list .att-row-card').forEach(row => {
+                    const nameEl = row.querySelector('.att-name');
+                    const name = (nameEl ? nameEl.textContent : '').toLowerCase();
+                    row.style.display = (!term || name.indexOf(term) !== -1) ? '' : 'none';
+                });
+            }
+
+            function updateAttCounts() {
+                const students = (State.attendance && State.attendance.students) || [];
+                const sel = students.filter(s => s.sel).length;
+                const p = document.getElementById('p-count'); if (p) p.textContent = sel;
+                const a = document.getElementById('a-count'); if (a) a.textContent = Math.max(0, students.length - sel);
+            }
+
+            // Save the staged selection: every ticked student becomes PRESENT and
+            // every un-ticked student becomes ABSENT. Ticks survive the save, so a
+            // teacher who missed someone can tick them and press the button again
+            // without the already-present students being flipped to absent.
+            async function commitAttendance() {
+                const students = (State.attendance && State.attendance.students) || [];
+                if (!students.length) { toast('No students to mark'); return; }
+                const btn = document.getElementById('att-mark-btn');
+                const orig = btn ? btn.innerHTML : '';
+                if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
                 const date = (State.attendance && State.attendance.date) || new Date().toISOString().slice(0, 10);
-                const cur = row.classList.contains('present') ? 'present' : row.classList.contains('absent') ? 'absent' : 'unmarked';
-                const next = cur === 'unmarked' ? 'present' : cur === 'present' ? 'absent' : 'present';
+                // Students in the list can belong to different classes/batches
+                // (e.g. the "Everyone" folder), so send one request per group.
+                const groups = {};
+                students.forEach(s => {
+                    const classId = Number(s.class_id != null ? s.class_id : (State.currentClassId || 0)) || 0;
+                    const batchId = s.batch_id ? Number(s.batch_id) : null;
+                    const key = classId + '|' + (batchId == null ? '' : batchId);
+                    if (!groups[key]) groups[key] = { class_id: classId, batch_id: batchId, present: [], absent: [] };
+                    groups[key][s.sel ? 'present' : 'absent'].push(s.roll_number);
+                });
+                let nPresent = 0, nAbsent = 0;
                 try {
-                    await api('/api/admin/attendance/mark', {
-                        method: 'POST', body: {
-                            class_id: classId, batch_id: batchId, roll_numbers: [roll], status: next, date
+                    for (const g of Object.values(groups)) {
+                        for (const status of ['present', 'absent']) {
+                            const rolls = g[status];
+                            if (!rolls.length) continue;
+                            await api('/api/admin/attendance/mark', {
+                                method: 'POST', body: {
+                                    class_id: g.class_id, batch_id: g.batch_id,
+                                    roll_numbers: rolls, status, date
+                                }
+                            });
+                            if (status === 'present') nPresent += rolls.length; else nAbsent += rolls.length;
                         }
-                    });
-                    row.classList.remove('present', 'absent');
-                    row.classList.add(next);
-                    row.querySelector('.att-check').textContent = next === 'present' ? '✓' : (next === 'absent' ? '✕' : '');
-                    const pill = row.querySelector('.att-pill');
-                    pill.className = 'att-pill ' + next;
-                    pill.innerHTML = next === 'present' ? '● PRESENT' : (next === 'absent' ? '● ABSENT' : 'NOT MARKED');
-                    toast(`${roll}: ${next}`);
-                } catch (e) { toast(e.message || 'Failed to mark'); }
+                    }
+                    students.forEach(s => { s.status = s.sel ? 'present' : 'absent'; });
+                    renderAttendanceList();
+                    toast(`Attendance saved — ${nPresent} present, ${nAbsent} absent`);
+                } catch (e) {
+                    toast(e.message || 'Failed to mark attendance');
+                } finally {
+                    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+                }
             }
 
             /* ══════════════════════ RENDER: RESULTS ══════════════════════ */
@@ -14005,6 +14109,24 @@
                 wizRenderChapters(s);
             };
 
+            // Re-rendering the wizard body replaces its DOM, which threw the popup
+            // back to the top. Keep the scroll position across a re-render so ticking
+            // a chapter or topic leaves the list exactly where it was.
+            function _wizWithScroll(fn) {
+                const scroller = document.querySelector('#wiz-overlay .modal') || document.getElementById('wiz-overlay');
+                const listBefore = document.getElementById('wizb-list');
+                const outer = scroller ? scroller.scrollTop : 0;
+                const inner = listBefore ? listBefore.scrollTop : 0;
+                fn();
+                const restore = () => {
+                    const listAfter = document.getElementById('wizb-list');
+                    if (listAfter && inner) listAfter.scrollTop = inner;
+                    if (scroller && outer) scroller.scrollTop = outer;
+                };
+                restore();
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(restore);
+            }
+
             function wizRenderChapters(s) {
                 const chapters = wizMeta()[s] || [];
                 const body = wizBody(); if (!body) return;
@@ -14040,7 +14162,7 @@
                 const key = wizKey(s, ch);
                 if (wiz.selectedChapters[s].has(ch)) { wiz.selectedChapters[s].delete(ch); }
                 else { wiz.selectedChapters[s].add(ch); delete wiz.selectedTopics[key]; }
-                wizRenderChapters(s); wizUpdSummary();
+                _wizWithScroll(() => wizRenderChapters(s)); wizUpdSummary();
             };
 
             window.wizOpenChapter = function (s, ch) {
@@ -14091,7 +14213,7 @@
                 const set = wizNormalizeToSet(s, ch, allTopics);
                 if (set.has(topic)) set.delete(topic); else set.add(topic);
                 wizCommitSet(s, ch, set, allTopics);
-                wizRenderTopics(s, ch); wizUpdSummary();
+                _wizWithScroll(() => wizRenderTopics(s, ch)); wizUpdSummary();
             };
 
             window.wizToggleAllTopics = function (s, ch) {
@@ -14101,7 +14223,7 @@
                 const allOn = wizChapWhole(s, ch) || (wiz.selectedTopics[key] && wiz.selectedTopics[key].size === allTopics.length);
                 if (allOn) { if (wiz.selectedChapters[s]) wiz.selectedChapters[s].delete(ch); delete wiz.selectedTopics[key]; }
                 else { delete wiz.selectedTopics[key]; if (!wiz.selectedChapters[s]) wiz.selectedChapters[s] = new Set(); wiz.selectedChapters[s].add(ch); }
-                wizRenderTopics(s, ch); wizUpdSummary();
+                _wizWithScroll(() => wizRenderTopics(s, ch)); wizUpdSummary();
             };
 
             window.wizBack = function () {
@@ -15143,7 +15265,9 @@
                 openSubject, openChapterView, openClassSections, openClassGroup, openGroupSection, openSectionClass, openStuStats, openBatch, openAllStudents, openUnassigned,
                 openStudentSections, openSectionKey,
                 openStudentStats: (k) => { if (typeof window.openStudentStats === 'function') window.openStudentStats(k); },
-                cycleAttendance, openAttemptDetails, removeStudent, editStudent, unlockAttempt,
+                cycleAttendance: toggleAttendanceSelect, toggleAttendanceSelect, commitAttendance,
+                attSelectAll, filterAttendance,
+                openAttemptDetails, removeStudent, editStudent, unlockAttempt,
                 openTestReport, editTestFromCard, openEditTest, toggleEditStudent, vqSel,
                 openAttStatsReal: (r) => { if (typeof window.openAttStatsReal === "function") window.openAttStatsReal(r); },
             };
