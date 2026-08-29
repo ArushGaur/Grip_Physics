@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://vyorra.in/institute">
     <link rel="manifest" href="institute-manifest.json">
-    <link rel="icon" type="image/png" href="/assets/favicon.png" id="favicon">
+    <link rel="icon" type="image/png" href="/assets/favicon.ico" id="favicon">
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" id="appleIcon">
     <meta name="theme-color" content="#0d4c3e">
     <link
@@ -6641,6 +6641,42 @@
                 background: transparent;
             }
 
+            /* Nested scrollers used to swallow the first swipe. When a touch
+               starts inside a horizontally scrollable block (question text,
+               option bodies, equations, wide tables, filter tab strips) the
+               browser locks the whole gesture to that block's axis, so the
+               first vertical drag did nothing and only the second one scrolled
+               the page. Allowing pan-y hands vertical gestures straight up to
+               the page while keeping the sideways scroll these blocks need. */
+            .q-text,
+            .q-opt .opt-body,
+            .vq-text,
+            .vq-solution-text,
+            .rr-qprev-text,
+            .rr-qprev-solution .txt,
+            .q-data-table-wrap,
+            .table-card,
+            .rr-filter-tabs,
+            .katex-display,
+            mjx-container,
+            [style*="overflow-x:auto"],
+            [style*="overflow-x: auto"] {
+                touch-action: pan-x pan-y;
+                overscroll-behavior-x: contain;
+            }
+
+            /* Vertical panels: keep momentum scrolling and hand the gesture
+               back to the page once they hit their own top/bottom edge. */
+            .wiz-list,
+            .modal,
+            .modal-overlay,
+            .drawer-body,
+            #att-list,
+            .qcard-grid {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-y: auto;
+            }
+
             body {
                 padding: 0;
             }
@@ -8662,7 +8698,7 @@
                             Classes</button><span class="crumb-trail">/ <b>Class 11</b> · 2 Sections</span></div>
                     <div class="ecard-grid">
                         <article class="ecard" style="--ec:#00a390" onclick="showView('rv-tests')">
-                            <div class="ecard-top"><span class="ecard-ico">���</span><span class="ecard-badge">51
+                            <div class="ecard-top"><span class="ecard-ico">����</span><span class="ecard-badge">51
                                     Attempts</span></div>
                             <div class="ecard-title">Section A</div>
                             <div class="ecard-sub">62 Students</div>
