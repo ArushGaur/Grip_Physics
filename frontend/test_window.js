@@ -1283,6 +1283,9 @@ async function jeeDoSubmit() {
         id: Date.now(),
         timestamp: new Date().toISOString(),
         student: _student ? { name: _student.name, roll: _student.rollNumber, class: _student.className } : null,
+        // Needed so the recovery check can match this record against its
+        // server row, which is keyed by online_test_id.
+        onlineTestId: (_jeeTestMeta && _jeeTestMeta.onlineTestId) || null,
         test: { chapter, lecture, topic: _jeeTestMeta.topic || '' },
         result: { correct, wrong, skipped, total, marksScore, maxMarks, pct, grade: grade.label, timeTaken: _jeeElapsedSec },
         scheme: _jeeOnlineScheme ? `+${_jeeOnlineMarksCorrect}/${_jeeOnlineMarksWrong}` : (_jeeScheme ? '+4/-1' : '+1/0'),
@@ -1440,22 +1443,28 @@ function _markLocalAttemptsSynced(records) {
     } catch (_) { }
 }
 
-function _recKeyFor(rec) {
-    /* Accepts BOTH shapes: the local localStorage record (onlineTestId) and a
-       row from GET /api/test-history, which returns online_test_id in snake
-       case. Reading only the camelCase form made every server row collapse to
-       the same bogus key, so a saved attempt never matched its server row and
-       the card appeared even though the result was safely in the database. */
+function _recKeysFor(rec) {
+    /* Returns EVERY key a record could be identified by. The two sides carry
+       different fields: a freshly saved local record knows its chapter and
+       lecture, while the server row also knows online_test_id. Picking a
+       single "best" key meant the server row keyed as ot:<id> while the local
+       record keyed as sq:<chapter>|<lecture>, so the two could never line up
+       and every completed test was reported as unsaved. Overlap on ANY key
+       means it is the same attempt. */
+    const keys = [];
     const t = (rec && rec.test) || {};
     let ot = null;
-    if (rec) {
-        if (rec.onlineTestId !== undefined && rec.onlineTestId !== null) ot = rec.onlineTestId;
-        else if (rec.online_test_id !== undefined && rec.online_test_id !== null) ot = rec.online_test_id;
-    }
-    if (ot === null && t.onlineTestId !== undefined && t.onlineTestId !== null) ot = t.onlineTestId;
-    if (ot === null && t.online_test_id !== undefined && t.online_test_id !== null) ot = t.online_test_id;
-    if (ot !== null && Number(ot) > 0) return `ot:${Number(ot)}`;
-    return `sq:${t.chapter || ''}|${t.lecture || ''}`;
+    const pick = (v) => {
+        if (ot === null && v !== undefined && v !== null && v !== '') ot = v;
+    };
+    if (rec) { pick(rec.onlineTestId); pick(rec.online_test_id); }
+    pick(t.onlineTestId); pick(t.online_test_id);
+    if (ot !== null && Number(ot) > 0) keys.push(`ot:${Number(ot)}`);
+
+    const chapter = t.chapter || (rec && rec.chapter) || '';
+    const lecture = t.lecture || (rec && rec.lecture) || '';
+    if (chapter || lecture) keys.push(`sq:${chapter}|${lecture}`);
+    return keys;
 }
 
 async function _checkRecoverableAttempts() {
@@ -1483,13 +1492,14 @@ async function _checkRecoverableAttempts() {
        raised a false alarm about results that were in fact already saved. */
     if (!Array.isArray(server)) { card.style.display = 'none'; return; }
 
-    const serverKeys = new Set(server.map(_recKeyFor));
+    const serverKeys = new Set();
+    server.forEach(r => _recKeysFor(r).forEach(k => serverKeys.add(k)));
     const serverTimes = server.map(r => Date.parse(r && r.timestamp) || 0).filter(Boolean);
 
     // On the server = a matching test, or an attempt saved at roughly the same
     // moment (covers practice tests with reused names).
     const isOnServer = (r) => {
-        if (serverKeys.has(_recKeyFor(r))) return true;
+        if (_recKeysFor(r).some(k => serverKeys.has(k))) return true;
         const lt = Date.parse(r.timestamp) || 0;
         if (!lt) return false;
         return serverTimes.some(st => Math.abs(st - lt) < 15 * 60 * 1000);

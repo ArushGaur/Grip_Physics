@@ -1341,7 +1341,12 @@ router.get("/api/student/online-tests/:id/questions", async (req, res) => {
 		// All 30 students of a batch get the SAME questions, but each one gets
 		// them in a different sequence, derived from (testId + their roll number).
 		// Deterministic, so a resumed attempt shows the same paper again.
-		let questionOrder = questionOrderForStudent(testId, roll, questions.length);
+		let questionOrder = questionOrderForStudent(
+			testId,
+			roll,
+			questions.length,
+			questions.map((q) => (q && q.subject) || "")
+		);
 
 		// Server-side maxAttempts enforcement — count only non-locked normal submissions
 		const maxAttempts = Number(r.max_attempts) || 1;
