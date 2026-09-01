@@ -8165,7 +8165,7 @@
                             <div class="ecard-sub">14 chapters · 62 topics</div>
                         </article>
                         <article class="ecard" style="--ec:#00a390" onclick="showView('qv-chapters')">
-                            <div class="ecard-top"><span class="ecard-ico">����</span><span class="ecard-badge">374
+                            <div class="ecard-top"><span class="ecard-ico">🧪</span><span class="ecard-badge">374
                                     Qs</span></div>
                             <div class="ecard-title">Chemistry</div>
                             <div class="ecard-sub">12 chapters · 48 topics</div>
@@ -8750,7 +8750,7 @@
                                 <div class="att-roll mono">TRI-2024-057</div>
                             </span><span class="att-pill unmarked">NOT MARKED</span><button class="att-analytics"
                                 title="Attendance stats"
-                                onclick="event.stopPropagation();openAttStats('MN')">����</button></div>
+                                onclick="event.stopPropagation();openAttStats('MN')">📈</button></div>
                     </div>
                     <!-- Checking a student only stages them; pressing "Mark Attendance"
                          saves checked = present and unchecked = absent. -->
@@ -8806,7 +8806,7 @@
                             Classes</button><span class="crumb-trail">/ <b>Class 11</b> · 2 Sections</span></div>
                     <div class="ecard-grid">
                         <article class="ecard" style="--ec:#00a390" onclick="showView('rv-tests')">
-                            <div class="ecard-top"><span class="ecard-ico">����</span><span class="ecard-badge">51
+                            <div class="ecard-top"><span class="ecard-ico">📂</span><span class="ecard-badge">51
                                     Attempts</span></div>
                             <div class="ecard-title">Section A</div>
                             <div class="ecard-sub">62 Students</div>
@@ -14189,6 +14189,10 @@
             // ── Per-subject question-count modal ──────────────────────────
             function wizShowSubjCountModal(pickedBySubj, onConfirm) {
                 const subjects = Object.keys(pickedBySubj);
+                const scTitle = subjects.length > 1 ? 'Questions Per Subject' : 'Number of Questions';
+                const scSub = subjects.length > 1
+                    ? 'Choose how many questions from each subject'
+                    : 'Choose how many questions to include';
                 // Remove existing modal if any
                 const old = document.getElementById('wiz-subj-count-modal');
                 if (old) old.remove();
@@ -14212,8 +14216,8 @@
                 panel.innerHTML = `
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
                         <div>
-                            <div style="font-size:1.1rem;font-weight:800;color:var(--teal-deep,#0e7e65)">📊 Questions Per Subject</div>
-                            <div style="font-size:.8rem;color:var(--ink-muted);margin-top:2px">Choose how many questions from each subject</div>
+                            <div style="font-size:1.1rem;font-weight:800;color:var(--teal-deep,#0e7e65)">📊 ${scTitle}</div>
+                            <div style="font-size:.8rem;color:var(--ink-muted);margin-top:2px">${scSub}</div>
                         </div>
                         <button id="wiz-sc-close" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--ink-muted);padding:4px">✕</button>
                     </div>
@@ -14507,8 +14511,10 @@
                     const activeSubjects = Object.keys(wiz.selectedChapters).filter(s => wiz.selectedChapters[s] && wiz.selectedChapters[s].size > 0);
                     const multiSubj = activeSubjects.length > 1;
 
-                    if (multiSubj && type === 'online') {
-                        // For online tests: show per-subject count popup (no form to piggyback on)
+                    if (type === 'online') {
+                        // Online tests have no form to piggyback on, so ALWAYS ask how many
+                        // questions to include - per subject when several are selected,
+                        // and a single total when only one subject is.
                         const pickedBySubj = {};
                         picked.forEach(p => {
                             const s = p.subj || activeSubjects[0];
@@ -14934,7 +14940,7 @@
                         <h3>Generate Question Paper</h3>
                         <p class="sub" id="ipb-modal-sub">0 questions selected</p>
                         <div class="ipb-type-grid">
-                            <button class="ipb-type-card" onclick="window.instChooseType('offline')"><div class="ipb-type-ico">���</div><b>Offline Paper</b><span>Word document download</span></button>
+                            <button class="ipb-type-card" onclick="window.instChooseType('offline')"><div class="ipb-type-ico">📄</div><b>Offline Paper</b><span>Word document download</span></button>
                             ${instOnlineAllowed() ? '<button class="ipb-type-card" onclick="window.instChooseType(\'online\')"><div class="ipb-type-ico">💻</div><b>Online Test</b><span>Live on student portal</span></button>' : ''}
                         </div>
                         <div class="ipb-modal-actions"><button class="ipb-cancel" onclick="window.instCloseGenerate()">Cancel</button></div>

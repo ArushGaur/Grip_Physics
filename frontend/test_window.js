@@ -1420,10 +1420,41 @@ async function updateDashboardStats() {
    still has the local copy. Detect that and offer a one-tap re-upload. */
 let _recoverableAttempts = [];
 
+/* Marks local records as confirmed-present on the server so they are never
+   offered for recovery again, on this or any future visit. */
+function _markLocalAttemptsSynced(records) {
+    try {
+        const list = records || [];
+        const ids = new Set(list.map(r => r && r.id).filter(v => v !== undefined && v !== null).map(String));
+        const stamps = new Set(list.map(r => r && r.timestamp).filter(Boolean).map(String));
+        if (!ids.size && !stamps.size) return;
+        const all = getTestHistory();
+        let changed = false;
+        all.forEach(r => {
+            if (!r || r.syncedToServer) return;
+            const hit = (r.id !== undefined && r.id !== null && ids.has(String(r.id)))
+                || (r.timestamp && stamps.has(String(r.timestamp)));
+            if (hit) { r.syncedToServer = true; changed = true; }
+        });
+        if (changed) localStorage.setItem('gp_test_history', JSON.stringify(all));
+    } catch (_) { }
+}
+
 function _recKeyFor(rec) {
+    /* Accepts BOTH shapes: the local localStorage record (onlineTestId) and a
+       row from GET /api/test-history, which returns online_test_id in snake
+       case. Reading only the camelCase form made every server row collapse to
+       the same bogus key, so a saved attempt never matched its server row and
+       the card appeared even though the result was safely in the database. */
     const t = (rec && rec.test) || {};
-    const ot = (rec && rec.onlineTestId) || t.onlineTestId || null;
-    if (ot) return `ot:${ot}`;
+    let ot = null;
+    if (rec) {
+        if (rec.onlineTestId !== undefined && rec.onlineTestId !== null) ot = rec.onlineTestId;
+        else if (rec.online_test_id !== undefined && rec.online_test_id !== null) ot = rec.online_test_id;
+    }
+    if (ot === null && t.onlineTestId !== undefined && t.onlineTestId !== null) ot = t.onlineTestId;
+    if (ot === null && t.online_test_id !== undefined && t.online_test_id !== null) ot = t.online_test_id;
+    if (ot !== null && Number(ot) > 0) return `ot:${Number(ot)}`;
     return `sq:${t.chapter || ''}|${t.lecture || ''}`;
 }
 
@@ -1435,29 +1466,40 @@ async function _checkRecoverableAttempts() {
     try { local = getTestHistory(); } catch (_) { local = []; }
     // Only this student's own completed attempts are candidates.
     local = local.filter(r => r && r.result && Number(r.result.total) > 0
+        && !r.syncedToServer
         && (!r.student || !r.student.roll || String(r.student.roll) === String(_student.rollNumber)));
     if (!local.length) { card.style.display = 'none'; return; }
 
-    let server = [];
+    let server = null;
     try {
         const resp = await fetch(`${API_BASE}/api/test-history/${encodeURIComponent(_student.rollNumber)}?light=1&limit=50`);
         if (resp.ok) {
             const d = await resp.json();
             server = Array.isArray(d) ? d : (Array.isArray(d && d.history) ? d.history : []);
         }
-    } catch (_) { server = []; }
+    } catch (_) { server = null; }
+
+    /* Could not reach the server: stay silent. Treating that as "missing"
+       raised a false alarm about results that were in fact already saved. */
+    if (!Array.isArray(server)) { card.style.display = 'none'; return; }
 
     const serverKeys = new Set(server.map(_recKeyFor));
     const serverTimes = server.map(r => Date.parse(r && r.timestamp) || 0).filter(Boolean);
 
-    // Missing = no matching test on the server, and no attempt saved at
-    // roughly the same moment (covers practice tests with reused names).
-    const missing = local.filter(r => {
-        if (serverKeys.has(_recKeyFor(r))) return false;
+    // On the server = a matching test, or an attempt saved at roughly the same
+    // moment (covers practice tests with reused names).
+    const isOnServer = (r) => {
+        if (serverKeys.has(_recKeyFor(r))) return true;
         const lt = Date.parse(r.timestamp) || 0;
-        if (!lt) return true;
-        return !serverTimes.some(st => Math.abs(st - lt) < 15 * 60 * 1000);
-    });
+        if (!lt) return false;
+        return serverTimes.some(st => Math.abs(st - lt) < 15 * 60 * 1000);
+    };
+
+    const present = local.filter(isOnServer);
+    const missing = local.filter(r => !isOnServer(r));
+
+    // Remember what is confirmed saved so later visits skip the check entirely.
+    if (present.length) _markLocalAttemptsSynced(present);
 
     _recoverableAttempts = missing;
     if (!missing.length) { card.style.display = 'none'; return; }
@@ -1489,13 +1531,29 @@ async function recoverLocalAttempts() {
         const data = resp.ok ? await resp.json() : null;
         if (data && data.success) {
             const n = Number(data.imported) || 0;
+            /* Whether they were imported just now or were already there, these
+               records must never prompt again - not clearing them is why the
+               card kept coming back on every refresh. */
+            _markLocalAttemptsSynced(_recoverableAttempts);
+            _recoverableAttempts = [];
+
+            const title = document.getElementById('recoverTitle');
+            if (title) title.textContent = n ? 'Results uploaded' : 'Already saved';
             if (label) {
                 label.textContent = n
-                    ? `✅ ${n} result${n > 1 ? 's' : ''} restored. Your teacher can see ${n > 1 ? 'them' : 'it'} now.`
-                    : '✅ Everything on this device was already saved.';
+                    ? `${n} result${n > 1 ? 's' : ''} uploaded successfully. Your teacher can see ${n > 1 ? 'them' : 'it'} now.`
+                    : 'These results were already in your institute records - nothing needed uploading.';
             }
             if (btn) btn.style.display = 'none';
-            _recoverableAttempts = [];
+
+            const _card = document.getElementById('recoverCard');
+            if (_card) {
+                _card.style.borderColor = 'rgba(16,185,129,.4)';
+                _card.style.background = 'linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.05))';
+                const _ico = _card.querySelector('span');
+                if (_ico) _ico.textContent = '✅';
+                setTimeout(() => { _card.style.display = 'none'; }, 6000);
+            }
             try { if (typeof loadDashboard === 'function') loadDashboard(); } catch (_) { }
         } else {
             if (label) label.textContent = '⚠️ Upload failed. Check your connection and try again.';
