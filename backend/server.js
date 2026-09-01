@@ -349,6 +349,14 @@ function startServer() {
 			await autoRebuildPapersIfEmpty(adminRouter);
 		}
 
+		// Old-attempt archiving. No-op unless ARCHIVE_ENABLED=1, and it only ever
+		// runs on the single sweeper worker.
+		try {
+			require("./utils/archive").startArchiveJob();
+		} catch (e) {
+			logger.warn({ err: e.message }, "archive job not started");
+		}
+
 		const server = app.listen(PORT, () => {
 			logger.info(
 				{

@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "worker": "node worker.js",
     "migrate": "node migrate-to-supabase.js"
   },
   "keywords": [],
@@ -14,11 +15,14 @@
   "dependencies": {
     "@libsql/client": "^0.17.4",
     "@napi-rs/canvas": "^0.1.61",
+    "bullmq": "^5.34.0",
     "cloudinary": "^2.5.1",
+    "compression": "^1.7.4",
     "cors": "^2.8.6",
     "docx": "^9.6.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "ioredis": "^5.4.1",
     "jszip": "^3.10.1",
     "latex-to-omml": "^2.1.1",
     "mammoth": "^1.8.0",

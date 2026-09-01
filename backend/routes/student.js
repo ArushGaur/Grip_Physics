@@ -234,6 +234,7 @@ router.post("/api/save-test-result", async (req, res) => {
 			is_locked,
 			timeSpentJson,   // NEW: array of seconds per question, e.g. [12, 45, 8, …]
 			questionOrder,   // NEW: the shuffled order this student actually saw
+			clientAttemptId, // NEW: idempotency key so a retry cannot duplicate a row
 		} = req.body || {};
 
 		const compactAnswers = Array.isArray(answers)
@@ -315,13 +316,35 @@ router.post("/api/save-test-result", async (req, res) => {
 			? questionOrder.map((v) => Number(v)).filter((v) => Number.isInteger(v) && v >= 0)
 			: [];
 
+		// Idempotency. The client retries a failed save and also replays anything
+		// still queued via sendBeacon, so the same attempt can legitimately arrive
+		// more than once. Recognise it and return the original row instead of
+		// inserting a second one.
+		const attemptKey = typeof clientAttemptId === "string" && clientAttemptId.trim()
+			? clientAttemptId.trim().slice(0, 64)
+			: null;
+		if (attemptKey) {
+			try {
+				const dup = await db.execute({
+					sql: `SELECT id FROM test_history WHERE client_attempt_id = ? LIMIT 1`,
+					args: [attemptKey],
+				});
+				if (dup.rows && dup.rows.length) {
+					return res.json({ success: true, duplicate: true, id: dup.rows[0].id });
+				}
+			} catch (_) {
+				// Column missing on a database that has not run migrations yet —
+				// fall through and insert normally.
+			}
+		}
+
 		await db.execute({
 			sql: `INSERT INTO test_history (
 				mobile, chapter, lecture, topic, correct_count, wrong_count, skipped_count,
 				total_questions, marks_score, max_marks, accuracy_pct, grade, time_taken,
 				scheme, timestamp, student_name, student_class, answers_json, online_test_id,
-				is_locked, institute_id, time_spent_json, question_order_json
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				is_locked, institute_id, time_spent_json, question_order_json, client_attempt_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				mobile,
 				chapter || null,
@@ -346,6 +369,7 @@ router.post("/api/save-test-result", async (req, res) => {
 				instId,
 				JSON.stringify(compactTimeSpent),
 				JSON.stringify(compactOrder),
+				attemptKey,
 			]
 		});
 
@@ -417,6 +441,154 @@ router.post("/api/save-test-result", async (req, res) => {
 });
 
 // Fetch test history for a student
+/* ══ Recovery: import attempts that only exist in a student's localStorage ══
+   Older builds revealed the result screen *before* writing the row, so closing
+   the browser at that moment lost the attempt server-side while the device kept
+   a local copy. This imports those copies. It is safe to call repeatedly:
+   every record is de-duplicated twice over (by client_attempt_id, and by
+   checking whether the attempt actually did reach the server). */
+router.post("/api/student/recover-attempts", async (req, res) => {
+	try {
+		const { mobile, attempts } = req.body || {};
+		if (!mobile) return res.status(400).json({ error: "Missing mobile" });
+		if (!Array.isArray(attempts) || !attempts.length) {
+			return res.json({ success: true, imported: 0, skipped: 0 });
+		}
+
+		const instId = await resolveStudentInstituteId({ mobile, instituteCode: req.body?.instituteCode });
+
+		let imported = 0;
+		let skipped = 0;
+
+		// Cap the batch so a tampered-with payload can't hammer the database.
+		for (const rec of attempts.slice(0, 25)) {
+			try {
+				const r = (rec && rec.result) || {};
+				const t = (rec && rec.test) || {};
+				const rawOt = rec?.onlineTestId ?? t.onlineTestId ?? null;
+				const otId = Number(rawOt) > 0 ? Number(rawOt) : null;
+				const chapter = t.chapter || null;
+				const lecture = t.lecture || (otId ? String(otId) : "practice");
+				const total = Number(r.total) || 0;
+				const stamp = rec?.timestamp || new Date().toISOString();
+
+				if (!total) { skipped++; continue; }
+
+				// 1) Same local record can never produce two rows.
+				const attemptKey = `local-${String(mobile)}-${String(rec?.id ?? "")}`.slice(0, 64);
+				try {
+					const dup = await db.execute({
+						sql: `SELECT id FROM test_history WHERE client_attempt_id = ? LIMIT 1`,
+						args: [attemptKey],
+					});
+					if (dup.rows && dup.rows.length) { skipped++; continue; }
+				} catch (_) { /* column missing on an un-migrated DB */ }
+
+				/* 2) Don't duplicate an attempt that DID reach the server. Timestamps
+				   are compared in JS rather than SQL to stay dialect-agnostic. */
+				let clash = false;
+				if (otId) {
+					const ex = await db.execute({
+						sql: `SELECT id FROM test_history WHERE mobile = ? AND online_test_id = ? LIMIT 1`,
+						args: [mobile, otId],
+					});
+					clash = !!(ex.rows && ex.rows.length);
+				} else {
+					const ex = await db.execute({
+						sql: `SELECT timestamp FROM test_history WHERE mobile = ? AND lecture = ? LIMIT 50`,
+						args: [mobile, lecture],
+					});
+					const localMs = Date.parse(stamp) || 0;
+					clash = (ex.rows || []).some(row => {
+						const ms = Date.parse(row.timestamp) || 0;
+						return ms && localMs && Math.abs(ms - localMs) < 15 * 60 * 1000;
+					});
+				}
+				if (clash) { skipped++; continue; }
+
+				const answersJson = Array.isArray(rec?.answers) ? rec.answers : [];
+				const schemeStr = typeof rec?.scheme === "string" && rec.scheme ? rec.scheme : "+1/0";
+
+				await db.execute({
+					sql: `INSERT INTO test_history (
+						mobile, chapter, lecture, topic, correct_count, wrong_count, skipped_count,
+						total_questions, marks_score, max_marks, accuracy_pct, grade, time_taken,
+						scheme, timestamp, student_name, student_class, answers_json, online_test_id,
+						is_locked, institute_id, time_spent_json, question_order_json, client_attempt_id
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					args: [
+						mobile,
+						chapter,
+						lecture,
+						t.topic || "",
+						Number(r.correct) || 0,
+						Number(r.wrong) || 0,
+						Number(r.skipped) || 0,
+						total,
+						Number(r.marksScore) || 0,
+						Number(r.maxMarks) || 0,
+						Number(r.pct) || 0,
+						r.grade || "",
+						Number(r.timeTaken) || 0,
+						schemeStr,
+						stamp,
+						rec?.student?.name || "",
+						rec?.student?.class || "",
+						JSON.stringify(answersJson),
+						otId,
+						0,
+						instId,
+						JSON.stringify([Number(r.timeTaken) || 0]),
+						JSON.stringify([]),
+						attemptKey,
+					],
+				});
+				imported++;
+			} catch (inner) {
+				skipped++;
+				console.warn("recover-attempts: skipped one record:", inner.message);
+			}
+		}
+
+		// Keep the dashboard tiles honest after an import.
+		if (imported) {
+			try {
+				const all = await db.execute({
+					sql: `SELECT online_test_id, chapter, lecture, accuracy_pct, timestamp, is_locked
+					      FROM test_history WHERE mobile = ?`,
+					args: [mobile],
+				});
+				const latestByTest = new Map();
+				for (const row of all.rows || []) {
+					if (Number(row.is_locked) !== 0) continue;
+					const otId = row.online_test_id;
+					const key = otId ? `ot_${otId}` : `sq_${row.chapter}|${row.lecture}`;
+					const prev = latestByTest.get(key);
+					if (!prev || (Date.parse(row.timestamp) || 0) > (Date.parse(prev.timestamp) || 0)) {
+						latestByTest.set(key, row);
+					}
+				}
+				const uniqueTests = [...latestByTest.values()];
+				const cnt = uniqueTests.length;
+				const avgpct = cnt
+					? Math.round(uniqueTests.reduce((s, x) => s + (Number(x.accuracy_pct) || 0), 0) / cnt)
+					: 0;
+				await db.execute({
+					sql: `UPDATE student_stats SET tests_completed = ?, avg_pct = ?, updated_at = ? WHERE mobile = ?`,
+					args: [cnt, avgpct, new Date().toISOString(), mobile],
+				});
+			} catch (e) {
+				console.warn("recover-attempts: stats refresh failed:", e.message);
+			}
+		}
+
+		res.json({ success: true, imported, skipped });
+	} catch (e) {
+		console.error("POST /api/student/recover-attempts error:", e.message);
+		res.status(500).json({ error: "Failed to recover attempts" });
+	}
+});
+
 router.get("/api/test-history/:mobile", async (req, res) => {
 	try {
 		const { mobile } = req.params || {};
@@ -1550,7 +1722,7 @@ router.post("/api/student/update-profile", async (req, res) => {
 	}
 });
 
-// ── STUDENT: logout ───────────────────────────────────────────────────────────
+// ── STUDENT: logout ────────���──────────────────────────────────────────────────
 router.post("/api/student/logout", async (req, res) => {
 	try {
 		const auth = req.headers["authorization"] || "";
