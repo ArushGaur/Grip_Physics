@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://vyorra.in/institute">
     <link rel="manifest" href="institute-manifest.json">
-    <link rel="icon" type="image/png" href="/assets/favicon.ico" id="favicon">
-    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" id="appleIcon">
+    <link rel="icon" type="image/png" href="triumph-192.png" id="favicon">
+    <link rel="apple-touch-icon" href="triumph-192.png" id="appleIcon">
     <meta name="theme-color" content="#0d4c3e">
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,500;0,600&display=swap"
@@ -261,6 +261,7 @@
         .side-profile {
             text-align: center;
             padding: 0 22px 26px;
+            flex-shrink: 0;
         }
 
         .side-avatar {
@@ -289,10 +290,23 @@
         }
 
         .side-nav {
-            flex: 1;
+            flex: 1 1 auto;
+            /* min-height:0 lets this shrink below its content height. Without it a
+               flex item refuses to shrink, which pushed .side-bottom (Toggle Theme +
+               Logout) past the clipped edge of #sidebar on short viewports. */
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             padding: 8px 0 8px 18px;
             position: relative;
             z-index: 2;
+        }
+
+        .side-nav::-webkit-scrollbar {
+            width: 0;
+            height: 0;
         }
 
         .nav-item {
@@ -368,6 +382,100 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            flex-shrink: 0;
+            margin-top: auto;
+        }
+
+        /* Short screens: compact the profile/nav so the footer buttons always fit. */
+        @media (max-height: 760px) {
+            #sidebar {
+                padding-top: 22px;
+            }
+
+            .side-profile {
+                padding: 0 22px 14px;
+            }
+
+            .side-avatar {
+                width: 58px;
+                height: 58px;
+                font-size: 1.45rem;
+                margin-bottom: 8px;
+            }
+
+            .nav-item {
+                padding: 10px 20px;
+                margin: 2px 0;
+            }
+
+            .nav-ico {
+                width: 30px;
+                height: 30px;
+            }
+
+            .side-bottom {
+                padding: 12px 20px 18px;
+            }
+        }
+
+        @media (max-height: 620px) {
+            .side-avatar {
+                width: 46px;
+                height: 46px;
+                font-size: 1.15rem;
+            }
+
+            .side-name {
+                font-size: .95rem;
+            }
+
+            .nav-item {
+                padding: 9px 20px;
+                font-size: .85rem;
+            }
+        }
+
+        /* Smooth active-pill animation when switching sections. */
+        .nav-item.active {
+            animation: navPillIn .34s cubic-bezier(.34, 1.16, .64, 1) both;
+        }
+
+        @keyframes navPillIn {
+            from {
+                transform: translateX(14px);
+                opacity: .55;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .nav-item.active .nav-ico {
+            animation: navIcoPop .4s cubic-bezier(.34, 1.4, .64, 1) both;
+        }
+
+        @keyframes navIcoPop {
+            0% {
+                transform: scale(.7) rotate(-9deg);
+            }
+
+            60% {
+                transform: scale(1.09) rotate(3deg);
+            }
+
+            100% {
+                transform: scale(1) rotate(0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .nav-item.active,
+            .nav-item.active .nav-ico {
+                animation: none;
+            }
         }
 
         .side-action {
@@ -7806,7 +7914,7 @@
                 </form>
             </div>
 
-            <div class="auth-foot">Powered by <b>Vyorra</b></div>
+            <div class="auth-foot">Powered by <b>Triumph Learning Platform</b></div>
         </div>
     </div>
 
@@ -12317,8 +12425,23 @@
                 return out;
             }
             function qlibSolText(text) {
-                const latexN = /^(?:eq|abla|otin|e\b|ode|ewcommand|equiv|ot)/;
-                let s = String(text || '').replace(/\\n([a-zA-Z]*)/g, (m, r) => latexN.test(r) ? m : '\n' + r).trim();
+                // A literal "\n" in the source is EITHER an escaped newline OR the
+                // start of a LaTeX macro (\nu, \neq, \nabla ...). Inside a math span
+                // it is ALWAYS a macro, so never rewrite it there. Real newlines are
+                // collapsed inside math because a <br> between the $ delimiters puts
+                // them in different DOM text nodes and KaTeX can never pair them.
+                const latexN = /^(?:u|i|eq|e\b|abla|otin|ot|ode|ewcommand|ewline|equiv|onumber|olimits|exists|subseteq|parallel|mid|cong|sim|rightarrow|leftarrow|Rightarrow|Leftarrow|leq|geq|prec|succ)/;
+                const mathRe = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$[^$\r\n]*?\$)/g;
+                const src = String(text || '');
+                const plain = (t) => t.replace(/\\n([a-zA-Z]*)/g, (m, r) => latexN.test(r) ? m : '\n' + r);
+                let out = '', last = 0, mm;
+                while ((mm = mathRe.exec(src)) !== null) {
+                    if (mm.index > last) out += plain(src.slice(last, mm.index));
+                    out += mm[0].replace(/[\r\n]+/g, ' ');
+                    last = mm.index + mm[0].length;
+                }
+                if (last < src.length) out += plain(src.slice(last));
+                const s = out.trim();
                 return esc(s).replace(/\n/g, '<br>');
             }
             function qlibRenderDetail() {

@@ -202,6 +202,69 @@ let _jeeOnlineMarksCorrect = 4;
 let _jeeOnlineMarksWrong = -1;
 let _jeeReviewItems = [];   // cached for filter
 
+/* ══ Live draft autosave ════════════════════════════════════════
+   Nothing used to be written anywhere until the test was submitted, so a crash,
+   a dead battery or an accidental close mid-test threw away every answer. Now
+   each answer, edit, visit, mark and navigation is written to localStorage the
+   moment it happens, and the attempt resumes exactly where it left off. */
+const JEE_DRAFT_PREFIX = 'gp_test_draft:';
+const JEE_DRAFT_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+let _jeeDraftKey = '';
+let _jeeDraftLastWrite = 0;
+
+function _jeeDraftKeyFor(meta, chapter, lecture) {
+    const roll = (_student && _student.rollNumber) ? String(_student.rollNumber) : 'anon';
+    const testId = (meta && meta.id) ? `ot${meta.id}` : `sq${chapter || ''}|${lecture || ''}`;
+    return `${JEE_DRAFT_PREFIX}${roll}:${testId}`;
+}
+
+function _saveJeeDraft(force) {
+    if (!_jeeDraftKey || !Array.isArray(_jeeQuestions) || !_jeeQuestions.length) return;
+    const now = Date.now();
+    // Throttle so rapid taps / typing don't hit storage on every keystroke.
+    if (!force && now - _jeeDraftLastWrite < 600) return;
+    _jeeDraftLastWrite = now;
+    try {
+        localStorage.setItem(_jeeDraftKey, JSON.stringify({
+            v: 1,
+            savedAt: now,
+            roll: _student ? _student.rollNumber : null,
+            total: _jeeQuestions.length,
+            answers: _jeeAnswers,
+            marked: _jeeMarked,
+            currentIdx: _jeeCurrentIdx,
+            timerSec: _jeeTimerSec,
+            elapsedSec: _jeePriorElapsedSec + Math.floor((now - _jeeStartTime) / 1000),
+            meta: _jeeTestMeta
+        }));
+    } catch (_) { /* quota / private mode - never break a live test over this */ }
+}
+
+function _clearJeeDraft() {
+    try { if (_jeeDraftKey) localStorage.removeItem(_jeeDraftKey); } catch (_) { }
+    _jeeDraftKey = '';
+}
+
+function _loadJeeDraft(key, expectedTotal) {
+    try {
+        const d = JSON.parse(localStorage.getItem(key) || 'null');
+        if (!d || d.v !== 1) return null;
+        // A draft for a different paper length can't be trusted.
+        if (!Array.isArray(d.answers) || Number(d.total) !== Number(expectedTotal)) return null;
+        if (Date.now() - (Number(d.savedAt) || 0) > JEE_DRAFT_MAX_AGE_MS) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        return d;
+    } catch (_) { return null; }
+}
+
+// A draft is worthless if it isn't on disk when the tab dies.
+window.addEventListener('pagehide', function () { try { _saveJeeDraft(true); } catch (_) { } });
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') { try { _saveJeeDraft(true); } catch (_) { } }
+});
+
 /* ── Numerical question detection (no text/images/tables in options) ── */
 function _isNumericalQ(q) {
     if (!q) return false;
@@ -393,13 +456,42 @@ async function openJeePortal(chapter, lecture, meta) {
         _progressRestored = true;
     }
 
+    /* ── Restore an in-progress draft saved on this device ──
+       Only used when the server didn't already hand us a resumable attempt;
+       the server's copy always wins. */
+    _jeeDraftKey = _jeeDraftKeyFor(meta, chapter, lecture);
+    if (!_progressRestored) {
+        const draft = _loadJeeDraft(_jeeDraftKey, _jeeQuestions.length);
+        if (draft) {
+            if (Array.isArray(draft.answers)) {
+                _jeeAnswers = draft.answers.slice(0, _jeeQuestions.length);
+            }
+            if (Array.isArray(draft.marked)) {
+                _jeeMarked = draft.marked.slice(0, _jeeQuestions.length);
+            }
+            const di = Number(draft.currentIdx);
+            if (Number.isFinite(di) && di >= 0 && di < _jeeQuestions.length) _jeeCurrentIdx = di;
+            // Carry the clock over so a resume can't hand out extra time.
+            const dt = Number(draft.timerSec);
+            if (Number.isFinite(dt) && dt > 0) _jeeTimerSec = dt;
+            const de = Number(draft.elapsedSec);
+            if (Number.isFinite(de) && de > 0) {
+                _jeePriorElapsedSec = de;
+                _jeeElapsedSec = de;
+            }
+            _progressRestored = true;
+        }
+    }
+    _saveJeeDraft(true);
+
     document.getElementById('jee-portal').style.display = 'flex';
     const infoLabel = meta && meta.id
         ? `${meta.testName || 'Online Test'}`
         : `${chapter} · L${lecture}${topicStr ? ' · ' + topicStr : ''}`;
     document.getElementById('jeeTestInfo').textContent = infoLabel;
 
-    jeeRenderQ(0);
+    // Resume on the question the student was last looking at.
+    jeeRenderQ(_jeeCurrentIdx || 0);
     jeeRenderPalette();
     jeeUpdateLiveTally();
     jeeStartTimer();
@@ -539,6 +631,8 @@ function jeeStartTimer() {
         _jeeElapsedSec++;
         if (_jeeTimerSec <= 0) { clearInterval(_jeeTimerInt); jeeDoSubmit(); return; }
         jeeUpdateTimer();
+        // Keep the clock fresh in the draft even if the student sits idle.
+        if (_jeeElapsedSec % 5 === 0) _saveJeeDraft(true);
     }, 1000);
 }
 
@@ -564,6 +658,10 @@ function jeeRenderQ(idx) {
     // For numerical, don't auto-set -1; keep null until answered.
     // For regular, keep existing behaviour.
     if (!isNumerical && _jeeAnswers[idx] === null) _jeeAnswers[idx] = -1;
+
+    /* Every visit, answer, clear, mark and navigation lands here, so this one
+       call covers the whole "save it the moment it changes" requirement. */
+    _saveJeeDraft();
 
     const ci = q.correctIndexes || [q.correctIndex || 0];
     const ans = _jeeAnswers[idx];
@@ -702,6 +800,8 @@ function jeeHandleNumInput(val) {
     } else {
         _jeeAnswers[idx] = trimmed;
     }
+    // Numerical input doesn't re-render the question, so save explicitly.
+    _saveJeeDraft();
     jeeRenderPalette();
     jeeUpdateLiveTally();
 }
@@ -1036,6 +1136,19 @@ async function jeeDoSubmit() {
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
     const grade = jeeGrade(pct);
 
+    /* ══ Persist the attempt BEFORE the result screen appears ═════════════
+       The save used to run *after* all the result rendering below, so a student
+       who closed the browser the moment the result appeared killed a request
+       that was still in flight - and the attempt was lost for good. With a full
+       class submitting together the server is slower, which widened that window
+       to seconds. Now the row is queued to a local outbox synchronously and
+       POSTed (with retries) before anything is revealed. */
+    const _attemptSaved = _student
+        ? await _persistAttempt({ chapter, lecture, correct, wrong, skipped, total, marksScore, maxMarks, pct, grade })
+        : false;
+    // The attempt is queued/saved now, so the in-progress draft is obsolete.
+    _clearJeeDraft();
+
     // Hide portal, show result
     // Disable refresh block once test is fully submitted
     if (typeof disableRefreshBlock === 'function') disableRefreshBlock();
@@ -1136,48 +1249,10 @@ async function jeeDoSubmit() {
         } catch (e) { console.warn('Submit error:', e); }
     }
 
-    // ── Save to database (new) ──
+    // ── Dashboard stats refresh (the attempt itself was saved further up) ──
     if (_student) {
         try {
-            const compactAnswers = _jeeQuestions.map((q, i) => {
-                const studentAnswer = _jeeAnswers[i];
-                return [
-                    i,
-                    Array.isArray(studentAnswer) ? studentAnswer.join(',') : (studentAnswer === null || studentAnswer === undefined ? '' : String(studentAnswer)),
-                    (_jeeReviewItems[i]?.status || 'skipped').charAt(0)
-                ];
-            });
-            const testResultPayload = {
-                mobile: _student.rollNumber,
-                chapter,
-                lecture: lecture || _jeeTestMeta.onlineTestId || 'online',
-                topic: _jeeTestMeta.topic || '',
-                correct,
-                wrong,
-                skipped,
-                total,
-                marksScore,
-                maxMarks,
-                pct,
-                grade: grade.label,
-                timeTaken: _jeeElapsedSec,
-                scheme: _jeeOnlineScheme ? `+${_jeeOnlineMarksCorrect}/${_jeeOnlineMarksWrong}` : (_jeeScheme ? '+4/-1' : '+1/0'),
-                studentName: _student.name,
-                studentClass: _student.className,
-                answers: compactAnswers,
-                online_test_id: _jeeTestMeta.onlineTestId || null,
-                is_locked: window._jeeStrictLocked ? 1 : 0,
-                // Store total elapsed seconds so unlock can restore remaining time
-                timeSpentJson: [_jeeElapsedSec],
-                // The shuffled order this student was served (empty for practice tests)
-                questionOrder: Array.isArray(_jeeQuestionOrder) ? _jeeQuestionOrder : []
-            };
-            const saveResp = await fetch(`${API_BASE}/api/save-test-result`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(testResultPayload)
-            });
-            if (saveResp && saveResp.ok) {
+            if (_attemptSaved) {
                 // refresh dashboard stats from server
                 try {
                     const st = await fetch(`${API_BASE}/api/student/stats/${encodeURIComponent(_student.rollNumber)}`);
@@ -1337,6 +1412,99 @@ async function updateDashboardStats() {
     if (avgEl && avgScore !== null) avgEl.textContent = `${avgScore}%`;
     const streakTile = document.querySelectorAll('.stat-tile .stat-num')[3];
     if (streakTile) streakTile.textContent = streak;
+}
+
+/* ══ Recovery of attempts that never reached the server ══════════════════
+   Builds before the crash-safe submit revealed the score before saving it, so
+   a result could be missing from the institute's records while this device
+   still has the local copy. Detect that and offer a one-tap re-upload. */
+let _recoverableAttempts = [];
+
+function _recKeyFor(rec) {
+    const t = (rec && rec.test) || {};
+    const ot = (rec && rec.onlineTestId) || t.onlineTestId || null;
+    if (ot) return `ot:${ot}`;
+    return `sq:${t.chapter || ''}|${t.lecture || ''}`;
+}
+
+async function _checkRecoverableAttempts() {
+    const card = document.getElementById('recoverCard');
+    if (!card || !_student) return;
+
+    let local = [];
+    try { local = getTestHistory(); } catch (_) { local = []; }
+    // Only this student's own completed attempts are candidates.
+    local = local.filter(r => r && r.result && Number(r.result.total) > 0
+        && (!r.student || !r.student.roll || String(r.student.roll) === String(_student.rollNumber)));
+    if (!local.length) { card.style.display = 'none'; return; }
+
+    let server = [];
+    try {
+        const resp = await fetch(`${API_BASE}/api/test-history/${encodeURIComponent(_student.rollNumber)}?light=1&limit=50`);
+        if (resp.ok) {
+            const d = await resp.json();
+            server = Array.isArray(d) ? d : (Array.isArray(d && d.history) ? d.history : []);
+        }
+    } catch (_) { server = []; }
+
+    const serverKeys = new Set(server.map(_recKeyFor));
+    const serverTimes = server.map(r => Date.parse(r && r.timestamp) || 0).filter(Boolean);
+
+    // Missing = no matching test on the server, and no attempt saved at
+    // roughly the same moment (covers practice tests with reused names).
+    const missing = local.filter(r => {
+        if (serverKeys.has(_recKeyFor(r))) return false;
+        const lt = Date.parse(r.timestamp) || 0;
+        if (!lt) return true;
+        return !serverTimes.some(st => Math.abs(st - lt) < 15 * 60 * 1000);
+    });
+
+    _recoverableAttempts = missing;
+    if (!missing.length) { card.style.display = 'none'; return; }
+
+    const n = missing.length;
+    const label = document.getElementById('recoverText');
+    if (label) {
+        label.textContent = `${n} completed test${n > 1 ? 's' : ''} on this device ${n > 1 ? 'were' : 'was'} never saved to your institute's records. Upload ${n > 1 ? 'them' : 'it'} so your teacher can see your ${n > 1 ? 'scores' : 'score'}.`;
+    }
+    card.style.display = 'flex';
+}
+
+async function recoverLocalAttempts() {
+    const btn = document.getElementById('recoverBtn');
+    const label = document.getElementById('recoverText');
+    if (!_student || !_recoverableAttempts.length) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+    try {
+        const resp = await fetch(`${API_BASE}/api/student/recover-attempts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mobile: _student.rollNumber,
+                instituteCode: _instituteCode,
+                attempts: _recoverableAttempts
+            })
+        });
+        const data = resp.ok ? await resp.json() : null;
+        if (data && data.success) {
+            const n = Number(data.imported) || 0;
+            if (label) {
+                label.textContent = n
+                    ? `✅ ${n} result${n > 1 ? 's' : ''} restored. Your teacher can see ${n > 1 ? 'them' : 'it'} now.`
+                    : '✅ Everything on this device was already saved.';
+            }
+            if (btn) btn.style.display = 'none';
+            _recoverableAttempts = [];
+            try { if (typeof loadDashboard === 'function') loadDashboard(); } catch (_) { }
+        } else {
+            if (label) label.textContent = '⚠️ Upload failed. Check your connection and try again.';
+            if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+        }
+    } catch (_) {
+        if (label) label.textContent = '⚠️ Upload failed. Check your connection and try again.';
+        if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+    }
 }
 
 function getTestHistory() {
@@ -1620,6 +1788,11 @@ function showScreen(name, pushHistory = true) {
 
     closeSidebar();
 
+    // Surface any locally-stranded results as soon as the dashboard is shown.
+    if (name === 'dashboard') {
+        try { _checkRecoverableAttempts(); } catch (_) { }
+    }
+
     // Push state so back button works within SPA
     if (pushHistory && !_historyNavBlocked) {
         const state = { screen: name };
@@ -1746,7 +1919,7 @@ document.addEventListener('touchmove', function (e) {
     }
 }, { passive: false });
 
-// ── pagehide fallback (iOS Safari) ��───────────────────────────────────
+// ── pagehide fallback (iOS Safari) ��─���─────────────────────────────────
 window.addEventListener('pagehide', function () {
     if (_blockRefresh) {
         try { sessionStorage.setItem('_gpRefreshInterrupted', '1'); } catch (_) { }
@@ -1755,6 +1928,151 @@ window.addEventListener('pagehide', function () {
 try { sessionStorage.removeItem('_gpRefreshInterrupted'); } catch (_) { }
 
 // ── Custom refresh warning popup ──────────────────────────────────────
+/* ══ Crash-safe result submission ═════════════════════════════════
+   An attempt is written to a localStorage outbox *synchronously* before any
+   network call, then POSTed with keepalive + retries. If the browser dies
+   mid-flight the attempt is still queued and gets flushed on the next visit or
+   via sendBeacon on the way out. The client attempt id makes those replays
+   impossible to duplicate server-side. */
+const RESULT_OUTBOX_KEY = 'gp_result_outbox';
+
+function _newAttemptId() {
+    try {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    } catch (_) { }
+    return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+function _readResultOutbox() {
+    try {
+        const v = JSON.parse(localStorage.getItem(RESULT_OUTBOX_KEY) || '[]');
+        return Array.isArray(v) ? v : [];
+    } catch (_) { return []; }
+}
+
+function _writeResultOutbox(list) {
+    // Cap the queue so a long-running device can never blow the storage quota.
+    try { localStorage.setItem(RESULT_OUTBOX_KEY, JSON.stringify(list.slice(-20))); } catch (_) { }
+}
+
+function _queueResult(payload) {
+    const list = _readResultOutbox().filter(p => p && p.clientAttemptId !== payload.clientAttemptId);
+    list.push(payload);
+    _writeResultOutbox(list);
+}
+
+function _unqueueResult(id) {
+    _writeResultOutbox(_readResultOutbox().filter(p => p && p.clientAttemptId !== id));
+}
+
+/* keepalive lets the request outlive the page that started it, which is exactly
+   the case we are protecting against. */
+async function _postResult(payload) {
+    const resp = await fetch(`${API_BASE}/api/save-test-result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+    });
+    return !!(resp && resp.ok);
+}
+
+/* A whole class submitting at once can make the server slow enough for the
+   first POST to time out, so transient failures are retried with backoff. */
+async function _postResultWithRetry(payload, attempts) {
+    const tries = attempts || 4;
+    for (let i = 0; i < tries; i++) {
+        try {
+            if (await _postResult(payload)) return true;
+        } catch (_) { }
+        if (i < tries - 1) {
+            await new Promise(r => setTimeout(r, 600 * Math.pow(2, i) + Math.random() * 400));
+        }
+    }
+    return false;
+}
+
+function _buildResultPayload(v) {
+    const compactAnswers = _jeeQuestions.map((q, i) => {
+        const studentAnswer = _jeeAnswers[i];
+        return [
+            i,
+            Array.isArray(studentAnswer) ? studentAnswer.join(',') : (studentAnswer === null || studentAnswer === undefined ? '' : String(studentAnswer)),
+            (_jeeReviewItems[i]?.status || 'skipped').charAt(0)
+        ];
+    });
+    return {
+        clientAttemptId: _newAttemptId(),
+        mobile: _student.rollNumber,
+        chapter: v.chapter,
+        lecture: v.lecture || _jeeTestMeta.onlineTestId || 'online',
+        topic: _jeeTestMeta.topic || '',
+        correct: v.correct,
+        wrong: v.wrong,
+        skipped: v.skipped,
+        total: v.total,
+        marksScore: v.marksScore,
+        maxMarks: v.maxMarks,
+        pct: v.pct,
+        grade: v.grade && v.grade.label ? v.grade.label : '',
+        timeTaken: _jeeElapsedSec,
+        scheme: _jeeOnlineScheme ? `+${_jeeOnlineMarksCorrect}/${_jeeOnlineMarksWrong}` : (_jeeScheme ? '+4/-1' : '+1/0'),
+        studentName: _student.name,
+        studentClass: _student.className,
+        answers: compactAnswers,
+        online_test_id: _jeeTestMeta.onlineTestId || null,
+        is_locked: window._jeeStrictLocked ? 1 : 0,
+        // Store total elapsed seconds so unlock can restore remaining time
+        timeSpentJson: [_jeeElapsedSec],
+        // The shuffled order this student was served (empty for practice tests)
+        questionOrder: Array.isArray(_jeeQuestionOrder) ? _jeeQuestionOrder : []
+    };
+}
+
+async function _persistAttempt(v) {
+    let payload;
+    try { payload = _buildResultPayload(v); }
+    catch (e) { console.warn('Result payload build failed:', e); return false; }
+
+    _queueResult(payload);  // synchronous - survives an immediate browser close
+    let ok = false;
+    try { ok = await _postResultWithRetry(payload); } catch (_) { ok = false; }
+    if (ok) _unqueueResult(payload.clientAttemptId);
+    return ok;
+}
+
+/* Anything still queued (browser closed mid-save, offline, server down) is
+   re-sent when the portal is opened again. */
+async function flushResultOutbox() {
+    const list = _readResultOutbox();
+    if (!list.length) return;
+    for (const payload of list) {
+        if (!payload || !payload.mobile) { _unqueueResult(payload && payload.clientAttemptId); continue; }
+        try {
+            if (await _postResultWithRetry(payload, 2)) _unqueueResult(payload.clientAttemptId);
+        } catch (_) { }
+    }
+}
+
+/* Last-ditch delivery as the page goes away: sendBeacon is the only request
+   type the browser guarantees to finish after unload. */
+window.addEventListener('pagehide', function () {
+    const list = _readResultOutbox();
+    if (!list.length || !navigator.sendBeacon) return;
+    for (const payload of list) {
+        try {
+            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+            navigator.sendBeacon(`${API_BASE}/api/save-test-result`, blob);
+        } catch (_) { }
+    }
+});
+
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') { try { flushResultOutbox(); } catch (_) { } }
+});
+
+try { setTimeout(function () { try { flushResultOutbox(); } catch (_) { } }, 2500); } catch (_) { }
+
 function _showRefreshWarningPopup() {
     const popup = document.getElementById('refreshWarningPopup');
     if (popup) {
@@ -3965,12 +4283,20 @@ function normalizeSolutionForDisplay(text) {
     // is exactly how "≠" became the stray "eq0" text seen in the UI.
     // Guard against that by skipping the replacement only when the "\n"
     // is actually the start of one of these known LaTeX macros.
-    const latexNMacros = /^(?:eq|abla|otin|e\b|ode|ewcommand|equiv|ot)/;
-    return String(text || '')
-        .replace(/\\n([a-zA-Z]*)/g, (match, rest) => {
-            return latexNMacros.test(rest) ? match : '\n' + rest;
-        })
-        .trim();
+    // "\nu_0" must survive: inside a math span a "\n" is always a LaTeX macro,
+    // never an escaped newline. Only rewrite \n outside math spans.
+    const latexNMacros = /^(?:u|i|eq|e\b|abla|otin|ot|ode|ewcommand|ewline|equiv|onumber|olimits|exists|subseteq|parallel|mid|cong|sim|rightarrow|leftarrow|Rightarrow|Leftarrow|leq|geq|prec|succ)/;
+    const mathRe = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$[^$\r\n]*?\$)/g;
+    const src = String(text || '');
+    const plain = (t) => t.replace(/\\n([a-zA-Z]*)/g, (m, r) => latexNMacros.test(r) ? m : '\n' + r);
+    let out = '', last = 0, mm;
+    while ((mm = mathRe.exec(src)) !== null) {
+        if (mm.index > last) out += plain(src.slice(last, mm.index));
+        out += mm[0].replace(/[\r\n]+/g, ' ');
+        last = mm.index + mm[0].length;
+    }
+    if (last < src.length) out += plain(src.slice(last));
+    return out.trim();
 }
 
 function getMimeType(b64) {
@@ -4160,7 +4486,7 @@ function backToRoleChooser() {
     if (typeof setAuthMode === 'function') setAuthMode('login');
 
     if (_returnToInstitutePanel()) return;
-    // Standalone fallback — just show the login screen.
+    // Standalone fallback ��� just show the login screen.
     showScreen('login');
 }
 
