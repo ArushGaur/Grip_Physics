@@ -650,42 +650,17 @@ function _mulberry32(seed) {
  *                     should see them. e.g. [3, 0, 2, 1] means the student's
  *                     Q1 is the test's original question #4.
  */
-function questionOrderForStudent(testId, roll, count, subjects) {
+function questionOrderForStudent(testId, roll, count) {
 	const n = Math.max(0, Math.floor(Number(count) || 0));
 	const order = Array.from({ length: n }, (_, i) => i);
 	if (n < 2) return order;
 	const rand = _mulberry32(_seedFromString(`${testId}::${roll}`));
 	// Fisher-Yates, driven by the seeded PRNG.
-	const shuffle = (arr) => {
-		for (let i = arr.length - 1; i > 0; i--) {
-			const j = Math.floor(rand() * (i + 1));
-			[arr[i], arr[j]] = [arr[j], arr[i]];
-		}
-		return arr;
-	};
-
-	/* Keep each subject in one contiguous block.
-	   Shuffling all indexes together interleaved the subjects, so a student
-	   jumped Chemistry -> Biology -> Chemistry question by question. Only the
-	   order WITHIN a subject and the order OF the subject blocks vary per
-	   student, which preserves the anti-cheating property. Falls back to the
-	   flat shuffle when subjects are unknown or there is only one. */
-	const labels = Array.isArray(subjects) ? subjects : null;
-	if (!labels || labels.length !== n) return shuffle(order);
-
-	const blocks = new Map();
-	for (let i = 0; i < n; i++) {
-		const key = String(labels[i] == null ? "" : labels[i]).trim() || "General";
-		if (!blocks.has(key)) blocks.set(key, []);
-		blocks.get(key).push(i);
+	for (let i = n - 1; i > 0; i--) {
+		const j = Math.floor(rand() * (i + 1));
+		[order[i], order[j]] = [order[j], order[i]];
 	}
-	if (blocks.size < 2) return shuffle(order);
-
-	const out = [];
-	for (const key of shuffle([...blocks.keys()])) {
-		out.push(...shuffle(blocks.get(key)));
-	}
-	return out;
+	return order;
 }
 
 /**

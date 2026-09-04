@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://vyorra.in/institute">
     <link rel="manifest" href="institute-manifest.json">
-    <link rel="icon" type="image/png" href="triumph-192.png" id="favicon">
-    <link rel="apple-touch-icon" href="triumph-192.png" id="appleIcon">
+    <link rel="icon" type="image/png" href="/assets/favicon.ico" id="favicon">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" id="appleIcon">
     <meta name="theme-color" content="#0d4c3e">
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,500;0,600&display=swap"
@@ -261,7 +261,6 @@
         .side-profile {
             text-align: center;
             padding: 0 22px 26px;
-            flex-shrink: 0;
         }
 
         .side-avatar {
@@ -290,23 +289,10 @@
         }
 
         .side-nav {
-            flex: 1 1 auto;
-            /* min-height:0 lets this shrink below its content height. Without it a
-               flex item refuses to shrink, which pushed .side-bottom (Toggle Theme +
-               Logout) past the clipped edge of #sidebar on short viewports. */
-            min-height: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            flex: 1;
             padding: 8px 0 8px 18px;
             position: relative;
             z-index: 2;
-        }
-
-        .side-nav::-webkit-scrollbar {
-            width: 0;
-            height: 0;
         }
 
         .nav-item {
@@ -382,100 +368,6 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            flex-shrink: 0;
-            margin-top: auto;
-        }
-
-        /* Short screens: compact the profile/nav so the footer buttons always fit. */
-        @media (max-height: 760px) {
-            #sidebar {
-                padding-top: 22px;
-            }
-
-            .side-profile {
-                padding: 0 22px 14px;
-            }
-
-            .side-avatar {
-                width: 58px;
-                height: 58px;
-                font-size: 1.45rem;
-                margin-bottom: 8px;
-            }
-
-            .nav-item {
-                padding: 10px 20px;
-                margin: 2px 0;
-            }
-
-            .nav-ico {
-                width: 30px;
-                height: 30px;
-            }
-
-            .side-bottom {
-                padding: 12px 20px 18px;
-            }
-        }
-
-        @media (max-height: 620px) {
-            .side-avatar {
-                width: 46px;
-                height: 46px;
-                font-size: 1.15rem;
-            }
-
-            .side-name {
-                font-size: .95rem;
-            }
-
-            .nav-item {
-                padding: 9px 20px;
-                font-size: .85rem;
-            }
-        }
-
-        /* Smooth active-pill animation when switching sections. */
-        .nav-item.active {
-            animation: navPillIn .34s cubic-bezier(.34, 1.16, .64, 1) both;
-        }
-
-        @keyframes navPillIn {
-            from {
-                transform: translateX(14px);
-                opacity: .55;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .nav-item.active .nav-ico {
-            animation: navIcoPop .4s cubic-bezier(.34, 1.4, .64, 1) both;
-        }
-
-        @keyframes navIcoPop {
-            0% {
-                transform: scale(.7) rotate(-9deg);
-            }
-
-            60% {
-                transform: scale(1.09) rotate(3deg);
-            }
-
-            100% {
-                transform: scale(1) rotate(0);
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-
-            .nav-item.active,
-            .nav-item.active .nav-ico {
-                animation: none;
-            }
         }
 
         .side-action {
@@ -3939,20 +3831,20 @@
         .rr-strip {
             display: grid;
             grid-template-columns: auto repeat(3, 1fr) 1.6fr;
-            gap: 10px;
+            gap: 14px;
             align-items: stretch;
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: 20px;
-            padding: 12px 14px;
+            padding: 16px 18px;
             margin-bottom: 16px;
             box-shadow: var(--shadow);
         }
 
         .rr-donut-box {
             position: relative;
-            width: 92px;
-            height: 92px;
+            width: 112px;
+            height: 112px;
         }
 
         .rr-donut-center {
@@ -3966,7 +3858,7 @@
         }
 
         .rr-donut-center b {
-            font-size: 1.1rem;
+            font-size: 1.35rem;
             font-weight: 800;
             color: var(--ink);
             line-height: 1;
@@ -3986,27 +3878,27 @@
 
         .rr-stat {
             background: var(--input-bg);
-            border-radius: 13px;
-            padding: 9px 12px;
+            border-radius: 16px;
+            padding: 13px 15px;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
             justify-content: center;
         }
 
         .rr-stat-top {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: .67rem;
+            gap: 7px;
+            font-size: .72rem;
             font-weight: 700;
             color: var(--ink-dim);
         }
 
         .rr-stat-ico {
-            width: 18px;
-            height: 18px;
-            border-radius: 6px;
+            width: 22px;
+            height: 22px;
+            border-radius: 7px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -4030,43 +3922,43 @@
         }
 
         .rr-stat-num {
-            font-size: 1.2rem;
+            font-size: 1.55rem;
             font-weight: 800;
             color: var(--ink);
             line-height: 1;
         }
 
         .rr-stat-pct {
-            font-size: .67rem;
+            font-size: .72rem;
             font-weight: 700;
         }
 
         .rr-time-card {
             background: var(--input-bg);
-            border-radius: 13px;
-            padding: 9px 13px;
+            border-radius: 16px;
+            padding: 13px 16px;
             display: flex;
             flex-direction: column;
         }
 
         .rr-time-head {
-            font-size: .68rem;
+            font-size: .74rem;
             font-weight: 700;
             color: var(--ink-dim);
         }
 
         .rr-time-val {
             font-family: 'Lora', serif;
-            font-size: 1.15rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: var(--ink);
-            margin: 2px 0 1px;
+            margin: 4px 0 2px;
         }
 
         .rr-time-box {
             position: relative;
             flex: 1;
-            min-height: 30px;
+            min-height: 42px;
         }
 
         .rr-body {
@@ -7914,7 +7806,7 @@
                 </form>
             </div>
 
-            <div class="auth-foot">Powered by <b>Triumph Learning Platform</b></div>
+            <div class="auth-foot">Powered by <b>Vyorra</b></div>
         </div>
     </div>
 
@@ -8165,7 +8057,7 @@
                             <div class="ecard-sub">14 chapters · 62 topics</div>
                         </article>
                         <article class="ecard" style="--ec:#00a390" onclick="showView('qv-chapters')">
-                            <div class="ecard-top"><span class="ecard-ico">🧪</span><span class="ecard-badge">374
+                            <div class="ecard-top"><span class="ecard-ico">����</span><span class="ecard-badge">374
                                     Qs</span></div>
                             <div class="ecard-title">Chemistry</div>
                             <div class="ecard-sub">12 chapters · 48 topics</div>
@@ -8750,7 +8642,7 @@
                                 <div class="att-roll mono">TRI-2024-057</div>
                             </span><span class="att-pill unmarked">NOT MARKED</span><button class="att-analytics"
                                 title="Attendance stats"
-                                onclick="event.stopPropagation();openAttStats('MN')">📈</button></div>
+                                onclick="event.stopPropagation();openAttStats('MN')">����</button></div>
                     </div>
                     <!-- Checking a student only stages them; pressing "Mark Attendance"
                          saves checked = present and unchecked = absent. -->
@@ -8806,7 +8698,7 @@
                             Classes</button><span class="crumb-trail">/ <b>Class 11</b> · 2 Sections</span></div>
                     <div class="ecard-grid">
                         <article class="ecard" style="--ec:#00a390" onclick="showView('rv-tests')">
-                            <div class="ecard-top"><span class="ecard-ico">📂</span><span class="ecard-badge">51
+                            <div class="ecard-top"><span class="ecard-ico">����</span><span class="ecard-badge">51
                                     Attempts</span></div>
                             <div class="ecard-title">Section A</div>
                             <div class="ecard-sub">62 Students</div>
@@ -12425,23 +12317,8 @@
                 return out;
             }
             function qlibSolText(text) {
-                // A literal "\n" in the source is EITHER an escaped newline OR the
-                // start of a LaTeX macro (\nu, \neq, \nabla ...). Inside a math span
-                // it is ALWAYS a macro, so never rewrite it there. Real newlines are
-                // collapsed inside math because a <br> between the $ delimiters puts
-                // them in different DOM text nodes and KaTeX can never pair them.
-                const latexN = /^(?:u|i|eq|e\b|abla|otin|ot|ode|ewcommand|ewline|equiv|onumber|olimits|exists|subseteq|parallel|mid|cong|sim|rightarrow|leftarrow|Rightarrow|Leftarrow|leq|geq|prec|succ)/;
-                const mathRe = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$[^$\r\n]*?\$)/g;
-                const src = String(text || '');
-                const plain = (t) => t.replace(/\\n([a-zA-Z]*)/g, (m, r) => latexN.test(r) ? m : '\n' + r);
-                let out = '', last = 0, mm;
-                while ((mm = mathRe.exec(src)) !== null) {
-                    if (mm.index > last) out += plain(src.slice(last, mm.index));
-                    out += mm[0].replace(/[\r\n]+/g, ' ');
-                    last = mm.index + mm[0].length;
-                }
-                if (last < src.length) out += plain(src.slice(last));
-                const s = out.trim();
+                const latexN = /^(?:eq|abla|otin|e\b|ode|ewcommand|equiv|ot)/;
+                let s = String(text || '').replace(/\\n([a-zA-Z]*)/g, (m, r) => latexN.test(r) ? m : '\n' + r).trim();
                 return esc(s).replace(/\n/g, '<br>');
             }
             function qlibRenderDetail() {
@@ -14189,10 +14066,6 @@
             // ── Per-subject question-count modal ──────────────────────────
             function wizShowSubjCountModal(pickedBySubj, onConfirm) {
                 const subjects = Object.keys(pickedBySubj);
-                const scTitle = subjects.length > 1 ? 'Questions Per Subject' : 'Number of Questions';
-                const scSub = subjects.length > 1
-                    ? 'Choose how many questions from each subject'
-                    : 'Choose how many questions to include';
                 // Remove existing modal if any
                 const old = document.getElementById('wiz-subj-count-modal');
                 if (old) old.remove();
@@ -14216,8 +14089,8 @@
                 panel.innerHTML = `
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
                         <div>
-                            <div style="font-size:1.1rem;font-weight:800;color:var(--teal-deep,#0e7e65)">📊 ${scTitle}</div>
-                            <div style="font-size:.8rem;color:var(--ink-muted);margin-top:2px">${scSub}</div>
+                            <div style="font-size:1.1rem;font-weight:800;color:var(--teal-deep,#0e7e65)">📊 Questions Per Subject</div>
+                            <div style="font-size:.8rem;color:var(--ink-muted);margin-top:2px">Choose how many questions from each subject</div>
                         </div>
                         <button id="wiz-sc-close" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--ink-muted);padding:4px">✕</button>
                     </div>
@@ -14511,10 +14384,8 @@
                     const activeSubjects = Object.keys(wiz.selectedChapters).filter(s => wiz.selectedChapters[s] && wiz.selectedChapters[s].size > 0);
                     const multiSubj = activeSubjects.length > 1;
 
-                    if (type === 'online') {
-                        // Online tests have no form to piggyback on, so ALWAYS ask how many
-                        // questions to include - per subject when several are selected,
-                        // and a single total when only one subject is.
+                    if (multiSubj && type === 'online') {
+                        // For online tests: show per-subject count popup (no form to piggyback on)
                         const pickedBySubj = {};
                         picked.forEach(p => {
                             const s = p.subj || activeSubjects[0];
@@ -14940,7 +14811,7 @@
                         <h3>Generate Question Paper</h3>
                         <p class="sub" id="ipb-modal-sub">0 questions selected</p>
                         <div class="ipb-type-grid">
-                            <button class="ipb-type-card" onclick="window.instChooseType('offline')"><div class="ipb-type-ico">📄</div><b>Offline Paper</b><span>Word document download</span></button>
+                            <button class="ipb-type-card" onclick="window.instChooseType('offline')"><div class="ipb-type-ico">���</div><b>Offline Paper</b><span>Word document download</span></button>
                             ${instOnlineAllowed() ? '<button class="ipb-type-card" onclick="window.instChooseType(\'online\')"><div class="ipb-type-ico">💻</div><b>Online Test</b><span>Live on student portal</span></button>' : ''}
                         </div>
                         <div class="ipb-modal-actions"><button class="ipb-cancel" onclick="window.instCloseGenerate()">Cancel</button></div>
