@@ -2132,8 +2132,11 @@ async function generatePaperDocxBackground(progressId, body, instId) {
 		};
 		await saveArtifacts(progressId, files);
 
+		// Deliberately NOT stored on the progress object: that would keep a second
+		// multi-megabyte reference alive in this process for the whole TTL. The
+		// progress endpoint reads the documents from the artifact store instead.
 		if (global.paperGenProgress[progressId]) {
-			global.paperGenProgress[progressId].files = files;
+			global.paperGenProgress[progressId].filesStored = true;
 			global.paperGenProgress[progressId].status = "completed";
 		}
 	} catch (e) {
@@ -2258,7 +2261,7 @@ async function generatePaperPdfBackground(progressId, body, instId) {
 		await saveArtifacts(progressId, files);
 
 		if (global.paperGenProgress[progressId]) {
-			global.paperGenProgress[progressId].files = files;
+			global.paperGenProgress[progressId].filesStored = true;
 			global.paperGenProgress[progressId].status = "completed";
 		}
 	} catch (e) {
