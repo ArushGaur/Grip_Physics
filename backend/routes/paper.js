@@ -2036,6 +2036,7 @@ async function postProcessDocx(generatedBuf, templateBase64, headerMeta) {
 // to Redis, so any pod can answer the poll. Falls back to pure in-memory when
 // REDIS_URL isn't set (single-instance behaviour, identical to before).
 const { progress, getProgress, clearProgress } = require("../utils/progressStore");
+const { saveArtifacts, loadArtifacts, clearArtifacts } = require("../utils/paperArtifacts");
 const { enqueue } = require("../utils/queue");
 
 // Keep the old global name pointing at the shared store so existing call sites
@@ -2120,13 +2121,20 @@ async function generatePaperDocxBackground(progressId, body, instId) {
 
 		update(100, "finalise");
 
+		// Store the finished documents in the SHARED artifact store FIRST, then
+		// flip the status. In this order a poll that sees "completed" can always
+		// fetch the files, even when it lands on another cluster worker or another
+		// container.
+		const files = {
+			questionPaper: qBuf.toString("base64"),
+			answerKey: akBuf.toString("base64"),
+			solutions: solBuf.toString("base64"),
+		};
+		await saveArtifacts(progressId, files);
+
 		if (global.paperGenProgress[progressId]) {
+			global.paperGenProgress[progressId].files = files;
 			global.paperGenProgress[progressId].status = "completed";
-			global.paperGenProgress[progressId].files = {
-				questionPaper: qBuf.toString("base64"),
-				answerKey: akBuf.toString("base64"),
-				solutions: solBuf.toString("base64"),
-			};
 		}
 	} catch (e) {
 		console.error("generatePaperDocxBackground error:", e);
@@ -2242,13 +2250,16 @@ async function generatePaperPdfBackground(progressId, body, instId) {
 
 		update(100, "finalise");
 
+		const files = {
+			questionPaper: qPdf64,
+			answerKey: akPdf64,
+			solutions: solPdf64,
+		};
+		await saveArtifacts(progressId, files);
+
 		if (global.paperGenProgress[progressId]) {
+			global.paperGenProgress[progressId].files = files;
 			global.paperGenProgress[progressId].status = "completed";
-			global.paperGenProgress[progressId].files = {
-				questionPaper: qPdf64,
-				answerKey: akPdf64,
-				solutions: solPdf64,
-			};
 		}
 	} catch (e) {
 		console.error("generatePaperPdfBackground error:", e);
@@ -2310,13 +2321,32 @@ router.get("/api/admin/generate-paper/progress/:progressId", requireAdmin, async
 		});
 	}
 
+	// A completed job that reached us from another process carries status only
+	// (the base64 documents are far too big to mirror inside the status object).
+	// Pull them from the shared artifact store so the download buttons work no
+	// matter which pod/cluster worker answers this poll.
+	let payload = job;
+	if (job.status === "completed" && !job.files) {
+		const files = await loadArtifacts(progressId);
+		if (files) {
+			payload = { ...job, files };
+		} else {
+			return res.status(410).json({
+				success: false,
+				error: "The generated files are no longer available",
+				hint: "The render finished but its files expired or were lost to a restart. Generate the paper again.",
+			});
+		}
+	}
+
 	if (job.status === "completed" || job.status === "failed") {
 		setTimeout(() => {
 			clearProgress(progressId).catch(() => {});
+			clearArtifacts(progressId).catch(() => {});
 		}, 60000).unref?.(); // Clean up after 1 minute
 	}
 
-	res.json({ success: true, progress: job });
+	res.json({ success: true, progress: payload });
 });
 
 

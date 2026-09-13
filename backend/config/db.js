@@ -61,6 +61,72 @@ pool.on("error", (err) => {
 	console.error("[db] idle client error:", err.message);
 });
 
+// ── Read replica (optional) ────────────────────────────────────────────────
+// Dashboards, analytics and history listings are read-heavy and tolerate a
+// second of replication lag. Sending them to a replica keeps the PRIMARY free
+// for the writes that must never be slow: test submissions.
+//
+// Unset REPLICA_DATABASE_URL and every read simply goes to the primary, so
+// this is safe to deploy before a replica exists.
+const REPLICA_URL =
+	process.env.REPLICA_DATABASE_URL || process.env.PG_REPLICA_URL || "";
+
+let replicaPool = null;
+if (REPLICA_URL) {
+	replicaPool = new Pool({
+		connectionString: REPLICA_URL,
+		ssl: REPLICA_URL.includes("localhost") || REPLICA_URL.includes("127.0.0.1")
+			? false
+			: { rejectUnauthorized: false },
+		max: Number(process.env.PG_REPLICA_POOL_MAX || POOL_MAX),
+		idleTimeoutMillis: 30000,
+		connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 5000),
+		statement_timeout: Number(process.env.PG_STATEMENT_TIMEOUT_MS || 10000),
+		query_timeout: Number(process.env.PG_QUERY_TIMEOUT_MS || 12000),
+		keepAlive: true,
+	});
+	replicaPool.on("error", (err) => {
+		console.error("[db] replica idle client error:", err.message);
+	});
+	console.log("[db] read replica pool enabled");
+}
+
+/**
+ * Run a read-only query, preferring the replica.
+ *
+ * Falls back to the primary when: no replica is configured, the statement is
+ * not a plain SELECT/WITH, or the replica errors. A lagging or dead replica can
+ * therefore never take the app down - it just costs the primary a query.
+ */
+async function executeRead(arg) {
+	let sql;
+	let args;
+	if (typeof arg === "string") {
+		sql = arg;
+		args = [];
+	} else if (arg && typeof arg === "object") {
+		sql = arg.sql;
+		args = arg.args || [];
+	} else {
+		throw new Error("db.read: invalid argument");
+	}
+
+	const text = String(sql);
+	if (!replicaPool || !/^\s*(SELECT|WITH)\b/i.test(text)) return execute(arg);
+
+	try {
+		const res = await _retry(() => replicaPool.query(toPg(text), args));
+		return {
+			rows: res.rows || [],
+			rowsAffected: res.rowCount || 0,
+			lastInsertRowid: undefined,
+		};
+	} catch (e) {
+		console.warn("[db] replica read failed, using primary:", e.message);
+		return execute(arg);
+	}
+}
+
 // ── retry wrapper + circuit breaker ──────────────────────────────────────────
 // The old version retried 3x with a fixed 500ms/1000ms backoff. During a real
 // incident that TRIPLES the load on an already-struggling database, and because
@@ -227,10 +293,14 @@ async function raw(sqlText, params) {
 
 const db = {
 	execute,
+	// Opt-in read path: db.read(...) goes to the replica when one is configured.
+	// Identical contract to db.execute, so call sites can switch one at a time.
+	read: executeRead,
 	executeMultiple,
 	raw,
 	query: (text, params) => _retry(() => pool.query(text, params)),
 	pool,
+	replicaPool: () => replicaPool,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -313,6 +383,16 @@ async function initDB(TEACHER_PASSCODE, hashPasscode) {
 		// can line the stored answers up with the right questions. Rows created
 		// before this feature keep '[]' = original, unshuffled order.
 		`ALTER TABLE test_history ADD COLUMN IF NOT EXISTS question_order_json TEXT DEFAULT '[]'`,
+
+		// ── Crash-safe submission (idempotency key) ──────────────────────────
+		// The browser may retry a save when the first POST is aborted (student
+		// closes the tab the moment the result appears, flaky network, or the
+		// server is busy with a whole class submitting at once). Every attempt
+		// carries a client-generated id, so a retry or a sendBeacon replay can
+		// never create a duplicate row. Legacy rows keep NULL and are ignored by
+		// the partial unique index.
+		`ALTER TABLE test_history ADD COLUMN IF NOT EXISTS client_attempt_id TEXT DEFAULT NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS ux_test_history_client_attempt ON test_history(client_attempt_id) WHERE client_attempt_id IS NOT NULL`,
 
 		// ── Email login identity ────────────────────────────────────
 		// Case-insensitive and scoped to the institute: the same address can exist

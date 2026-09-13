@@ -1294,6 +1294,35 @@ ul, ol {
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
+/* Mid-desktop: the hero deliberately bleeds the mockup off the right edge
+   (.hero-visual margin-right:-96px) and .float-b sits at right:-24px. Between
+   1001px and 1280px there is no room for that bleed, so .hero{overflow:hidden}
+   sliced the 'AI import complete' card and the dashboard in half. */
+@media (min-width: 1001px) and (max-width: 1280px) {
+	.hero-grid {
+		grid-template-columns: 1fr 1.02fr;
+		gap: 36px;
+	}
+
+	.hero-visual {
+		margin-right: -20px;
+	}
+
+	.hero-visual .window.tilt {
+		transform: perspective(1800px) rotateY(-5deg) rotateX(1deg) scale(1);
+	}
+
+	.float-b {
+		right: 4px;
+		top: -40px;
+	}
+
+	.float-a {
+		left: -10px;
+		bottom: -14px;
+	}
+}
+
 @media (max-width: 1000px) {
 
 	.hero-grid,

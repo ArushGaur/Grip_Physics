@@ -103,11 +103,24 @@ function askPrimary(id) {
 
 /* ---------------------------------- writes -------------------------------- */
 
+/**
+ * Status-only view of a job. `files` is deliberately dropped: it is many
+ * megabytes of base64 and is replicated by utils/paperArtifacts.js instead.
+ */
+function slim(v) {
+	if (!v || typeof v !== "object") return v;
+	if (!v.files) return v;
+	const out = { ...v };
+	delete out.files;
+	out.filesStored = true;
+	return out;
+}
+
 function mirror(id) {
 	const v = local[id];
 
 	// 1. cluster primary (always available, needs no configuration)
-	tellPrimary(v === undefined ? "del" : "set", id, v === undefined ? null : v);
+	tellPrimary(v === undefined ? "del" : "set", id, v === undefined ? null : slim(v));
 
 	// 2. Redis, for multi-container deployments
 	if (!redis) return;
@@ -116,17 +129,11 @@ function mirror(id) {
 			redis.del(KEY(id)).catch(() => {});
 			return;
 		}
-		// Finished jobs carry base64 documents that can run to tens of megabytes.
-		// Mirroring those would stall (or be rejected by) Redis, so only the status
-		// travels; the files stay reachable through this container.
-		let payload = JSON.stringify(v);
-		if (payload.length > 512 * 1024) {
-			const slim = { ...v };
-			delete slim.files;
-			slim.filesLocalOnly = true;
-			payload = JSON.stringify(slim);
-		}
-		redis.set(KEY(id), payload, "EX", TTL_SEC).catch(() => {});
+		// Only the STATUS travels here. The finished base64 documents are stored
+		// separately (utils/paperArtifacts.js) in chunks, because a single 5-40 MB
+		// Redis/IPC write is what used to fail silently and leave the browser with
+		// `status: "completed"` and no files.
+		redis.set(KEY(id), JSON.stringify(slim(v)), "EX", TTL_SEC).catch(() => {});
 	} catch (_) {}
 }
 

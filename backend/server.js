@@ -93,6 +93,10 @@ if (cluster.isPrimary && WORKERS > 1) {
 	try {
 		const progressStore = require("./utils/progressStore");
 		progressStore.installClusterBroker?.();
+		// The primary also holds the FINISHED documents (chunked over IPC), so a
+		// download poll that lands on a sibling worker can still serve them.
+		const paperArtifacts = require("./utils/paperArtifacts");
+		paperArtifacts.installArtifactBroker?.();
 	} catch (e) {
 		logger.warn({ err: e?.message || e }, "progress broker unavailable in primary");
 	}
@@ -347,6 +351,14 @@ function startServer() {
 		// Papers auto-rebuild is a one-off maintenance task, not per-worker work.
 		if (process.env.IS_SWEEPER !== "0") {
 			await autoRebuildPapersIfEmpty(adminRouter);
+		}
+
+		// Old-attempt archiving. No-op unless ARCHIVE_ENABLED=1, and it only ever
+		// runs on the single sweeper worker.
+		try {
+			require("./utils/archive").startArchiveJob();
+		} catch (e) {
+			logger.warn({ err: e.message }, "archive job not started");
 		}
 
 		const server = app.listen(PORT, () => {

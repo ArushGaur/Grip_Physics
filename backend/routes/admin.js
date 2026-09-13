@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const { db } = require("../config/db");
 const helpers = require("../utils/helpers");
+const cache = require("../config/cache");
 const { requireAdmin, sessionInstituteId, getDefaultInstituteId } = require("../middleware/auth");
 const {
 	loadQuestions, refreshCache, findQuestion, findQuestionsByPaper,
@@ -1425,6 +1426,10 @@ router.put("/api/admin/online-tests/:id", requireAdmin, requireFeature("onlineTe
 		if (result.rowsAffected === 0) {
 			return res.status(404).json({ error: "Test not found or unauthorized" });
 		}
+		// The student questions endpoint caches the resolved question set by test
+		// id (see cache.getOrSet in routes/student.js). Without this drop, a
+		// teacher's edit would keep serving the OLD paper for up to the TTL.
+		try { await cache.invalidateTest(testId); } catch (_) { /* cache is best-effort */ }
 		res.json({ success: true });
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed to update online test" });
@@ -1436,6 +1441,7 @@ router.delete("/api/admin/online-tests/:id", requireAdmin, requireFeature("onlin
 	try {
 		const instId = sessionInstituteId(req) || (await getDefaultInstituteId());
 		await db.execute({ sql: "DELETE FROM online_tests WHERE id = ? AND institute_id = ?", args: [Number(req.params.id), instId] });
+		try { await cache.invalidateTest(Number(req.params.id)); } catch (_) { /* cache is best-effort */ }
 		res.json({ success: true });
 	} catch (e) {
 		res.status(500).json({ error: e.message || "Failed" });
